@@ -1,41 +1,23 @@
-# SmartPlate
+# Automated Vehicle Plate Detection System
 
-This template should help get you started developing with Vue 3 in Vite.
+## 📌 Overview
+This project is an **Automated Vehicle Plate Detection System** designed to improve vehicle identification and verification. By utilizing modern web technologies and backend services, the system aims to improve the accuracy, efficiency, and security of plate number recognition and registration tracking.
 
-## Recommended IDE Setup
+## 🛠 Tech Stack
+- **Frontend**: Vue.js, Tailwind CSS
+- **Backend**: Golang (Echo)
+- **Database**: PocketBase
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## 🔥 Features
+- **Real-time Plate Number Recognition**
+- **User Authentication & Role Management** (Powered by PocketBase)
+- **Vehicle Registration Database & Search**
+- **API Integration for Data Syncing**
+- **Responsive UI with Tailwind CSS**
 
-## Customize configuration
+## 📜 License
+This project is licensed under the **MIT License**.
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+---
+⚡ **Stay tuned for more updates!**
 
-## Project Setup
-
-```sh
-npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
-```
-
-### Compile and Minify for Production
-
-```sh
-npm run build
-```
-
-### Run Unit Tests with [Vitest](https://vitest.dev/)
-
-```sh
-npm run test:unit
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
-```
