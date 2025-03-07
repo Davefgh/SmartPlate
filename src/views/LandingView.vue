@@ -162,7 +162,7 @@
           <div class="space-y-4">
             <h3 class="text-xl font-bold mb-4">LTO SmartPlate</h3>
             <p class="text-gray-300 text-sm">
-              The official vehicle registration management system of the Land Transportation Office
+              The Vehicle Registration Management System of the Land Transportation Office
               of the Philippines.
             </p>
             <div class="flex space-x-4 mt-4">

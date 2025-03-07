@@ -155,30 +155,6 @@
             <p class="text-gray text-base">Join SmartPlate now!</p>
           </div>
           <form @submit.prevent="validateAndRegister" class="flex flex-col gap-5" novalidate>
-            <!-- Full Name Field -->
-            <div class="flex flex-col gap-2">
-              <label for="fullName" class="text-sm font-semibold text-dark-blue">Full Name</label>
-              <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <font-awesome-icon :icon="['fas', 'user']" class="h-5 w-5 text-gray" />
-                </div>
-                <input
-                  type="text"
-                  id="fullName"
-                  v-model="registerData.fullName"
-                  @blur="validateFullName"
-                  placeholder="Enter your full name"
-                  class="w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-blue/20 transition-all"
-                  :class="[errors.fullName ? 'border-red text-red' : 'border-gray-200']"
-                  required
-                />
-              </div>
-              <div v-if="errors.fullName" class="flex items-center gap-2 mt-1 text-red">
-                <font-awesome-icon :icon="['fas', 'circle-exclamation']" class="h-4 w-4" />
-                <p class="text-xs">{{ errors.fullName }}</p>
-              </div>
-            </div>
-
             <!-- Email Field -->
             <div class="flex flex-col gap-2">
               <label for="registerEmail" class="text-sm font-semibold text-dark-blue">Email</label>
@@ -351,8 +327,7 @@ const showPassword = ref(false)
 // Reactive variables for registration form
 const showRegisterPassword = ref(false)
 const showConfirmPassword = ref(false)
-const registerData = ref({
-  fullName: '',
+const registerData = reactive({
   email: '',
   password: '',
   confirmPassword: '',
@@ -364,7 +339,6 @@ const errors = reactive({
   email: '',
   password: '',
   form: '',
-  fullName: '',
   registerEmail: '',
   registerPassword: '',
   confirmPassword: '',
@@ -433,30 +407,15 @@ const validateLoginPassword = () => {
 }
 
 // Validation functions for registration form
-const validateFullName = () => {
-  errors.fullName = ''
-  if (!registerData.value.fullName) {
-    errors.fullName = 'Full name is required'
-    return false
-  }
-
-  if (registerData.value.fullName.length < 3) {
-    errors.fullName = 'Full name must be at least 3 characters'
-    return false
-  }
-
-  return true
-}
-
 const validateRegisterEmail = () => {
   errors.registerEmail = ''
-  if (!registerData.value.email) {
+  if (!registerData.email) {
     errors.registerEmail = 'Email is required'
     return false
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(registerData.value.email)) {
+  if (!emailRegex.test(registerData.email)) {
     errors.registerEmail = 'Please enter a valid email address'
     return false
   }
@@ -466,21 +425,21 @@ const validateRegisterEmail = () => {
 
 const validateRegisterPassword = () => {
   errors.registerPassword = ''
-  if (!registerData.value.password) {
+  if (!registerData.password) {
     errors.registerPassword = 'Password is required'
     return false
   }
 
-  if (registerData.value.password.length < 8) {
+  if (registerData.password.length < 8) {
     errors.registerPassword = 'Password must be at least 8 characters'
     return false
   }
 
   // Check for password strength
-  const hasUpperCase = /[A-Z]/.test(registerData.value.password)
-  const hasLowerCase = /[a-z]/.test(registerData.value.password)
-  const hasNumbers = /\d/.test(registerData.value.password)
-  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(registerData.value.password)
+  const hasUpperCase = /[A-Z]/.test(registerData.password)
+  const hasLowerCase = /[a-z]/.test(registerData.password)
+  const hasNumbers = /\d/.test(registerData.password)
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(registerData.password)
 
   if (!(hasUpperCase && hasLowerCase && hasNumbers)) {
     errors.registerPassword = 'Password must contain uppercase, lowercase, and numbers'
@@ -497,12 +456,12 @@ const validateRegisterPassword = () => {
 
 const validateConfirmPassword = () => {
   errors.confirmPassword = ''
-  if (!registerData.value.confirmPassword) {
+  if (!registerData.confirmPassword) {
     errors.confirmPassword = 'Please confirm your password'
     return false
   }
 
-  if (registerData.value.password !== registerData.value.confirmPassword) {
+  if (registerData.password !== registerData.confirmPassword) {
     errors.confirmPassword = 'Passwords do not match'
     return false
   }
@@ -512,12 +471,12 @@ const validateConfirmPassword = () => {
 
 const validatePasswordMatch = () => {
   if (
-    registerData.value.confirmPassword &&
-    registerData.value.password !== registerData.value.confirmPassword
+    registerData.confirmPassword &&
+    registerData.password !== registerData.confirmPassword
   ) {
     errors.confirmPassword = 'Passwords do not match'
     return false
-  } else if (registerData.value.confirmPassword) {
+  } else if (registerData.confirmPassword) {
     errors.confirmPassword = ''
     return true
   }
@@ -526,7 +485,7 @@ const validatePasswordMatch = () => {
 
 const validateTerms = () => {
   errors.terms = ''
-  if (!registerData.value.acceptTerms) {
+  if (!registerData.acceptTerms) {
     errors.terms = 'You must accept the terms and conditions'
     return false
   }
@@ -554,14 +513,12 @@ const validateAndRegister = () => {
   errors.registerForm = ''
 
   // Validate all fields
-  const isFullNameValid = validateFullName()
   const isEmailValid = validateRegisterEmail()
   const isPasswordValid = validateRegisterPassword()
   const isConfirmPasswordValid = validateConfirmPassword()
   const isTermsAccepted = validateTerms()
 
   if (
-    isFullNameValid &&
     isEmailValid &&
     isPasswordValid &&
     isConfirmPasswordValid &&
@@ -584,10 +541,9 @@ const handleLogin = () => {
 
 const handleRegister = () => {
   console.log('Registration attempt with:', {
-    fullName: registerData.value.fullName,
-    email: registerData.value.email,
-    password: registerData.value.password,
-    acceptTerms: registerData.value.acceptTerms,
+    email: registerData.email,
+    password: registerData.password,
+    acceptTerms: registerData.acceptTerms,
   })
 }
 </script>
