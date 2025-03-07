@@ -15,7 +15,24 @@ import {
   faEyeSlash, 
   faUser,
   faCircleExclamation,
-  faTriangleExclamation
+  faTriangleExclamation,
+  faBars,
+  faXmark,
+  faHome,
+  faCar,
+  faIdCard,
+  faFileContract,
+  faGear,
+  faSignOutAlt,
+  faBell,
+  faSearch,
+  faChevronRight,
+  faChevronLeft,
+  faChevronDown,
+  faArrowUp,
+  faCheckCircle,
+  faExclamationCircle,
+  faHistory
 } from '@fortawesome/free-solid-svg-icons'
 import { faGoogle } from '@fortawesome/free-brands-svg-icons'
 
@@ -28,7 +45,24 @@ library.add(
   faUser,
   faGoogle,
   faCircleExclamation,
-  faTriangleExclamation
+  faTriangleExclamation,
+  faBars,
+  faXmark,
+  faHome,
+  faCar,
+  faIdCard,
+  faFileContract,
+  faGear,
+  faSignOutAlt,
+  faBell,
+  faSearch,
+  faChevronRight,
+  faChevronLeft,
+  faChevronDown,
+  faArrowUp,
+  faCheckCircle,
+  faExclamationCircle,
+  faHistory
 )
 
 const app = createApp(App)
