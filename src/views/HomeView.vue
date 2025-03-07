@@ -39,7 +39,7 @@ const menuItems = ref([
 
 // Set active menu item
 const setActiveMenuItem = (itemName) => {
-  menuItems.value.forEach(item => {
+  menuItems.value.forEach((item) => {
     item.active = item.name === itemName
   })
   activeMenuItem.value = itemName
@@ -49,7 +49,6 @@ const setActiveMenuItem = (itemName) => {
   }
 }
 
-// Computed property to determine which component to show
 const activeComponent = computed(() => {
   switch (activeMenuItem.value) {
     case 'Dashboard':
@@ -96,7 +95,7 @@ const handleOutsideClick = (event) => {
   ) {
     isSidebarOpen.value = false
   }
-  
+
   // Handle profile dropdown outside click
   if (
     isProfileDropdownOpen.value &&
@@ -277,10 +276,12 @@ onUnmounted(() => {
                   alt="User Avatar"
                   class="w-8 h-8 rounded-full border-2 border-light-blue"
                 />
-                <span class="hidden md:block text-sm font-medium">{{ user.name.split(' ')[0] }}</span>
+                <span class="hidden md:block text-sm font-medium">{{
+                  user.name.split(' ')[0]
+                }}</span>
                 <font-awesome-icon :icon="['fas', 'chevron-down']" class="w-3 h-3 text-gray" />
               </button>
-              
+
               <!-- Profile Dropdown -->
               <transition
                 enter-active-class="transition ease-out duration-200"
@@ -290,9 +291,9 @@ onUnmounted(() => {
                 leave-from-class="transform opacity-100 scale-100"
                 leave-to-class="transform opacity-0 scale-95"
               >
-                <div 
+                <div
                   id="profile-dropdown"
-                  v-if="isProfileDropdownOpen" 
+                  v-if="isProfileDropdownOpen"
                   class="absolute right-0 mt-2 w-60 bg-white rounded-lg shadow-lg py-2 z-50 border border-gray-100"
                 >
                   <!-- Profile Header -->
@@ -309,35 +310,58 @@ onUnmounted(() => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <!-- Dropdown Menu Items -->
                   <div class="py-1">
-                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                    <a
+                      href="#"
+                      class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
                       <div class="flex items-center">
-                        <font-awesome-icon :icon="['fas', 'user']" class="w-4 h-4 mr-3 text-gray-400" />
+                        <font-awesome-icon
+                          :icon="['fas', 'user']"
+                          class="w-4 h-4 mr-3 text-gray-400"
+                        />
                         <span>My Profile</span>
                       </div>
                     </a>
-                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                    <a
+                      href="#"
+                      class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
                       <div class="flex items-center">
-                        <font-awesome-icon :icon="['fas', 'gear']" class="w-4 h-4 mr-3 text-gray-400" />
+                        <font-awesome-icon
+                          :icon="['fas', 'gear']"
+                          class="w-4 h-4 mr-3 text-gray-400"
+                        />
                         <span>Account Settings</span>
                       </div>
                     </a>
-                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                    <a
+                      href="#"
+                      class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
                       <div class="flex items-center">
-                        <font-awesome-icon :icon="['fas', 'bell']" class="w-4 h-4 mr-3 text-gray-400" />
+                        <font-awesome-icon
+                          :icon="['fas', 'bell']"
+                          class="w-4 h-4 mr-3 text-gray-400"
+                        />
                         <span>Notifications</span>
-                        <span class="ml-auto bg-red text-white text-xs rounded-full px-2 py-0.5">{{ notifications }}</span>
+                        <span class="ml-auto bg-red text-white text-xs rounded-full px-2 py-0.5">{{
+                          notifications
+                        }}</span>
                       </div>
                     </a>
                   </div>
-                  
+
                   <!-- Divider -->
                   <div class="border-t border-gray-100 my-1"></div>
-                  
+
                   <!-- Logout Option -->
-                  <a href="#" class="block px-4 py-2 text-sm text-red hover:bg-red hover:bg-opacity-10 transition-colors">
+                  <a
+                    href="#"
+                    class="block px-4 py-2 text-sm text-red hover:bg-red hover:bg-opacity-10 transition-colors"
+                  >
                     <div class="flex items-center">
                       <font-awesome-icon :icon="['fas', 'sign-out-alt']" class="w-4 h-4 mr-3" />
                       <span>Log Out</span>
