@@ -1,3 +1,263 @@
+<script setup>
+import { ref, reactive } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+// Reactive variables for login form
+const email = ref('')
+const password = ref('')
+const rememberMe = ref(false)
+const showPassword = ref(false)
+
+// Reactive variables for registration form
+const showRegisterPassword = ref(false)
+const showConfirmPassword = ref(false)
+const registerData = reactive({
+  email: '',
+  password: '',
+  confirmPassword: '',
+  acceptTerms: false,
+})
+
+// Error handling
+const errors = reactive({
+  email: '',
+  password: '',
+  form: '',
+  registerEmail: '',
+  registerPassword: '',
+  confirmPassword: '',
+  terms: '',
+  registerForm: '',
+})
+
+// Toggle between login and registration forms
+const isLogin = ref(true)
+const toggleForm = () => {
+  // Clear all errors when switching forms
+  clearErrors()
+  // Toggle between login and registration forms
+  isLogin.value = !isLogin.value
+}
+
+// Handle registration form submission
+const handleRegistration = () => {
+  clearErrors()
+
+  // Basic validation
+  let isValid = true
+
+  if (!registerData.email) {
+    errors.registerEmail = 'Email is required'
+    isValid = false
+  }
+
+  if (!registerData.password) {
+    errors.registerPassword = 'Password is required'
+    isValid = false
+  }
+
+  if (!registerData.confirmPassword) {
+    errors.confirmPassword = 'Please confirm your password'
+    isValid = false
+  }
+
+  if (registerData.password !== registerData.confirmPassword) {
+    errors.confirmPassword = 'Passwords do not match'
+    isValid = false
+  }
+
+  if (!registerData.acceptTerms) {
+    errors.terms = 'You must accept the terms and conditions'
+    isValid = false
+  }
+
+  if (isValid) {
+    // If validation passes, redirect to full registration with initial data
+    router.push({
+      path: '/register',
+      query: { email: registerData.email },
+    })
+  }
+}
+const clearErrors = () => {
+  Object.keys(errors).forEach((key) => {
+    errors[key] = ''
+  })
+}
+
+// Password visibility toggles
+const togglePasswordVisibility = () => {
+  showPassword.value = !showPassword.value
+}
+
+const toggleRegisterPasswordVisibility = () => {
+  showRegisterPassword.value = !showRegisterPassword.value
+}
+
+const toggleConfirmPasswordVisibility = () => {
+  showConfirmPassword.value = !showConfirmPassword.value
+}
+
+// Validation functions for login form
+const validateLoginEmail = () => {
+  errors.email = ''
+  if (!email.value) {
+    errors.email = 'Email is required'
+    return false
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(email.value)) {
+    errors.email = 'Please enter a valid email address'
+    return false
+  }
+
+  return true
+}
+
+const validateLoginPassword = () => {
+  errors.password = ''
+  if (!password.value) {
+    errors.password = 'Password is required'
+    return false
+  }
+
+  if (password.value.length < 6) {
+    errors.password = 'Password must be at least 6 characters'
+    return false
+  }
+
+  return true
+}
+
+// Validation functions for registration form
+const validateRegisterEmail = () => {
+  errors.registerEmail = ''
+  if (!registerData.email) {
+    errors.registerEmail = 'Email is required'
+    return false
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(registerData.email)) {
+    errors.registerEmail = 'Please enter a valid email address'
+    return false
+  }
+
+  return true
+}
+
+const validateRegisterPassword = () => {
+  errors.registerPassword = ''
+  if (!registerData.password) {
+    errors.registerPassword = 'Password is required'
+    return false
+  }
+
+  if (registerData.password.length < 8) {
+    errors.registerPassword = 'Password must be at least 8 characters'
+    return false
+  }
+
+  // Check for password strength
+  const hasUpperCase = /[A-Z]/.test(registerData.password)
+  const hasLowerCase = /[a-z]/.test(registerData.password)
+  const hasNumbers = /\d/.test(registerData.password)
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(registerData.password)
+
+  if (!(hasUpperCase && hasLowerCase && hasNumbers)) {
+    errors.registerPassword = 'Password must contain uppercase, lowercase, and numbers'
+    return false
+  }
+
+  if (!hasSpecialChar) {
+    errors.registerPassword = 'Password must contain at least one special character'
+    return false
+  }
+
+  return true
+}
+
+const validateConfirmPassword = () => {
+  errors.confirmPassword = ''
+  if (!registerData.confirmPassword) {
+    errors.confirmPassword = 'Please confirm your password'
+    return false
+  }
+
+  if (registerData.password !== registerData.confirmPassword) {
+    errors.confirmPassword = 'Passwords do not match'
+    return false
+  }
+
+  return true
+}
+
+const validatePasswordMatch = () => {
+  if (registerData.confirmPassword && registerData.password !== registerData.confirmPassword) {
+    errors.confirmPassword = 'Passwords do not match'
+    return false
+  } else if (registerData.confirmPassword) {
+    errors.confirmPassword = ''
+    return true
+  }
+  return true
+}
+
+const validateTerms = () => {
+  errors.terms = ''
+  if (!registerData.acceptTerms) {
+    errors.terms = 'You must accept the terms and conditions'
+    return false
+  }
+  return true
+}
+
+// Form submission handlers with validation
+const validateAndLogin = () => {
+  // Clear previous form error
+  errors.form = ''
+
+  // Validate all fields
+  const isEmailValid = validateLoginEmail()
+  const isPasswordValid = validateLoginPassword()
+
+  if (isEmailValid && isPasswordValid) {
+    handleLogin()
+  } else {
+    errors.form = 'Please fix the errors above before submitting'
+  }
+}
+
+const validateAndRegister = () => {
+  // Clear previous form error
+  errors.registerForm = ''
+
+  // Validate all fields
+  const isEmailValid = validateRegisterEmail()
+  const isPasswordValid = validateRegisterPassword()
+  const isConfirmPasswordValid = validateConfirmPassword()
+  const isTermsAccepted = validateTerms()
+
+  if (isEmailValid && isPasswordValid && isConfirmPasswordValid && isTermsAccepted) {
+    handleRegistration()
+  } else {
+    errors.registerForm = 'Please fix the errors above before submitting'
+  }
+}
+
+// Form submission handlers
+const handleLogin = () => {
+  console.log('Login attempt with:', {
+    email: email.value,
+    password: password.value,
+    rememberMe: rememberMe.value,
+  })
+}
+</script>
+
 <template>
   <div class="flex min-h-screen">
     <!-- Left Column - Welcome Text and Registration -->
@@ -314,236 +574,3 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref, reactive } from 'vue'
-
-// Reactive variables for login form
-const email = ref('')
-const password = ref('')
-const rememberMe = ref(false)
-const showPassword = ref(false)
-
-// Reactive variables for registration form
-const showRegisterPassword = ref(false)
-const showConfirmPassword = ref(false)
-const registerData = reactive({
-  email: '',
-  password: '',
-  confirmPassword: '',
-  acceptTerms: false,
-})
-
-// Error handling
-const errors = reactive({
-  email: '',
-  password: '',
-  form: '',
-  registerEmail: '',
-  registerPassword: '',
-  confirmPassword: '',
-  terms: '',
-  registerForm: '',
-})
-
-// Toggle between login and registration forms
-const isLogin = ref(true)
-const toggleForm = () => {
-  // Clear all errors when switching forms
-  clearErrors()
-  isLogin.value = !isLogin.value
-}
-
-// Clear all error messages
-const clearErrors = () => {
-  Object.keys(errors).forEach((key) => {
-    errors[key] = ''
-  })
-}
-
-// Password visibility toggles
-const togglePasswordVisibility = () => {
-  showPassword.value = !showPassword.value
-}
-
-const toggleRegisterPasswordVisibility = () => {
-  showRegisterPassword.value = !showRegisterPassword.value
-}
-
-const toggleConfirmPasswordVisibility = () => {
-  showConfirmPassword.value = !showConfirmPassword.value
-}
-
-// Validation functions for login form
-const validateLoginEmail = () => {
-  errors.email = ''
-  if (!email.value) {
-    errors.email = 'Email is required'
-    return false
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(email.value)) {
-    errors.email = 'Please enter a valid email address'
-    return false
-  }
-
-  return true
-}
-
-const validateLoginPassword = () => {
-  errors.password = ''
-  if (!password.value) {
-    errors.password = 'Password is required'
-    return false
-  }
-
-  if (password.value.length < 6) {
-    errors.password = 'Password must be at least 6 characters'
-    return false
-  }
-
-  return true
-}
-
-// Validation functions for registration form
-const validateRegisterEmail = () => {
-  errors.registerEmail = ''
-  if (!registerData.email) {
-    errors.registerEmail = 'Email is required'
-    return false
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(registerData.email)) {
-    errors.registerEmail = 'Please enter a valid email address'
-    return false
-  }
-
-  return true
-}
-
-const validateRegisterPassword = () => {
-  errors.registerPassword = ''
-  if (!registerData.password) {
-    errors.registerPassword = 'Password is required'
-    return false
-  }
-
-  if (registerData.password.length < 8) {
-    errors.registerPassword = 'Password must be at least 8 characters'
-    return false
-  }
-
-  // Check for password strength
-  const hasUpperCase = /[A-Z]/.test(registerData.password)
-  const hasLowerCase = /[a-z]/.test(registerData.password)
-  const hasNumbers = /\d/.test(registerData.password)
-  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(registerData.password)
-
-  if (!(hasUpperCase && hasLowerCase && hasNumbers)) {
-    errors.registerPassword = 'Password must contain uppercase, lowercase, and numbers'
-    return false
-  }
-
-  if (!hasSpecialChar) {
-    errors.registerPassword = 'Password must contain at least one special character'
-    return false
-  }
-
-  return true
-}
-
-const validateConfirmPassword = () => {
-  errors.confirmPassword = ''
-  if (!registerData.confirmPassword) {
-    errors.confirmPassword = 'Please confirm your password'
-    return false
-  }
-
-  if (registerData.password !== registerData.confirmPassword) {
-    errors.confirmPassword = 'Passwords do not match'
-    return false
-  }
-
-  return true
-}
-
-const validatePasswordMatch = () => {
-  if (
-    registerData.confirmPassword &&
-    registerData.password !== registerData.confirmPassword
-  ) {
-    errors.confirmPassword = 'Passwords do not match'
-    return false
-  } else if (registerData.confirmPassword) {
-    errors.confirmPassword = ''
-    return true
-  }
-  return true
-}
-
-const validateTerms = () => {
-  errors.terms = ''
-  if (!registerData.acceptTerms) {
-    errors.terms = 'You must accept the terms and conditions'
-    return false
-  }
-  return true
-}
-
-// Form submission handlers with validation
-const validateAndLogin = () => {
-  // Clear previous form error
-  errors.form = ''
-
-  // Validate all fields
-  const isEmailValid = validateLoginEmail()
-  const isPasswordValid = validateLoginPassword()
-
-  if (isEmailValid && isPasswordValid) {
-    handleLogin()
-  } else {
-    errors.form = 'Please fix the errors above before submitting'
-  }
-}
-
-const validateAndRegister = () => {
-  // Clear previous form error
-  errors.registerForm = ''
-
-  // Validate all fields
-  const isEmailValid = validateRegisterEmail()
-  const isPasswordValid = validateRegisterPassword()
-  const isConfirmPasswordValid = validateConfirmPassword()
-  const isTermsAccepted = validateTerms()
-
-  if (
-    isEmailValid &&
-    isPasswordValid &&
-    isConfirmPasswordValid &&
-    isTermsAccepted
-  ) {
-    handleRegister()
-  } else {
-    errors.registerForm = 'Please fix the errors above before submitting'
-  }
-}
-
-// Form submission handlers
-const handleLogin = () => {
-  console.log('Login attempt with:', {
-    email: email.value,
-    password: password.value,
-    rememberMe: rememberMe.value,
-  })
-}
-
-const handleRegister = () => {
-  console.log('Registration attempt with:', {
-    email: registerData.email,
-    password: registerData.password,
-    acceptTerms: registerData.acceptTerms,
-  })
-}
-</script>
