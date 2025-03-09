@@ -1,11 +1,11 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import DashboardContent from '@/components/DashboardContent.vue'
-import VehicleInformation from '@/components/VehicleInformation.vue'
-import PlateInformation from '@/components/PlateInformation.vue'
-import RegistrationContent from '@/components/RegistrationContent.vue'
-import SettingsPage from '@/components/SettingsPage.vue'
-
+import { ref, onMounted, onUnmounted, computed, defineAsyncComponent } from 'vue'
+const DashboardContent = defineAsyncComponent(() => import('@/components/DashboardContent.vue'))
+const VehicleInformation = defineAsyncComponent(() => import('@/components/VehicleInformation.vue'))
+const PlateInformation = defineAsyncComponent(() => import('@/components/PlateInformation.vue'))
+const RegistrationContent = defineAsyncComponent(
+  () => import('@/components/RegistrationContent.vue'),
+)
 // Sidebar state
 const isSidebarOpen = ref(false)
 const toggleSidebar = () => {
@@ -34,7 +34,6 @@ const menuItems = ref([
   { name: 'Vehicles', icon: 'car', active: false },
   { name: 'Plates', icon: 'id-card', active: false },
   { name: 'Registration', icon: 'file-contract', active: false },
-  { name: 'Settings', icon: 'gear', active: false },
 ])
 
 // Set active menu item
@@ -48,23 +47,16 @@ const setActiveMenuItem = (itemName) => {
     isSidebarOpen.value = false
   }
 }
+// Component mapping
+const componentMap = {
+  Dashboard: DashboardContent,
+  Vehicles: VehicleInformation,
+  Plates: PlateInformation,
+  Registration: RegistrationContent,
+}
 
-const activeComponent = computed(() => {
-  switch (activeMenuItem.value) {
-    case 'Dashboard':
-      return DashboardContent
-    case 'Vehicles':
-      return VehicleInformation
-    case 'Plates':
-      return PlateInformation
-    case 'Registration':
-      return RegistrationContent
-    case 'Settings':
-      return SettingsPage
-    default:
-      return DashboardContent
-  }
-})
+// Active component computed property
+const activeComponent = computed(() => componentMap[activeMenuItem.value] || DashboardContent)
 
 // Close sidebar on escape key
 const handleEscKey = (event) => {
@@ -313,9 +305,10 @@ onUnmounted(() => {
 
                   <!-- Dropdown Menu Items -->
                   <div class="py-1">
-                    <a
-                      href="#"
+                    <router-link
+                      to="/profile"
                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      @click="isProfileDropdownOpen = false"
                     >
                       <div class="flex items-center">
                         <font-awesome-icon
@@ -324,7 +317,7 @@ onUnmounted(() => {
                         />
                         <span>My Profile</span>
                       </div>
-                    </a>
+                    </router-link>
                     <a
                       href="#"
                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"

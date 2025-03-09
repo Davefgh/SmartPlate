@@ -127,15 +127,18 @@ const getExpiryStatusText = (expiryDateStr) => {
 
     <!-- Plates Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div v-for="plate in filteredPlates" :key="plate.id" class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-200">
+      <div v-for="plate in filteredPlates" :key="plate.id" class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
         <!-- Plate Header -->
-        <div class="bg-gray-50 p-4 border-b border-gray-100">
+        <div :class="[
+          'p-4 border-b border-gray-100',
+          plate.status === 'Active' ? 'bg-gradient-to-r from-blue-50 to-green-50' : 'bg-gradient-to-r from-amber-50 to-yellow-50'
+        ]">
           <div class="flex justify-between items-center">
             <h3 class="text-lg font-bold text-gray-800">{{ plate.plateNumber }}</h3>
             <span 
               :class="[
-                'px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full',
-                plate.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                'px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full shadow-sm',
+                plate.status === 'Active' ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800' : 'bg-gradient-to-r from-yellow-100 to-amber-200 text-yellow-800'
               ]"
             >
               {{ plate.status }}

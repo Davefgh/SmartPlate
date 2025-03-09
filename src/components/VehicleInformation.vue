@@ -1,4 +1,3 @@
-
 <script setup>
 import { ref, computed } from 'vue'
 
@@ -13,7 +12,7 @@ const vehicles = ref([
     color: 'White',
     status: 'Active',
     lastUpdated: '2025-02-15',
-    owner: 'Stanleigh Morales'
+    owner: 'Stanleigh Morales',
   },
   {
     id: 2,
@@ -24,7 +23,7 @@ const vehicles = ref([
     color: 'Black',
     status: 'Active',
     lastUpdated: '2025-01-20',
-    owner: 'Stanleigh Morales'
+    owner: 'Stanleigh Morales',
   },
   {
     id: 3,
@@ -35,8 +34,8 @@ const vehicles = ref([
     color: 'Red',
     status: 'Pending',
     lastUpdated: '2025-03-01',
-    owner: 'Stanleigh Morales'
-  }
+    owner: 'Stanleigh Morales',
+  },
 ])
 
 // Search functionality
@@ -45,10 +44,11 @@ const filteredVehicles = computed(() => {
   if (!searchQuery.value) return vehicles.value
 
   const query = searchQuery.value.toLowerCase()
-  return vehicles.value.filter(vehicle =>
-    vehicle.make.toLowerCase().includes(query) ||
-    vehicle.model.toLowerCase().includes(query) ||
-    vehicle.plateNumber.toLowerCase().includes(query)
+  return vehicles.value.filter(
+    (vehicle) =>
+      vehicle.make.toLowerCase().includes(query) ||
+      vehicle.model.toLowerCase().includes(query) ||
+      vehicle.plateNumber.toLowerCase().includes(query),
   )
 })
 
@@ -60,7 +60,7 @@ const newVehicle = ref({
   year: new Date().getFullYear(),
   plateNumber: '',
   color: '',
-  status: 'Pending'
+  status: 'Pending',
 })
 
 const toggleAddVehicleModal = () => {
@@ -72,7 +72,7 @@ const toggleAddVehicleModal = () => {
       year: new Date().getFullYear(),
       plateNumber: '',
       color: '',
-      status: 'Pending'
+      status: 'Pending',
     }
   }
 }
@@ -82,7 +82,7 @@ const addVehicle = () => {
     id: vehicles.value.length + 1,
     ...newVehicle.value,
     lastUpdated: new Date().toISOString().split('T')[0],
-    owner: 'Stanleigh Morales'
+    owner: 'Stanleigh Morales',
   })
   toggleAddVehicleModal()
 }
@@ -122,11 +122,15 @@ const addVehicle = () => {
           </div>
         </div>
         <div class="flex items-center space-x-2">
-          <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg flex items-center transition-colors">
+          <button
+            class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg flex items-center transition-colors"
+          >
             <font-awesome-icon :icon="['fas', 'filter']" class="mr-2 text-gray-500" />
             Filter
           </button>
-          <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg flex items-center transition-colors">
+          <button
+            class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg flex items-center transition-colors"
+          >
             <font-awesome-icon :icon="['fas', 'sort']" class="mr-2 text-gray-500" />
             Sort
           </button>
@@ -134,73 +138,121 @@ const addVehicle = () => {
       </div>
     </div>
 
-    <!-- Vehicles List -->
-    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Vehicle
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Plate Number
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Last Updated
-              </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="vehicle in filteredVehicles" :key="vehicle.id" class="hover:bg-gray-50 transition-colors">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center">
-                    <font-awesome-icon :icon="['fas', 'car']" class="text-gray-500" />
-                  </div>
-                  <div class="ml-4">
-                    <div class="text-sm font-medium text-gray-900">{{ vehicle.make }} {{ vehicle.model }}</div>
-                    <div class="text-sm text-gray-500">{{ vehicle.year }} • {{ vehicle.color }}</div>
-                  </div>
+    <!-- Vehicles Grid Layout -->
+    <div class="mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Vehicle Card -->
+        <div
+          v-for="vehicle in filteredVehicles"
+          :key="vehicle.id"
+          class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+        >
+          <!-- Vehicle Image -->
+          <div
+            :class="[
+              'h-48 relative overflow-hidden',
+              vehicle.status === 'Active'
+                ? 'bg-gradient-to-r from-blue-50 to-green-50'
+                : 'bg-gradient-to-r from-amber-50 to-yellow-50',
+            ]"
+          >
+            <div class="absolute inset-0 flex items-center justify-center">
+              <font-awesome-icon
+                :icon="['fas', 'car']"
+                :class="[
+                  'w-24 h-24 opacity-80',
+                  vehicle.color.toLowerCase() === 'white'
+                    ? 'text-gray-300'
+                    : vehicle.color.toLowerCase() === 'black'
+                      ? 'text-gray-700'
+                      : vehicle.color.toLowerCase() === 'red'
+                        ? 'text-red-400'
+                        : vehicle.color.toLowerCase() === 'blue'
+                          ? 'text-blue-400'
+                          : vehicle.color.toLowerCase() === 'green'
+                            ? 'text-green-400'
+                            : 'text-gray-300',
+                ]"
+              />
+            </div>
+            <!-- Car Make Logo Overlay -->
+            <div class="absolute bottom-3 right-3 bg-white/90 rounded-full p-2 shadow-sm">
+              <font-awesome-icon :icon="['fas', 'car']" class="text-dark-blue w-5 h-5" />
+            </div>
+            <!-- Status Badge -->
+            <div class="absolute top-3 right-3">
+              <span
+                :class="[
+                  'px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full shadow-sm',
+                  vehicle.status === 'Active'
+                    ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800'
+                    : 'bg-gradient-to-r from-yellow-100 to-amber-200 text-amber-800',
+                ]"
+              >
+                {{ vehicle.status }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Vehicle Details -->
+          <div class="p-5">
+            <div class="flex justify-between items-start mb-3">
+              <h3 class="text-lg font-bold text-gray-900">
+                {{ vehicle.make }} {{ vehicle.model }}
+              </h3>
+              <span class="text-sm font-medium text-gray-600">{{ vehicle.year }}</span>
+            </div>
+
+            <div class="space-y-2 mb-4">
+              <!-- Plate Number -->
+              <div class="flex items-center">
+                <div class="w-8 flex-shrink-0 text-gray-400">
+                  <font-awesome-icon :icon="['fas', 'id-card']" />
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">{{ vehicle.plateNumber }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span
-                  :class="[
-                    'px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full',
-                    vehicle.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                  ]"
-                >
-                  {{ vehicle.status }}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ vehicle.lastUpdated }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <span class="text-sm text-gray-700">{{ vehicle.plateNumber }}</span>
+              </div>
+
+              <!-- Color -->
+              <div class="flex items-center">
+                <div class="w-8 flex-shrink-0 text-gray-400">
+                  <font-awesome-icon :icon="['fas', 'palette']" />
+                </div>
+                <span class="text-sm text-gray-700">{{ vehicle.color }}</span>
+              </div>
+
+              <!-- Last Updated -->
+              <div class="flex items-center">
+                <div class="w-8 flex-shrink-0 text-gray-400">
+                  <font-awesome-icon :icon="['fas', 'calendar-alt']" />
+                </div>
+                <span class="text-sm text-gray-700">Updated: {{ vehicle.lastUpdated }}</span>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex justify-between items-center pt-3 border-t border-gray-100">
+              <button class="text-sm text-dark-blue hover:text-blue-700 flex items-center">
+                <font-awesome-icon :icon="['fas', 'eye']" class="mr-1" />
+                View Details
+              </button>
+              <div>
                 <button class="text-blue-600 hover:text-blue-900 mr-3">
                   <font-awesome-icon :icon="['fas', 'edit']" />
                 </button>
                 <button class="text-red hover:text-red-700">
                   <font-awesome-icon :icon="['fas', 'trash-alt']" />
                 </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Empty State -->
-      <div v-if="filteredVehicles.length === 0" class="py-12 flex flex-col items-center justify-center">
+      <div
+        v-if="filteredVehicles.length === 0"
+        class="py-12 flex flex-col items-center justify-center"
+      >
         <div class="bg-gray-100 rounded-full p-4 mb-4">
           <font-awesome-icon :icon="['fas', 'car']" class="text-gray-400 w-8 h-8" />
         </div>
@@ -218,14 +270,18 @@ const addVehicle = () => {
 
     <!-- Add Vehicle Modal -->
     <div v-if="isAddVehicleModalOpen" class="fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div
+        class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0"
+      >
         <!-- Background overlay -->
         <div class="fixed inset-0 transition-opacity" @click="toggleAddVehicleModal">
           <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
         </div>
 
         <!-- Modal panel -->
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div
+          class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
+        >
           <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div class="sm:flex sm:items-start">
               <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">

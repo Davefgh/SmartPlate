@@ -4,6 +4,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import './assets/main.css'
+import './assets/theme.css'
 
 // Font Awesome
 import { library } from '@fortawesome/fontawesome-svg-core'
@@ -29,10 +30,23 @@ import {
   faChevronRight,
   faChevronLeft,
   faChevronDown,
+  faChevronUp,
   faArrowUp,
   faCheckCircle,
   faExclamationCircle,
-  faHistory
+  faHistory,
+  faUserCircle,
+  faAddressBook,
+  faEdit,
+  faCheck,
+  faTimes,
+  faCamera,
+  faArrowLeft,
+  faInfoCircle,
+  faHeartbeat,
+  faUsers,
+  faBuilding,
+  faMapMarkerAlt
 } from '@fortawesome/free-solid-svg-icons'
 import { faGoogle } from '@fortawesome/free-brands-svg-icons'
 
@@ -47,6 +61,18 @@ library.add(
   faCircleExclamation,
   faTriangleExclamation,
   faBars,
+  faUserCircle,
+  faAddressBook,
+  faEdit,
+  faCheck,
+  faTimes,
+  faCamera,
+  faArrowLeft,
+  faInfoCircle,
+  faHeartbeat,
+  faUsers,
+  faBuilding,
+  faMapMarkerAlt,
   faXmark,
   faHome,
   faCar,
@@ -59,6 +85,7 @@ library.add(
   faChevronRight,
   faChevronLeft,
   faChevronDown,
+  faChevronUp,
   faArrowUp,
   faCheckCircle,
   faExclamationCircle,

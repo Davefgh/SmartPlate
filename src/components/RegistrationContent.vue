@@ -1,4 +1,3 @@
-
 <script setup>
 import { ref, computed } from 'vue'
 
@@ -17,8 +16,8 @@ const registrations = ref([
       registrationFee: 1500,
       plateIssuanceFee: 450,
       computerFee: 170,
-      total: 2120
-    }
+      total: 2120,
+    },
   },
   {
     id: 2,
@@ -32,8 +31,8 @@ const registrations = ref([
     fees: {
       registrationFee: 1500,
       computerFee: 170,
-      total: 1670
-    }
+      total: 1670,
+    },
   },
   {
     id: 3,
@@ -48,9 +47,9 @@ const registrations = ref([
       registrationFee: 1500,
       plateIssuanceFee: 450,
       computerFee: 170,
-      total: 2120
-    }
-  }
+      total: 2120,
+    },
+  },
 ])
 
 // Filter states
@@ -61,18 +60,30 @@ const typeFilter = ref('All')
 const filteredRegistrations = computed(() => {
   let result = registrations.value
 
-  // Apply status filter
   if (statusFilter.value !== 'All') {
-    result = result.filter(reg => reg.status === statusFilter.value)
+    result = result.filter((reg) => reg.status === statusFilter.value)
   }
 
-  // Apply type filter
   if (typeFilter.value !== 'All') {
-    result = result.filter(reg => reg.registrationType === typeFilter.value)
+    result = result.filter((reg) => reg.registrationType === typeFilter.value)
   }
 
   return result
 })
+
+// Get status color based on status
+const getStatusColor = (status) => {
+  switch (status) {
+    case 'Approved':
+      return 'bg-gradient-to-r from-green-100 to-green-200 text-green-800'
+    case 'Pending':
+      return 'bg-gradient-to-r from-yellow-100 to-amber-200 text-amber-800'
+    case 'Rejected':
+      return 'bg-gradient-to-r from-red-100 to-red-200 text-red-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
+}
 
 // Active registration detail
 const activeRegistration = ref(null)
@@ -114,7 +125,7 @@ const getStatusBadgeClass = (status) => {
         <p class="text-gray-600 mt-1">Track and manage your vehicle registrations</p>
       </div>
       <div class="mt-4 md:mt-0">
-        <button 
+        <button
           class="bg-dark-blue hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition-colors duration-200"
         >
           <font-awesome-icon :icon="['fas', 'plus']" class="mr-2" />
@@ -128,7 +139,7 @@ const getStatusBadgeClass = (status) => {
       <div class="flex flex-col md:flex-row md:items-center gap-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-          <select 
+          <select
             v-model="statusFilter"
             class="w-full md:w-40 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           >
@@ -140,7 +151,7 @@ const getStatusBadgeClass = (status) => {
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
-          <select 
+          <select
             v-model="typeFilter"
             class="w-full md:w-40 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           >
@@ -157,42 +168,81 @@ const getStatusBadgeClass = (status) => {
       <div class="p-4 border-b border-gray-100">
         <h2 class="text-lg font-semibold text-gray-800">Registration History</h2>
       </div>
-      
+
       <div class="p-4">
-        <div v-if="filteredRegistrations.length === 0" class="py-8 flex flex-col items-center justify-center">
+        <div
+          v-if="filteredRegistrations.length === 0"
+          class="py-8 flex flex-col items-center justify-center"
+        >
           <div class="bg-gray-100 rounded-full p-4 mb-4">
             <font-awesome-icon :icon="['fas', 'file-contract']" class="text-gray-400 w-8 h-8" />
           </div>
           <h3 class="text-lg font-medium text-gray-900 mb-1">No registrations found</h3>
           <p class="text-gray-500">Try adjusting your filters or create a new registration</p>
         </div>
-        
+
         <div v-else class="relative">
           <!-- Timeline Line -->
           <div class="absolute top-0 bottom-0 left-6 md:left-8 w-0.5 bg-gray-200"></div>
-          
+
           <!-- Timeline Items -->
-          <div v-for="registration in filteredRegistrations" :key="registration.id" class="relative pl-14 md:pl-20 pb-8">
+          <div
+            v-for="registration in filteredRegistrations"
+            :key="registration.id"
+            class="relative pl-14 md:pl-20 pb-8"
+          >
             <!-- Timeline Dot -->
-            <div class="absolute left-4 md:left-6 w-4 h-4 rounded-full bg-dark-blue border-4 border-blue-100"></div>
-            
+            <div
+              :class="[
+                'absolute left-4 md:left-6 w-5 h-5 rounded-full border-4 flex items-center justify-center transform transition-all duration-300 hover:scale-110 timeline-dot',
+                {
+                  'bg-gradient-to-br from-green-400 to-green-600 border-green-100 pulse-green':
+                    registration.status === 'Approved',
+                  'bg-gradient-to-br from-yellow-400 to-amber-500 border-amber-100 pulse-amber':
+                    registration.status === 'Pending',
+                  'bg-gradient-to-br from-red-400 to-red-600 border-red-100 pulse-red':
+                    registration.status === 'Rejected',
+                  'bg-gradient-to-br from-blue-400 to-blue-600 border-blue-100 pulse-blue':
+                    registration.status !== 'Approved' &&
+                    registration.status !== 'Pending' &&
+                    registration.status !== 'Rejected',
+                },
+              ]"
+            >
+              <font-awesome-icon
+                :icon="[
+                  'fas',
+                  registration.status === 'Approved'
+                    ? 'check'
+                    : registration.status === 'Pending'
+                      ? 'clock'
+                      : registration.status === 'Rejected'
+                        ? 'times'
+                        : 'circle',
+                ]"
+                class="text-white text-xs"
+              />
+            </div>
+
             <!-- Timeline Content -->
             <div class="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
               <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-3">
                 <div>
-                  <h3 class="text-md font-semibold text-gray-800">{{ registration.vehicleInfo }}</h3>
+                  <h3 class="text-md font-semibold text-gray-800">
+                    {{ registration.vehicleInfo }}
+                  </h3>
                   <p class="text-sm text-gray-600">Plate Number: {{ registration.plateNumber }}</p>
                 </div>
-                <span 
+                <span
                   :class="[
-                    'px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full mt-2 md:mt-0',
-                    getStatusBadgeClass(registration.status)
+                    'px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full mt-2 md:mt-0 shadow-sm',
+                    getStatusColor(registration.status),
                   ]"
                 >
                   {{ registration.status }}
                 </span>
               </div>
-              
+
               <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
                 <div>
                   <span class="text-xs text-gray-500 block">Registration Type</span>
@@ -207,9 +257,9 @@ const getStatusBadgeClass = (status) => {
                   <span class="text-sm font-medium">{{ registration.expiryDate }}</span>
                 </div>
               </div>
-              
+
               <div class="flex justify-end">
-                <button 
+                <button
                   @click="viewRegistrationDetails(registration)"
                   class="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
                 >
@@ -222,27 +272,34 @@ const getStatusBadgeClass = (status) => {
         </div>
       </div>
     </div>
-    
+
     <!-- Registration Detail Modal -->
     <div v-if="showRegistrationDetail" class="fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div
+        class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0"
+      >
         <!-- Background overlay -->
         <div class="fixed inset-0 transition-opacity" @click="closeRegistrationDetails">
           <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
         </div>
 
         <!-- Modal panel -->
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div
+          class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
+        >
           <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div class="sm:flex sm:items-start">
               <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                 <div class="flex justify-between items-center mb-4">
                   <h3 class="text-lg leading-6 font-medium text-gray-900">Registration Details</h3>
-                  <button @click="closeRegistrationDetails" class="text-gray-400 hover:text-gray-500">
+                  <button
+                    @click="closeRegistrationDetails"
+                    class="text-gray-400 hover:text-gray-500"
+                  >
                     <font-awesome-icon :icon="['fas', 'times']" class="w-5 h-5" />
                   </button>
                 </div>
-                
+
                 <div v-if="activeRegistration" class="space-y-4">
                   <!-- Vehicle Info -->
                   <div class="bg-gray-50 p-3 rounded-lg">
@@ -256,17 +313,23 @@ const getStatusBadgeClass = (status) => {
                       <span class="text-sm font-medium">{{ activeRegistration.plateNumber }}</span>
                     </div>
                   </div>
-                  
+
                   <!-- Registration Info -->
                   <div class="bg-gray-50 p-3 rounded-lg">
-                    <h4 class="text-sm font-semibold text-gray-700 mb-2">Registration Information</h4>
+                    <h4 class="text-sm font-semibold text-gray-700 mb-2">
+                      Registration Information
+                    </h4>
                     <div class="flex justify-between mb-1">
                       <span class="text-sm text-gray-500">Type</span>
-                      <span class="text-sm font-medium">{{ activeRegistration.registrationType }}</span>
+                      <span class="text-sm font-medium">{{
+                        activeRegistration.registrationType
+                      }}</span>
                     </div>
                     <div class="flex justify-between mb-1">
                       <span class="text-sm text-gray-500">Submission Date</span>
-                      <span class="text-sm font-medium">{{ activeRegistration.submissionDate }}</span>
+                      <span class="text-sm font-medium">{{
+                        activeRegistration.submissionDate
+                      }}</span>
                     </div>
                     <div class="flex justify-between mb-1">
                       <span class="text-sm text-gray-500">Expiry Date</span>
@@ -274,33 +337,44 @@ const getStatusBadgeClass = (status) => {
                     </div>
                     <div class="flex justify-between">
                       <span class="text-sm text-gray-500">Status</span>
-                      <span 
+                      <span
                         :class="[
                           'text-sm font-medium px-2 py-0.5 rounded-full text-xs',
-                          getStatusBadgeClass(activeRegistration.status)
+                          getStatusBadgeClass(activeRegistration.status),
                         ]"
                       >
                         {{ activeRegistration.status }}
                       </span>
                     </div>
                   </div>
-                  
+
                   <!-- Documents -->
                   <div class="bg-gray-50 p-3 rounded-lg">
                     <h4 class="text-sm font-semibold text-gray-700 mb-2">Submitted Documents</h4>
                     <ul class="space-y-1">
-                      <li v-for="(doc, index) in activeRegistration.documents" :key="index" class="text-sm">
+                      <li
+                        v-for="(doc, index) in activeRegistration.documents"
+                        :key="index"
+                        class="text-sm"
+                      >
                         <font-awesome-icon :icon="['fas', 'file-alt']" class="text-gray-400 mr-2" />
                         {{ doc }}
                       </li>
                     </ul>
                   </div>
-                  
+
                   <!-- Fees -->
                   <div class="bg-gray-50 p-3 rounded-lg">
                     <h4 class="text-sm font-semibold text-gray-700 mb-2">Fees</h4>
-                    <div v-for="(value, key) in activeRegistration.fees" :key="key" class="flex justify-between mb-1" :class="{ 'font-semibold': key === 'total' }">
-                      <span class="text-sm text-gray-500">{{ key.charAt(0).toUpperCase() + key.slice(1) }}</span>
+                    <div
+                      v-for="(value, key) in activeRegistration.fees"
+                      :key="key"
+                      class="flex justify-between mb-1"
+                      :class="{ 'font-semibold': key === 'total' }"
+                    >
+                      <span class="text-sm text-gray-500">{{
+                        key.charAt(0).toUpperCase() + key.slice(1)
+                      }}</span>
                       <span class="text-sm">₱{{ value.toLocaleString() }}</span>
                     </div>
                   </div>
@@ -309,14 +383,14 @@ const getStatusBadgeClass = (status) => {
             </div>
           </div>
           <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <button 
+            <button
               v-if="activeRegistration && activeRegistration.status === 'Approved'"
               class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-dark-blue text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
             >
               <font-awesome-icon :icon="['fas', 'print']" class="mr-2" />
               Print Certificate
             </button>
-            <button 
+            <button
               @click="closeRegistrationDetails"
               class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
             >
@@ -340,6 +414,57 @@ const getStatusBadgeClass = (status) => {
   }
   to {
     opacity: 1;
+  }
+}
+
+/* Timeline dot pulse animations */
+.timeline-dot {
+  position: relative;
+}
+
+.pulse-green::after,
+.pulse-amber::after,
+.pulse-red::after,
+.pulse-blue::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  z-index: -1;
+  animation: pulse 2s infinite;
+}
+
+.pulse-green::after {
+  background-color: rgba(74, 222, 128, 0.6);
+}
+
+.pulse-amber::after {
+  background-color: rgba(245, 158, 11, 0.6);
+}
+
+.pulse-red::after {
+  background-color: rgba(239, 68, 68, 0.6);
+}
+
+.pulse-blue::after {
+  background-color: rgba(59, 130, 246, 0.6);
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  70% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
   }
 }
 </style>
