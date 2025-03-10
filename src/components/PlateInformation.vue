@@ -1,6 +1,6 @@
-
 <script setup>
 import { ref, computed } from 'vue'
+import PlateModal from './modals/PlateModal.vue'
 
 // Mock data for plates
 const plates = ref([
@@ -13,7 +13,7 @@ const plates = ref([
     expiryDate: '2025-10-15',
     status: 'Active',
     owner: 'Stanleigh Morales',
-    type: 'Private'
+    type: 'Private',
   },
   {
     id: 2,
@@ -24,7 +24,7 @@ const plates = ref([
     expiryDate: '2025-08-20',
     status: 'Active',
     owner: 'Stanleigh Morales',
-    type: 'Private'
+    type: 'Private',
   },
   {
     id: 3,
@@ -35,20 +35,21 @@ const plates = ref([
     expiryDate: '2026-01-05',
     status: 'Pending',
     owner: 'Stanleigh Morales',
-    type: 'Private'
-  }
+    type: 'Private',
+  },
 ])
 
 // Search functionality
 const searchQuery = ref('')
 const filteredPlates = computed(() => {
   if (!searchQuery.value) return plates.value
-  
+
   const query = searchQuery.value.toLowerCase()
-  return plates.value.filter(plate => 
-    plate.plateNumber.toLowerCase().includes(query) ||
-    plate.vehicleMake.toLowerCase().includes(query) ||
-    plate.vehicleModel.toLowerCase().includes(query)
+  return plates.value.filter(
+    (plate) =>
+      plate.plateNumber.toLowerCase().includes(query) ||
+      plate.vehicleMake.toLowerCase().includes(query) ||
+      plate.vehicleModel.toLowerCase().includes(query),
   )
 })
 
@@ -64,7 +65,7 @@ const getDaysRemaining = (expiryDateStr) => {
 // Get status color based on days remaining
 const getExpiryStatusColor = (expiryDateStr) => {
   const daysRemaining = getDaysRemaining(expiryDateStr)
-  
+
   if (daysRemaining < 0) return 'bg-red-100 text-red-800' // Expired
   if (daysRemaining < 30) return 'bg-yellow-100 text-yellow-800' // Expiring soon
   return 'bg-green-100 text-green-800' // Valid
@@ -73,10 +74,23 @@ const getExpiryStatusColor = (expiryDateStr) => {
 // Get expiry status text
 const getExpiryStatusText = (expiryDateStr) => {
   const daysRemaining = getDaysRemaining(expiryDateStr)
-  
+
   if (daysRemaining < 0) return 'Expired'
   if (daysRemaining < 30) return `Expires in ${daysRemaining} days`
   return 'Valid'
+}
+
+// Plate details modal
+const isPlateModalOpen = ref(false)
+const selectedPlate = ref(null)
+
+const openPlateModal = (plate) => {
+  selectedPlate.value = plate
+  isPlateModalOpen.value = true
+}
+
+const closePlateModal = () => {
+  isPlateModalOpen.value = false
 }
 </script>
 
@@ -89,7 +103,7 @@ const getExpiryStatusText = (expiryDateStr) => {
         <p class="text-gray-600 mt-1">Manage your vehicle license plates</p>
       </div>
       <div class="mt-4 md:mt-0">
-        <button 
+        <button
           class="bg-dark-blue hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition-colors duration-200"
         >
           <font-awesome-icon :icon="['fas', 'plus']" class="mr-2" />
@@ -113,11 +127,15 @@ const getExpiryStatusText = (expiryDateStr) => {
           </div>
         </div>
         <div class="flex items-center space-x-2">
-          <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg flex items-center transition-colors">
+          <button
+            class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg flex items-center transition-colors"
+          >
             <font-awesome-icon :icon="['fas', 'filter']" class="mr-2 text-gray-500" />
             Filter
           </button>
-          <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg flex items-center transition-colors">
+          <button
+            class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg flex items-center transition-colors"
+          >
             <font-awesome-icon :icon="['fas', 'sort']" class="mr-2 text-gray-500" />
             Sort
           </button>
@@ -127,18 +145,28 @@ const getExpiryStatusText = (expiryDateStr) => {
 
     <!-- Plates Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div v-for="plate in filteredPlates" :key="plate.id" class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+      <div
+        v-for="plate in filteredPlates"
+        :key="plate.id"
+        class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+      >
         <!-- Plate Header -->
-        <div :class="[
-          'p-4 border-b border-gray-100',
-          plate.status === 'Active' ? 'bg-gradient-to-r from-blue-50 to-green-50' : 'bg-gradient-to-r from-amber-50 to-yellow-50'
-        ]">
+        <div
+          :class="[
+            'p-4 border-b border-gray-100',
+            plate.status === 'Active'
+              ? 'bg-gradient-to-r from-blue-50 to-green-50'
+              : 'bg-gradient-to-r from-amber-50 to-yellow-50',
+          ]"
+        >
           <div class="flex justify-between items-center">
             <h3 class="text-lg font-bold text-gray-800">{{ plate.plateNumber }}</h3>
-            <span 
+            <span
               :class="[
                 'px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full shadow-sm',
-                plate.status === 'Active' ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800' : 'bg-gradient-to-r from-yellow-100 to-amber-200 text-yellow-800'
+                plate.status === 'Active'
+                  ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800'
+                  : 'bg-gradient-to-r from-yellow-100 to-amber-200 text-yellow-800',
               ]"
             >
               {{ plate.status }}
@@ -146,7 +174,7 @@ const getExpiryStatusText = (expiryDateStr) => {
           </div>
           <p class="text-sm text-gray-600 mt-1">{{ plate.vehicleMake }} {{ plate.vehicleModel }}</p>
         </div>
-        
+
         <!-- Plate Details -->
         <div class="p-4">
           <div class="space-y-3">
@@ -164,10 +192,10 @@ const getExpiryStatusText = (expiryDateStr) => {
             </div>
             <div class="flex justify-between">
               <span class="text-sm text-gray-500">Status</span>
-              <span 
+              <span
                 :class="[
                   'text-sm font-medium px-2 py-1 rounded-full text-xs',
-                  getExpiryStatusColor(plate.expiryDate)
+                  getExpiryStatusColor(plate.expiryDate),
                 ]"
               >
                 {{ getExpiryStatusText(plate.expiryDate) }}
@@ -175,11 +203,14 @@ const getExpiryStatusText = (expiryDateStr) => {
             </div>
           </div>
         </div>
-        
+
         <!-- Plate Actions -->
         <div class="bg-gray-50 p-4 border-t border-gray-100">
           <div class="flex justify-between">
-            <button class="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors">
+            <button
+              @click="openPlateModal(plate)"
+              class="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors flex items-center"
+            >
               <font-awesome-icon :icon="['fas', 'eye']" class="mr-1" />
               View Details
             </button>
@@ -191,21 +222,31 @@ const getExpiryStatusText = (expiryDateStr) => {
         </div>
       </div>
     </div>
-    
+
     <!-- Empty State -->
-    <div v-if="filteredPlates.length === 0" class="bg-white rounded-lg shadow-sm p-12 flex flex-col items-center justify-center">
+    <div
+      v-if="filteredPlates.length === 0"
+      class="bg-white rounded-lg shadow-sm p-12 flex flex-col items-center justify-center"
+    >
       <div class="bg-gray-100 rounded-full p-4 mb-4">
         <font-awesome-icon :icon="['fas', 'id-card']" class="text-gray-400 w-8 h-8" />
       </div>
       <h3 class="text-lg font-medium text-gray-900 mb-1">No plates found</h3>
       <p class="text-gray-500 mb-4">Try adjusting your search or filter criteria</p>
-      <button 
+      <button
         class="bg-dark-blue hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition-colors duration-200"
       >
         <font-awesome-icon :icon="['fas', 'plus']" class="mr-2" />
         Register New Plate
       </button>
     </div>
+
+    <!-- Plate Details Modal -->
+    <PlateModal
+      :plate="selectedPlate"
+      :isOpen="isPlateModalOpen && selectedPlate"
+      @close="closePlateModal"
+    />
   </div>
 </template>
 

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import VehicleModal from './VehicleModal.vue'
 
 // Mock data for vehicles
 const vehicles = ref([
@@ -85,6 +86,19 @@ const addVehicle = () => {
     owner: 'Stanleigh Morales',
   })
   toggleAddVehicleModal()
+}
+
+// Vehicle details modal
+const isVehicleModalOpen = ref(false)
+const selectedVehicle = ref(null)
+
+const openVehicleModal = (vehicle) => {
+  selectedVehicle.value = vehicle
+  isVehicleModalOpen.value = true
+}
+
+const closeVehicleModal = () => {
+  isVehicleModalOpen.value = false
 }
 </script>
 
@@ -230,19 +244,14 @@ const addVehicle = () => {
             </div>
 
             <!-- Action Buttons -->
-            <div class="flex justify-between items-center pt-3 border-t border-gray-100">
-              <button class="text-sm text-dark-blue hover:text-blue-700 flex items-center">
-                <font-awesome-icon :icon="['fas', 'eye']" class="mr-1" />
+            <div class="flex justify-center items-center pt-3 border-t border-gray-100">
+              <button 
+                @click="openVehicleModal(vehicle)" 
+                class="text-sm text-dark-blue hover:text-blue-700 flex items-center py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors duration-200"
+              >
+                <font-awesome-icon :icon="['fas', 'eye']" class="mr-2" />
                 View Details
               </button>
-              <div>
-                <button class="text-blue-600 hover:text-blue-900 mr-3">
-                  <font-awesome-icon :icon="['fas', 'edit']" />
-                </button>
-                <button class="text-red hover:text-red-700">
-                  <font-awesome-icon :icon="['fas', 'trash-alt']" />
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -359,6 +368,13 @@ const addVehicle = () => {
         </div>
       </div>
     </div>
+    
+    <!-- Vehicle Details Modal -->
+    <VehicleModal 
+      :vehicle="selectedVehicle" 
+      :isOpen="isVehicleModalOpen && selectedVehicle" 
+      @close="closeVehicleModal" 
+    />
   </div>
 </template>
 
