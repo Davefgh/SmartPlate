@@ -21,6 +21,14 @@ const user = {
 
 // Notifications (mock data)
 const notifications = ref(3)
+const notificationItems = ref([
+  { id: 1, title: 'New plate available', message: 'Your new plate is ready for pickup', time: '2 hours ago', read: false },
+  { id: 2, title: 'Registration reminder', message: 'Your vehicle registration expires in 7 days', time: '1 day ago', read: false },
+  { id: 3, title: 'System maintenance', message: 'Scheduled maintenance on Saturday', time: '3 days ago', read: true }
+])
+
+// Notification dropdown state
+const isNotificationDropdownOpen = ref(false)
 
 // Profile dropdown state
 const isProfileDropdownOpen = ref(false)
@@ -67,6 +75,9 @@ const handleEscKey = (event) => {
     if (isProfileDropdownOpen.value) {
       isProfileDropdownOpen.value = false
     }
+    if (isNotificationDropdownOpen.value) {
+      isNotificationDropdownOpen.value = false
+    }
   }
 }
 
@@ -76,6 +87,8 @@ const handleOutsideClick = (event) => {
   const sidebarToggle = document.getElementById('sidebar-toggle')
   const profileDropdown = document.getElementById('profile-dropdown')
   const profileToggle = document.getElementById('profile-toggle')
+  const notificationDropdown = document.getElementById('notification-dropdown')
+  const notificationToggle = document.getElementById('notification-toggle')
 
   // Handle sidebar outside click
   if (
@@ -97,6 +110,17 @@ const handleOutsideClick = (event) => {
     !profileToggle.contains(event.target)
   ) {
     isProfileDropdownOpen.value = false
+  }
+
+  // Handle notification dropdown outside click
+  if (
+    isNotificationDropdownOpen.value &&
+    notificationDropdown &&
+    !notificationDropdown.contains(event.target) &&
+    notificationToggle &&
+    !notificationToggle.contains(event.target)
+  ) {
+    isNotificationDropdownOpen.value = false
   }
 }
 
@@ -244,7 +268,9 @@ onUnmounted(() => {
             <!-- Notifications -->
             <div class="relative">
               <button
+                id="notification-toggle"
                 class="p-2 rounded-full text-gray hover:bg-gray-100 transition-colors duration-200 focus:outline-none"
+                @click="isNotificationDropdownOpen = !isNotificationDropdownOpen"
               >
                 <font-awesome-icon :icon="['fas', 'bell']" class="w-5 h-5" />
                 <span
@@ -254,6 +280,48 @@ onUnmounted(() => {
                   {{ notifications }}
                 </span>
               </button>
+              
+              <!-- Notification Dropdown -->
+              <div
+                id="notification-dropdown"
+                v-if="isNotificationDropdownOpen"
+                class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg py-2 z-50 border border-gray-200 overflow-hidden"
+                style="animation: fadeIn 0.2s ease-out;"
+              >
+                <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+                  <h3 class="font-semibold text-gray-800">Notifications</h3>
+                  <span class="text-xs text-blue-600 hover:text-blue-800 cursor-pointer">Mark all as read</span>
+                </div>
+                
+                <div class="max-h-80 overflow-y-auto">
+                  <div v-if="notificationItems.length === 0" class="py-4 text-center text-gray-500">
+                    No notifications
+                  </div>
+                  
+                  <div
+                    v-for="item in notificationItems"
+                    :key="item.id"
+                    :class="['px-4 py-3 hover:bg-gray-50 transition-colors duration-150 cursor-pointer border-l-4', 
+                             item.read ? 'border-transparent' : 'border-blue-500']"
+                  >
+                    <div class="flex justify-between items-start">
+                      <h4 class="font-medium text-gray-800 text-sm">{{ item.title }}</h4>
+                      <span class="text-xs text-gray-500">{{ item.time }}</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-1">{{ item.message }}</p>
+                  </div>
+                </div>
+                
+                <div class="px-4 py-2 border-t border-gray-100 text-center">
+                  <router-link 
+                    to="/notifications" 
+                    class="text-sm text-blue-600 hover:text-blue-800"
+                    @click="isNotificationDropdownOpen = false"
+                  >
+                    View all notifications
+                  </router-link>
+                </div>
+              </div>
             </div>
 
             <!-- Profile -->
@@ -328,21 +396,6 @@ onUnmounted(() => {
                           class="w-4 h-4 mr-3 text-gray-400"
                         />
                         <span>Account Settings</span>
-                      </div>
-                    </a>
-                    <a
-                      href="#"
-                      class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      <div class="flex items-center">
-                        <font-awesome-icon
-                          :icon="['fas', 'bell']"
-                          class="w-4 h-4 mr-3 text-gray-400"
-                        />
-                        <span>Notifications</span>
-                        <span class="ml-auto bg-red text-white text-xs rounded-full px-2 py-0.5">{{
-                          notifications
-                        }}</span>
                       </div>
                     </a>
                   </div>

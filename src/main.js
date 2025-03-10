@@ -25,6 +25,7 @@ import {
   faGear,
   faSignOutAlt,
   faBell,
+  faBellSlash,
   faSearch,
   faChevronRight,
   faChevronLeft,
@@ -38,6 +39,7 @@ import {
   faAddressBook,
   faEdit,
   faCheck,
+  faCheckDouble,
   faTimes,
   faCamera,
   faArrowLeft,
@@ -46,6 +48,9 @@ import {
   faUsers,
   faBuilding,
   faMapMarkerAlt,
+  faCog,
+  faCreditCard,
+  faTrashAlt,
 } from '@fortawesome/free-solid-svg-icons'
 import { faGoogle } from '@fortawesome/free-brands-svg-icons'
 
@@ -64,6 +69,7 @@ library.add(
   faAddressBook,
   faEdit,
   faCheck,
+  faCheckDouble,
   faTimes,
   faCamera,
   faArrowLeft,
@@ -80,6 +86,7 @@ library.add(
   faGear,
   faSignOutAlt,
   faBell,
+  faBellSlash,
   faSearch,
   faChevronRight,
   faChevronLeft,
@@ -89,6 +96,9 @@ library.add(
   faCheckCircle,
   faExclamationCircle,
   faHistory,
+  faCog,
+  faCreditCard,
+  faTrashAlt,
 )
 
 const app = createApp(App)
