@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import VehicleModal from './VehicleModal.vue'
+import VehicleModal from './modals/VehicleModal.vue'
 
 // Mock data for vehicles
 const vehicles = ref([
@@ -245,8 +245,8 @@ const closeVehicleModal = () => {
 
             <!-- Action Buttons -->
             <div class="flex justify-center items-center pt-3 border-t border-gray-100">
-              <button 
-                @click="openVehicleModal(vehicle)" 
+              <button
+                @click="openVehicleModal(vehicle)"
                 class="text-sm text-dark-blue hover:text-blue-700 flex items-center py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors duration-200"
               >
                 <font-awesome-icon :icon="['fas', 'eye']" class="mr-2" />
@@ -368,12 +368,12 @@ const closeVehicleModal = () => {
         </div>
       </div>
     </div>
-    
+
     <!-- Vehicle Details Modal -->
-    <VehicleModal 
-      :vehicle="selectedVehicle" 
-      :isOpen="isVehicleModalOpen && selectedVehicle" 
-      @close="closeVehicleModal" 
+    <VehicleModal
+      :vehicle="selectedVehicle"
+      :isOpen="isVehicleModalOpen && selectedVehicle"
+      @close="closeVehicleModal"
     />
   </div>
 </template>
