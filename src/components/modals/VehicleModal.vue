@@ -113,6 +113,33 @@ const closeModal = () => {
                 </div>
               </div>
 
+              <!-- Plate Type -->
+              <div class="bg-gray-50 p-3 rounded-lg">
+                <div class="text-xs text-gray-500 mb-1">Plate Type</div>
+                <div class="flex items-center">
+                  <font-awesome-icon :icon="['fas', 'id-card']" class="text-dark-blue mr-2" />
+                  <span
+                    class="text-base font-medium px-2 py-0.5 rounded-full text-xs"
+                    :class="{
+                      'bg-blue-100 text-blue-800': vehicle.plateType === 'Regular',
+                      'bg-purple-100 text-purple-800': vehicle.plateType === 'Temporary',
+                      'bg-orange-100 text-orange-800': vehicle.plateType === 'Improvised',
+                    }"
+                  >
+                    {{ vehicle.plateType }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- MV File Number -->
+              <div class="bg-gray-50 p-3 rounded-lg">
+                <div class="text-xs text-gray-500 mb-1">MV File Number</div>
+                <div class="flex items-center">
+                  <font-awesome-icon :icon="['fas', 'file-alt']" class="text-dark-blue mr-2" />
+                  <span class="text-base font-medium">{{ vehicle.mvFileNumber }}</span>
+                </div>
+              </div>
+
               <!-- Color -->
               <div class="bg-gray-50 p-3 rounded-lg">
                 <div class="text-xs text-gray-500 mb-1">Color</div>

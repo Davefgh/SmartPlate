@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, defineAsyncComponent } from 'vue'
+const RegistrationModal = defineAsyncComponent(() => import('./modals/RegistrationModal.vue'))
 
 // Mock data for registrations
 const registrations = ref([
@@ -124,14 +125,6 @@ const getStatusBadgeClass = (status) => {
         <h1 class="text-2xl font-bold text-gray-800">Registration Management</h1>
         <p class="text-gray-600 mt-1">Track and manage your vehicle registrations</p>
       </div>
-      <div class="mt-4 md:mt-0">
-        <button
-          class="bg-dark-blue hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition-colors duration-200"
-        >
-          <font-awesome-icon :icon="['fas', 'plus']" class="mr-2" />
-          New Registration
-        </button>
-      </div>
     </div>
 
     <!-- Filters -->
@@ -178,7 +171,7 @@ const getStatusBadgeClass = (status) => {
             <font-awesome-icon :icon="['fas', 'file-contract']" class="text-gray-400 w-8 h-8" />
           </div>
           <h3 class="text-lg font-medium text-gray-900 mb-1">No registrations found</h3>
-          <p class="text-gray-500">Try adjusting your filters or create a new registration</p>
+          <p class="text-gray-500">Try adjusting your filters</p>
         </div>
 
         <div v-else class="relative">
@@ -202,204 +195,69 @@ const getStatusBadgeClass = (status) => {
                     registration.status === 'Pending',
                   'bg-gradient-to-br from-red-400 to-red-600 border-red-100 pulse-red':
                     registration.status === 'Rejected',
-                  'bg-gradient-to-br from-blue-400 to-blue-600 border-blue-100 pulse-blue':
-                    registration.status !== 'Approved' &&
-                    registration.status !== 'Pending' &&
-                    registration.status !== 'Rejected',
                 },
               ]"
-            >
-              <font-awesome-icon
-                :icon="[
-                  'fas',
-                  registration.status === 'Approved'
-                    ? 'check'
-                    : registration.status === 'Pending'
-                      ? 'clock'
-                      : registration.status === 'Rejected'
-                        ? 'times'
-                        : 'circle',
-                ]"
-                class="text-white text-xs"
-              />
-            </div>
+            ></div>
 
-            <!-- Timeline Content -->
-            <div class="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
-              <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-3">
-                <div>
-                  <h3 class="text-md font-semibold text-gray-800">
+            <!-- Registration Card -->
+            <div
+              class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300"
+            >
+              <!-- Card Header -->
+              <div :class="['p-4 border-b border-gray-100', getStatusColor(registration.status)]">
+                <div class="flex justify-between items-center">
+                  <h3 class="text-base font-semibold text-gray-800">
                     {{ registration.vehicleInfo }}
                   </h3>
-                  <p class="text-sm text-gray-600">Plate Number: {{ registration.plateNumber }}</p>
-                </div>
-                <span
-                  :class="[
-                    'px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full mt-2 md:mt-0 shadow-sm',
-                    getStatusColor(registration.status),
-                  ]"
-                >
-                  {{ registration.status }}
-                </span>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
-                <div>
-                  <span class="text-xs text-gray-500 block">Registration Type</span>
-                  <span class="text-sm font-medium">{{ registration.registrationType }}</span>
-                </div>
-                <div>
-                  <span class="text-xs text-gray-500 block">Submission Date</span>
-                  <span class="text-sm font-medium">{{ registration.submissionDate }}</span>
-                </div>
-                <div>
-                  <span class="text-xs text-gray-500 block">Expiry Date</span>
-                  <span class="text-sm font-medium">{{ registration.expiryDate }}</span>
-                </div>
-              </div>
-
-              <div class="flex justify-end">
-                <button
-                  @click="viewRegistrationDetails(registration)"
-                  class="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
-                >
-                  <font-awesome-icon :icon="['fas', 'eye']" class="mr-1" />
-                  View Details
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Registration Detail Modal -->
-    <div v-if="showRegistrationDetail" class="fixed inset-0 z-50 overflow-y-auto">
-      <div
-        class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0"
-      >
-        <!-- Background overlay -->
-        <div class="fixed inset-0 transition-opacity" @click="closeRegistrationDetails">
-          <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-        </div>
-
-        <!-- Modal panel -->
-        <div
-          class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
-        >
-          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <div class="sm:flex sm:items-start">
-              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                <div class="flex justify-between items-center mb-4">
-                  <h3 class="text-lg leading-6 font-medium text-gray-900">Registration Details</h3>
-                  <button
-                    @click="closeRegistrationDetails"
-                    class="text-gray-400 hover:text-gray-500"
+                  <span
+                    :class="[
+                      'px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full shadow-sm',
+                      getStatusBadgeClass(registration.status),
+                    ]"
                   >
-                    <font-awesome-icon :icon="['fas', 'times']" class="w-5 h-5" />
+                    {{ registration.status }}
+                  </span>
+                </div>
+                <p class="text-sm text-gray-600 mt-1">
+                  Plate: {{ registration.plateNumber }} | Type: {{ registration.registrationType }}
+                </p>
+              </div>
+
+              <!-- Card Content -->
+              <div class="p-4">
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <p class="text-xs text-gray-500">Submission Date</p>
+                    <p class="text-sm font-medium">{{ registration.submissionDate }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-500">Expiry Date</p>
+                    <p class="text-sm font-medium">{{ registration.expiryDate }}</p>
+                  </div>
+                </div>
+
+                <div class="mt-4 flex justify-end">
+                  <button
+                    @click="viewRegistrationDetails(registration)"
+                    class="text-dark-blue hover:text-blue-700 text-sm font-medium flex items-center transition-colors"
+                  >
+                    View Details
+                    <font-awesome-icon :icon="['fas', 'chevron-right']" class="ml-1 w-3 h-3" />
                   </button>
                 </div>
-
-                <div v-if="activeRegistration" class="space-y-4">
-                  <!-- Vehicle Info -->
-                  <div class="bg-gray-50 p-3 rounded-lg">
-                    <h4 class="text-sm font-semibold text-gray-700 mb-2">Vehicle Information</h4>
-                    <div class="flex justify-between mb-1">
-                      <span class="text-sm text-gray-500">Vehicle</span>
-                      <span class="text-sm font-medium">{{ activeRegistration.vehicleInfo }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-sm text-gray-500">Plate Number</span>
-                      <span class="text-sm font-medium">{{ activeRegistration.plateNumber }}</span>
-                    </div>
-                  </div>
-
-                  <!-- Registration Info -->
-                  <div class="bg-gray-50 p-3 rounded-lg">
-                    <h4 class="text-sm font-semibold text-gray-700 mb-2">
-                      Registration Information
-                    </h4>
-                    <div class="flex justify-between mb-1">
-                      <span class="text-sm text-gray-500">Type</span>
-                      <span class="text-sm font-medium">{{
-                        activeRegistration.registrationType
-                      }}</span>
-                    </div>
-                    <div class="flex justify-between mb-1">
-                      <span class="text-sm text-gray-500">Submission Date</span>
-                      <span class="text-sm font-medium">{{
-                        activeRegistration.submissionDate
-                      }}</span>
-                    </div>
-                    <div class="flex justify-between mb-1">
-                      <span class="text-sm text-gray-500">Expiry Date</span>
-                      <span class="text-sm font-medium">{{ activeRegistration.expiryDate }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span class="text-sm text-gray-500">Status</span>
-                      <span
-                        :class="[
-                          'text-sm font-medium px-2 py-0.5 rounded-full text-xs',
-                          getStatusBadgeClass(activeRegistration.status),
-                        ]"
-                      >
-                        {{ activeRegistration.status }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <!-- Documents -->
-                  <div class="bg-gray-50 p-3 rounded-lg">
-                    <h4 class="text-sm font-semibold text-gray-700 mb-2">Submitted Documents</h4>
-                    <ul class="space-y-1">
-                      <li
-                        v-for="(doc, index) in activeRegistration.documents"
-                        :key="index"
-                        class="text-sm"
-                      >
-                        <font-awesome-icon :icon="['fas', 'file-alt']" class="text-gray-400 mr-2" />
-                        {{ doc }}
-                      </li>
-                    </ul>
-                  </div>
-
-                  <!-- Fees -->
-                  <div class="bg-gray-50 p-3 rounded-lg">
-                    <h4 class="text-sm font-semibold text-gray-700 mb-2">Fees</h4>
-                    <div
-                      v-for="(value, key) in activeRegistration.fees"
-                      :key="key"
-                      class="flex justify-between mb-1"
-                      :class="{ 'font-semibold': key === 'total' }"
-                    >
-                      <span class="text-sm text-gray-500">{{
-                        key.charAt(0).toUpperCase() + key.slice(1)
-                      }}</span>
-                      <span class="text-sm">₱{{ value.toLocaleString() }}</span>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
-          </div>
-          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <button
-              v-if="activeRegistration && activeRegistration.status === 'Approved'"
-              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-dark-blue text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
-            >
-              <font-awesome-icon :icon="['fas', 'print']" class="mr-2" />
-              Print Certificate
-            </button>
-            <button
-              @click="closeRegistrationDetails"
-              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-            >
-              Close
-            </button>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Registration Modal Component -->
+    <RegistrationModal
+      :registration="activeRegistration"
+      :is-open="showRegistrationDetail"
+      @close="closeRegistrationDetails"
+    />
   </div>
 </template>
 
@@ -411,60 +269,80 @@ const getStatusBadgeClass = (status) => {
 @keyframes fadeIn {
   from {
     opacity: 0;
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 
-/* Timeline dot pulse animations */
-.timeline-dot {
-  position: relative;
-}
-
-.pulse-green::after,
-.pulse-amber::after,
-.pulse-red::after,
-.pulse-blue::after {
+.timeline-dot::before {
   content: '';
   position: absolute;
   width: 100%;
   height: 100%;
-  top: 0;
-  left: 0;
   border-radius: 50%;
   z-index: -1;
-  animation: pulse 2s infinite;
 }
 
-.pulse-green::after {
+.pulse-green::before {
+  animation: pulse-green 2s infinite;
   background-color: rgba(74, 222, 128, 0.6);
 }
 
-.pulse-amber::after {
-  background-color: rgba(245, 158, 11, 0.6);
+.pulse-amber::before {
+  animation: pulse-amber 2s infinite;
+  background-color: rgba(251, 191, 36, 0.6);
 }
 
-.pulse-red::after {
-  background-color: rgba(239, 68, 68, 0.6);
+.pulse-red::before {
+  animation: pulse-red 2s infinite;
+  background-color: rgba(248, 113, 113, 0.6);
 }
 
-.pulse-blue::after {
-  background-color: rgba(59, 130, 246, 0.6);
-}
-
-@keyframes pulse {
+@keyframes pulse-green {
   0% {
-    transform: scale(1);
-    opacity: 0.8;
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6);
   }
   70% {
-    transform: scale(1.5);
-    opacity: 0;
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(74, 222, 128, 0);
   }
   100% {
-    transform: scale(1.5);
-    opacity: 0;
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+  }
+}
+
+@keyframes pulse-amber {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.6);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(251, 191, 36, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+  }
+}
+
+@keyframes pulse-red {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.6);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(248, 113, 113, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(248, 113, 113, 0);
   }
 }
 </style>

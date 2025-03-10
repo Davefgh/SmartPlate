@@ -1,6 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue'
-import PlateModal from './modals/PlateModal.vue'
+import { ref, computed, defineAsyncComponent } from 'vue'
+const PlateModal = defineAsyncComponent(() => import('./modals/PlateModal.vue'))
 
 // Mock data for plates
 const plates = ref([
@@ -14,6 +14,8 @@ const plates = ref([
     status: 'Active',
     owner: 'Stanleigh Morales',
     type: 'Private',
+    plateType: 'Regular',
+    mvFileNumber: 'MV-2024-10001',
   },
   {
     id: 2,
@@ -25,6 +27,8 @@ const plates = ref([
     status: 'Active',
     owner: 'Stanleigh Morales',
     type: 'Private',
+    plateType: 'Temporary',
+    mvFileNumber: 'MV-2024-10002',
   },
   {
     id: 3,
@@ -36,6 +40,8 @@ const plates = ref([
     status: 'Pending',
     owner: 'Stanleigh Morales',
     type: 'Private',
+    plateType: 'Improvised',
+    mvFileNumber: 'MV-2025-10003',
   },
 ])
 
@@ -101,14 +107,6 @@ const closePlateModal = () => {
       <div>
         <h1 class="text-2xl font-bold text-gray-800">Plate Information</h1>
         <p class="text-gray-600 mt-1">Manage your vehicle license plates</p>
-      </div>
-      <div class="mt-4 md:mt-0">
-        <button
-          class="bg-dark-blue hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition-colors duration-200"
-        >
-          <font-awesome-icon :icon="['fas', 'plus']" class="mr-2" />
-          Register New Plate
-        </button>
       </div>
     </div>
 
@@ -191,6 +189,23 @@ const closePlateModal = () => {
               <span class="text-sm font-medium">{{ plate.type }}</span>
             </div>
             <div class="flex justify-between">
+              <span class="text-sm text-gray-500">Plate Type</span>
+              <span
+                class="text-sm font-medium px-2 py-0.5 rounded-full text-xs"
+                :class="{
+                  'bg-blue-100 text-blue-800': plate.plateType === 'Regular',
+                  'bg-purple-100 text-purple-800': plate.plateType === 'Temporary',
+                  'bg-orange-100 text-orange-800': plate.plateType === 'Improvised',
+                }"
+              >
+                {{ plate.plateType }}
+              </span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-sm text-gray-500">MV File Number</span>
+              <span class="text-sm font-medium">{{ plate.mvFileNumber }}</span>
+            </div>
+            <div class="flex justify-between">
               <span class="text-sm text-gray-500">Status</span>
               <span
                 :class="[
@@ -233,12 +248,6 @@ const closePlateModal = () => {
       </div>
       <h3 class="text-lg font-medium text-gray-900 mb-1">No plates found</h3>
       <p class="text-gray-500 mb-4">Try adjusting your search or filter criteria</p>
-      <button
-        class="bg-dark-blue hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition-colors duration-200"
-      >
-        <font-awesome-icon :icon="['fas', 'plus']" class="mr-2" />
-        Register New Plate
-      </button>
     </div>
 
     <!-- Plate Details Modal -->
