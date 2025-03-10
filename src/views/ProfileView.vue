@@ -175,7 +175,7 @@ const goBack = () => {
                 </button>
                 <button
                   @click="toggleEditMode"
-                  class="bg-white text-gray-700 hover:bg-gray-100 font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
+                  class="bg-black text-white hover:bg-gray-100 font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
                 >
                   <font-awesome-icon :icon="['fas', 'times']" class="w-4 h-4" />
                   <span>Cancel</span>

@@ -6,30 +6,19 @@
         class="bg-gradient-to-r from-dark-blue to-light-blue rounded-2xl p-6 mb-8 text-white shadow-lg transform transition-all duration-500 hover:scale-[1.01] hover:shadow-xl"
       >
         <div class="flex flex-col md:flex-row items-center justify-between">
-          <div class="mb-4 md:mb-0">
+          <div>
             <h1 class="text-3xl font-bold mb-2">Welcome back, {{ user.name.split(' ')[0] }}!</h1>
             <p class="text-blue-100">Track and manage your vehicle plates with ease.</p>
-          </div>
-          <div class="flex space-x-3">
-            <button
-              class="bg-white text-dark-blue font-semibold py-2 px-4 rounded-lg hover:bg-opacity-90 transition-all transform hover:-translate-y-0.5 hover:shadow-md"
-            >
-              Add Vehicle
-            </button>
-            <button
-              class="bg-red text-white font-semibold py-2 px-4 rounded-lg hover:bg-opacity-90 transition-all transform hover:-translate-y-0.5 hover:shadow-md"
-            >
-              Scan Plate
-            </button>
           </div>
         </div>
       </div>
 
       <!-- Dashboard Content -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
-        <!-- Stats Card 1 -->
+        <!-- Stats Card 1 - Vehicles -->
         <div
-          class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-md p-8 transform transition-all duration-300 hover:shadow-xl hover:-translate-y-2 border-t-4 border-dark-blue"
+          @click="navigateToVehicles"
+          class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-md p-8 transform transition-all duration-300 hover:shadow-xl hover:-translate-y-2 border-t-4 border-dark-blue cursor-pointer"
         >
           <div class="flex items-center justify-between mb-6">
             <h3 class="text-xl font-bold text-dark-blue">Total Vehicles</h3>
@@ -46,9 +35,10 @@
           </div>
         </div>
 
-        <!-- Stats Card 2 -->
+        <!-- Stats Card 2 - Plates -->
         <div
-          class="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl shadow-md p-8 transform transition-all duration-300 hover:shadow-xl hover:-translate-y-2 border-t-4 border-green-600"
+          @click="navigateToPlates"
+          class="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl shadow-md p-8 transform transition-all duration-300 hover:shadow-xl hover:-translate-y-2 border-t-4 border-green-600 cursor-pointer"
         >
           <div class="flex items-center justify-between mb-6">
             <h3 class="text-xl font-bold text-gray-800">Active Plates</h3>
@@ -65,9 +55,10 @@
           </div>
         </div>
 
-        <!-- Stats Card 3 -->
+        <!-- Stats Card 3 - Registration -->
         <div
-          class="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl shadow-md p-8 transform transition-all duration-300 hover:shadow-xl hover:-translate-y-2 border-t-4 border-amber-600"
+          @click="navigateToRegistration"
+          class="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl shadow-md p-8 transform transition-all duration-300 hover:shadow-xl hover:-translate-y-2 border-t-4 border-amber-600 cursor-pointer"
         >
           <div class="flex items-center justify-between mb-6">
             <h3 class="text-xl font-bold text-gray-800">Pending Renewals</h3>
@@ -166,6 +157,22 @@ const user = {
   name: 'Stanleigh Morales',
   email: 'stanleighmorales@gmail.com',
   avatar: '/Land_Transportation_Office.webp',
+}
+
+// Define emits
+const emit = defineEmits(['navigate'])
+
+// Navigation functions
+const navigateToVehicles = () => {
+  emit('navigate', 'Vehicles')
+}
+
+const navigateToPlates = () => {
+  emit('navigate', 'Plates')
+}
+
+const navigateToRegistration = () => {
+  emit('navigate', 'Registration')
 }
 </script>
 

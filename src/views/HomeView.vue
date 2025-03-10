@@ -22,9 +22,27 @@ const user = {
 // Notifications (mock data)
 const notifications = ref(3)
 const notificationItems = ref([
-  { id: 1, title: 'New plate available', message: 'Your new plate is ready for pickup', time: '2 hours ago', read: false },
-  { id: 2, title: 'Registration reminder', message: 'Your vehicle registration expires in 7 days', time: '1 day ago', read: false },
-  { id: 3, title: 'System maintenance', message: 'Scheduled maintenance on Saturday', time: '3 days ago', read: true }
+  {
+    id: 1,
+    title: 'New plate available',
+    message: 'Your new plate is ready for pickup',
+    time: '2 hours ago',
+    read: false,
+  },
+  {
+    id: 2,
+    title: 'Registration reminder',
+    message: 'Your vehicle registration expires in 7 days',
+    time: '1 day ago',
+    read: false,
+  },
+  {
+    id: 3,
+    title: 'System maintenance',
+    message: 'Scheduled maintenance on Saturday',
+    time: '3 days ago',
+    read: true,
+  },
 ])
 
 // Notification dropdown state
@@ -241,8 +259,8 @@ onUnmounted(() => {
       <!-- Header -->
       <header class="bg-white shadow-sm sticky top-0 z-10">
         <div class="flex items-center justify-between px-4 py-3">
-          <!-- Left: Menu Toggle & Search -->
-          <div class="flex items-center space-x-4">
+          <!-- Left: Menu Toggle -->
+          <div class="flex items-center">
             <button
               id="sidebar-toggle"
               class="p-2 rounded-lg text-gray hover:bg-gray-100 transition-colors duration-200 focus:outline-none"
@@ -250,17 +268,6 @@ onUnmounted(() => {
             >
               <font-awesome-icon :icon="['fas', 'bars']" class="w-5 h-5" />
             </button>
-
-            <div class="relative hidden md:block">
-              <input
-                type="text"
-                placeholder="Search..."
-                class="w-64 pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-dark-blue/20 transition-all"
-              />
-              <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray">
-                <font-awesome-icon :icon="['fas', 'search']" class="w-4 h-4" />
-              </div>
-            </div>
           </div>
 
           <!-- Right: Notifications & Profile -->
@@ -280,29 +287,33 @@ onUnmounted(() => {
                   {{ notifications }}
                 </span>
               </button>
-              
+
               <!-- Notification Dropdown -->
               <div
                 id="notification-dropdown"
                 v-if="isNotificationDropdownOpen"
                 class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg py-2 z-50 border border-gray-200 overflow-hidden"
-                style="animation: fadeIn 0.2s ease-out;"
+                style="animation: fadeIn 0.2s ease-out"
               >
                 <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
                   <h3 class="font-semibold text-gray-800">Notifications</h3>
-                  <span class="text-xs text-blue-600 hover:text-blue-800 cursor-pointer">Mark all as read</span>
+                  <span class="text-xs text-blue-600 hover:text-blue-800 cursor-pointer"
+                    >Mark all as read</span
+                  >
                 </div>
-                
+
                 <div class="max-h-80 overflow-y-auto">
                   <div v-if="notificationItems.length === 0" class="py-4 text-center text-gray-500">
                     No notifications
                   </div>
-                  
+
                   <div
                     v-for="item in notificationItems"
                     :key="item.id"
-                    :class="['px-4 py-3 hover:bg-gray-50 transition-colors duration-150 cursor-pointer border-l-4', 
-                             item.read ? 'border-transparent' : 'border-blue-500']"
+                    :class="[
+                      'px-4 py-3 hover:bg-gray-50 transition-colors duration-150 cursor-pointer border-l-4',
+                      item.read ? 'border-transparent' : 'border-blue-500',
+                    ]"
                   >
                     <div class="flex justify-between items-start">
                       <h4 class="font-medium text-gray-800 text-sm">{{ item.title }}</h4>
@@ -311,10 +322,10 @@ onUnmounted(() => {
                     <p class="text-sm text-gray-600 mt-1">{{ item.message }}</p>
                   </div>
                 </div>
-                
+
                 <div class="px-4 py-2 border-t border-gray-100 text-center">
-                  <router-link 
-                    to="/notifications" 
+                  <router-link
+                    to="/notifications"
                     class="text-sm text-blue-600 hover:text-blue-800"
                     @click="isNotificationDropdownOpen = false"
                   >
@@ -421,7 +432,7 @@ onUnmounted(() => {
       </header>
 
       <!-- Dynamic Content Component -->
-      <component :is="activeComponent" />
+      <component :is="activeComponent" @navigate="setActiveMenuItem" />
     </main>
   </div>
 </template>
