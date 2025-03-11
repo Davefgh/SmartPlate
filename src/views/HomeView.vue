@@ -397,8 +397,8 @@ onUnmounted(() => {
                         <span>My Profile</span>
                       </div>
                     </router-link>
-                    <a
-                      href="#"
+                    <router-link
+                      to="/account-settings"
                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                     >
                       <div class="flex items-center">
@@ -408,7 +408,7 @@ onUnmounted(() => {
                         />
                         <span>Account Settings</span>
                       </div>
-                    </a>
+                    </router-link>
                   </div>
 
                   <!-- Divider -->

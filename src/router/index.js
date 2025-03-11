@@ -18,6 +18,11 @@ const router = createRouter({
       component: () => import('../views/ProfileView.vue'),
     },
     {
+      path: '/account-settings',
+      name: 'accountSettings',
+      component: () => import('../views/AccountSettingsView.vue'),
+    },
+    {
       path: '/notifications',
       name: 'notifications',
       component: () => import('../views/NotificationView.vue'),
