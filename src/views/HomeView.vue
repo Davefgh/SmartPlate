@@ -1,5 +1,10 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, defineAsyncComponent } from 'vue'
+import { useUserStore } from '@/stores/user'
+import LogoutModal from '@/components/LogoutModal.vue'
+
+const userStore = useUserStore()
+
 const DashboardContent = defineAsyncComponent(() => import('@/components/DashboardContent.vue'))
 const VehicleInformation = defineAsyncComponent(() => import('@/components/VehicleInformation.vue'))
 const PlateInformation = defineAsyncComponent(() => import('@/components/PlateInformation.vue'))
@@ -12,12 +17,20 @@ const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value
 }
 
-// User profile data (mock data)
-const user = {
-  name: 'Stanleigh Morales',
-  email: 'stanleighmorales@gmail.com',
+// User profile data from store
+const user = computed(() => userStore.user || {
+  name: 'Guest User',
+  email: 'guest@example.com',
   avatar: '/Land_Transportation_Office.webp',
-}
+})
+
+// Format user's full name
+const userName = computed(() => {
+  if (userStore.user) {
+    return `${userStore.user.firstName} ${userStore.user.lastName}`
+  }
+  return 'Guest User'
+})
 
 // Notifications (mock data)
 const notifications = ref(3)
@@ -50,6 +63,9 @@ const isNotificationDropdownOpen = ref(false)
 
 // Profile dropdown state
 const isProfileDropdownOpen = ref(false)
+
+// Logout confirmation modal state
+const showLogoutModal = ref(false)
 
 // Active content management
 const activeMenuItem = ref('Dashboard')
@@ -84,6 +100,21 @@ const componentMap = {
 // Active component computed property
 const activeComponent = computed(() => componentMap[activeMenuItem.value] || DashboardContent)
 
+// Logout functions
+const confirmLogout = () => {
+  showLogoutModal.value = true
+  isProfileDropdownOpen.value = false
+}
+
+const handleLogout = () => {
+  userStore.logout()
+  showLogoutModal.value = false
+}
+
+const cancelLogout = () => {
+  showLogoutModal.value = false
+}
+
 // Close sidebar on escape key
 const handleEscKey = (event) => {
   if (event.key === 'Escape') {
@@ -95,6 +126,9 @@ const handleEscKey = (event) => {
     }
     if (isNotificationDropdownOpen.value) {
       isNotificationDropdownOpen.value = false
+    }
+    if (showLogoutModal.value) {
+      showLogoutModal.value = false
     }
   }
 }
@@ -223,6 +257,7 @@ onUnmounted(() => {
             <a
               href="#"
               class="flex items-center p-3 rounded-lg text-red hover:bg-red hover:bg-opacity-10 transition-all duration-200 group"
+              @click.prevent="confirmLogout"
             >
               <div class="w-8 h-8 flex items-center justify-center">
                 <font-awesome-icon :icon="['fas', 'sign-out-alt']" class="w-5 h-5" />
@@ -242,7 +277,7 @@ onUnmounted(() => {
             class="w-10 h-10 rounded-full border-2 border-light-blue"
           />
           <div class="overflow-hidden">
-            <h4 class="text-sm font-semibold truncate">{{ user.name }}</h4>
+            <h4 class="text-sm font-semibold truncate">{{ userName }}</h4>
             <p class="text-xs text-blue-300 truncate">{{ user.email }}</p>
           </div>
         </div>
@@ -252,8 +287,8 @@ onUnmounted(() => {
     <!-- Main Content -->
     <main
       :class="[
-        'min-h-screen transition-all duration-300 ease-in-out',
-        isSidebarOpen ? 'ml-64' : '',
+        'transition-all duration-300 ease-in-out',
+        isSidebarOpen ? 'lg:ml-64' : 'ml-0',
       ]"
     >
       <!-- Header -->
@@ -263,76 +298,98 @@ onUnmounted(() => {
           <div class="flex items-center">
             <button
               id="sidebar-toggle"
-              class="p-2 rounded-lg text-gray hover:bg-gray-100 transition-colors duration-200 focus:outline-none"
+              class="p-2 rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none"
               @click="toggleSidebar"
             >
               <font-awesome-icon :icon="['fas', 'bars']" class="w-5 h-5" />
             </button>
+            <h2 class="ml-4 text-lg font-semibold text-gray-800">{{ activeMenuItem }}</h2>
           </div>
 
-          <!-- Right: Notifications & Profile -->
+          <!-- Right: Notifications and Profile -->
           <div class="flex items-center space-x-4">
             <!-- Notifications -->
             <div class="relative">
               <button
                 id="notification-toggle"
-                class="p-2 rounded-full text-gray hover:bg-gray-100 transition-colors duration-200 focus:outline-none"
+                class="p-2 rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none relative"
                 @click="isNotificationDropdownOpen = !isNotificationDropdownOpen"
               >
                 <font-awesome-icon :icon="['fas', 'bell']" class="w-5 h-5" />
                 <span
                   v-if="notifications > 0"
-                  class="absolute top-0 right-0 w-4 h-4 bg-red rounded-full text-white text-xs flex items-center justify-center transform translate-x-1 -translate-y-1 animate-pulse"
+                  class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red rounded-full"
+                  >{{ notifications }}</span
                 >
-                  {{ notifications }}
-                </span>
               </button>
 
               <!-- Notification Dropdown -->
-              <div
-                id="notification-dropdown"
-                v-if="isNotificationDropdownOpen"
-                class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg py-2 z-50 border border-gray-200 overflow-hidden"
-                style="animation: fadeIn 0.2s ease-out"
+              <transition
+                enter-active-class="transition ease-out duration-200"
+                enter-from-class="transform opacity-0 scale-95"
+                enter-to-class="transform opacity-100 scale-100"
+                leave-active-class="transition ease-in duration-150"
+                leave-from-class="transform opacity-100 scale-100"
+                leave-to-class="transform opacity-0 scale-95"
               >
-                <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
-                  <h3 class="font-semibold text-gray-800">Notifications</h3>
-                  <span class="text-xs text-blue-600 hover:text-blue-800 cursor-pointer"
-                    >Mark all as read</span
-                  >
-                </div>
-
-                <div class="max-h-80 overflow-y-auto">
-                  <div v-if="notificationItems.length === 0" class="py-4 text-center text-gray-500">
-                    No notifications
-                  </div>
-
-                  <div
-                    v-for="item in notificationItems"
-                    :key="item.id"
-                    :class="[
-                      'px-4 py-3 hover:bg-gray-50 transition-colors duration-150 cursor-pointer border-l-4',
-                      item.read ? 'border-transparent' : 'border-blue-500',
-                    ]"
-                  >
-                    <div class="flex justify-between items-start">
-                      <h4 class="font-medium text-gray-800 text-sm">{{ item.title }}</h4>
-                      <span class="text-xs text-gray-500">{{ item.time }}</span>
+                <div
+                  id="notification-dropdown"
+                  v-if="isNotificationDropdownOpen"
+                  class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg py-2 z-50 border border-gray-100"
+                >
+                  <!-- Notification Header -->
+                  <div class="px-4 py-2 border-b border-gray-100">
+                    <div class="flex justify-between items-center">
+                      <h4 class="text-sm font-semibold text-gray-800">Notifications</h4>
+                      <span
+                        v-if="notifications > 0"
+                        class="px-2 py-1 text-xs font-bold text-white bg-red rounded-full"
+                        >{{ notifications }}</span
+                      >
                     </div>
-                    <p class="text-sm text-gray-600 mt-1">{{ item.message }}</p>
+                  </div>
+
+                  <!-- Notification Items -->
+                  <div class="max-h-60 overflow-y-auto">
+                    <div
+                      v-for="item in notificationItems"
+                      :key="item.id"
+                      :class="[
+                        'px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0',
+                        !item.read ? 'bg-blue-50' : '',
+                      ]"
+                    >
+                      <div class="flex items-start">
+                        <div
+                          class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center"
+                        >
+                          <font-awesome-icon
+                            :icon="['fas', 'bell']"
+                            class="w-4 h-4 text-blue-500"
+                          />
+                        </div>
+                        <div class="ml-3 flex-1">
+                          <p class="text-sm font-medium text-gray-800">{{ item.title }}</p>
+                          <p class="text-xs text-gray-500">{{ item.message }}</p>
+                          <p class="text-xs text-gray-400 mt-1">{{ item.time }}</p>
+                        </div>
+                        <div v-if="!item.read" class="w-2 h-2 bg-red rounded-full"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- View All Link -->
+                  <div class="px-4 py-2 border-t border-gray-100">
+                    <router-link
+                      to="/notifications"
+                      class="block text-center text-sm font-medium text-blue-600 hover:text-blue-700"
+                      @click="isNotificationDropdownOpen = false"
+                    >
+                      View all notifications
+                    </router-link>
                   </div>
                 </div>
-
-                <div class="px-4 py-2 border-t border-gray-100 text-center">
-                  <router-link
-                    to="/notifications"
-                    class="text-sm text-blue-600 hover:text-blue-800"
-                    @click="isNotificationDropdownOpen = false"
-                  >
-                    View all notifications
-                  </router-link>
-                </div>
-              </div>
+              </transition>
             </div>
 
             <!-- Profile -->
@@ -348,7 +405,7 @@ onUnmounted(() => {
                   class="w-8 h-8 rounded-full border-2 border-light-blue"
                 />
                 <span class="hidden md:block text-sm font-medium">{{
-                  user.name.split(' ')[0]
+                  userName.split(' ')[0]
                 }}</span>
                 <font-awesome-icon :icon="['fas', 'chevron-down']" class="w-3 h-3 text-gray" />
               </button>
@@ -376,7 +433,7 @@ onUnmounted(() => {
                         class="w-10 h-10 rounded-full border-2 border-light-blue"
                       />
                       <div>
-                        <h4 class="text-sm font-semibold text-gray-800">{{ user.name }}</h4>
+                        <h4 class="text-sm font-semibold text-gray-800">{{ userName }}</h4>
                         <p class="text-xs text-gray-500">{{ user.email }}</p>
                       </div>
                     </div>
@@ -418,6 +475,7 @@ onUnmounted(() => {
                   <a
                     href="#"
                     class="block px-4 py-2 text-sm text-red hover:bg-red hover:bg-opacity-10 transition-colors"
+                    @click.prevent="confirmLogout"
                   >
                     <div class="flex items-center">
                       <font-awesome-icon :icon="['fas', 'sign-out-alt']" class="w-4 h-4 mr-3" />
@@ -434,6 +492,13 @@ onUnmounted(() => {
       <!-- Dynamic Content Component -->
       <component :is="activeComponent" @navigate="setActiveMenuItem" />
     </main>
+
+    <!-- Logout Modal Component -->
+    <LogoutModal 
+      :show="showLogoutModal" 
+      @confirm="handleLogout" 
+      @cancel="cancelLogout"
+    />
   </div>
 </template>
 
@@ -449,24 +514,31 @@ onUnmounted(() => {
 }
 
 .fade-in {
-  animation: fadeIn 0.5s ease-in-out;
+  animation: fadeIn 0.3s ease-in-out;
 }
 
-/* Custom scrollbar for sidebar */
+/* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
+  background: #f1f1f1;
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
+  background: #c5c5c5;
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: #a8a8a8;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c5c5c5 #f1f1f1;
 }
 </style>

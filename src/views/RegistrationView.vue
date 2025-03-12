@@ -1,20 +1,30 @@
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
+
+// Check if user is in registration process
+onMounted(() => {
+  if (!userStore.isRegistering) {
+    // If not in registration process, redirect to login
+    router.push('/login')
+  } else if (userStore.registrationData) {
+    // If registration data exists, pre-fill the email
+    formData.email = userStore.registrationData.email || ''
+  }
+})
 
 // Current step in registration process
 const currentStep = ref(1)
 const totalSteps = 5
 
-// Get email from route query parameters
-const email = router.currentRoute.value.query.email || ''
-
 // Form data for registration
 const formData = reactive({
-  // Initialize email with the value from route query
-  email: email,
+  // Initialize with empty values
+  email: '',
   // Account Information
   lastName: '',
   firstName: '',
@@ -95,6 +105,9 @@ const errors = reactive({
   form: '',
 })
 
+// Loading state
+const isSubmitting = ref(false)
+
 // Computed properties
 const isStepComplete = computed(() => {
   switch (currentStep.value) {
@@ -142,6 +155,12 @@ const prevStep = () => {
   if (currentStep.value > 1) {
     currentStep.value--
   }
+}
+
+// Cancel registration and return to login
+const cancelRegistration = () => {
+  userStore.cancelRegistration()
+  router.push('/login')
 }
 
 // Validation functions
@@ -241,15 +260,24 @@ const validateAddressAndTerms = () => {
 }
 
 // Form submission
-const submitRegistration = () => {
-  if (validateCurrentStep()) {
-    console.log('Registration data:', formData)
-    // Send data to backend
-    // Notification to user
-    // Redirect to home page
-    router.push('/')
-  } else {
-    errors.form = 'Please fix the errors before submitting'
+const submitRegistration = async () => {
+  if (!validateAddressAndTerms()) {
+    return
+  }
+
+  try {
+    isSubmitting.value = true
+    errors.form = 'Creating your account...'
+    
+    // Register the user using the Pinia store
+    await userStore.register(formData)
+    
+    // Redirect to home page after successful registration
+    router.push('/home')
+  } catch {
+    errors.form = userStore.error || 'Registration failed. Please try again.'
+  } finally {
+    isSubmitting.value = false
   }
 }
 </script>
@@ -962,6 +990,13 @@ const submitRegistration = () => {
             >
               Complete Registration
               <font-awesome-icon :icon="['fas', 'check']" class="ml-2" />
+            </button>
+            <button
+              @click="cancelRegistration"
+              type="button"
+              class="px-8 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-md flex items-center font-medium"
+            >
+              Cancel
             </button>
           </div>
         </div>

@@ -1,8 +1,11 @@
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
 
 // Reactive variables for login form
 const email = ref('')
@@ -31,6 +34,13 @@ const errors = reactive({
   terms: '',
   registerForm: '',
 })
+
+// Check for redirect query parameter
+watch(() => route.query.redirect, (newRedirect) => {
+  if (newRedirect) {
+    errors.form = 'Please log in to access that page'
+  }
+}, { immediate: true })
 
 // Toggle between login and registration forms
 const isLogin = ref(true)
@@ -74,13 +84,17 @@ const handleRegistration = () => {
   }
 
   if (isValid) {
-    // If validation passes, redirect to full registration with initial data
-    router.push({
-      path: '/register',
-      query: { email: registerData.email },
+    // Start the registration process in the user store
+    userStore.startRegistration({
+      email: registerData.email,
+      password: registerData.password
     })
+    
+    // Redirect to the full registration form
+    router.push('/register')
   }
 }
+
 const clearErrors = () => {
   Object.keys(errors).forEach((key) => {
     errors[key] = ''
@@ -199,9 +213,6 @@ const validatePasswordMatch = () => {
   if (registerData.confirmPassword && registerData.password !== registerData.confirmPassword) {
     errors.confirmPassword = 'Passwords do not match'
     return false
-  } else if (registerData.confirmPassword) {
-    errors.confirmPassword = ''
-    return true
   }
   return true
 }
@@ -217,44 +228,45 @@ const validateTerms = () => {
 
 // Form submission handlers with validation
 const validateAndLogin = () => {
-  // Clear previous form error
-  errors.form = ''
-
-  // Validate all fields
+  clearErrors()
+  
   const isEmailValid = validateLoginEmail()
   const isPasswordValid = validateLoginPassword()
-
+  
   if (isEmailValid && isPasswordValid) {
     handleLogin()
-  } else {
-    errors.form = 'Please fix the errors above before submitting'
   }
 }
 
 const validateAndRegister = () => {
-  // Clear previous form error
-  errors.registerForm = ''
-
-  // Validate all fields
+  clearErrors()
+  
   const isEmailValid = validateRegisterEmail()
   const isPasswordValid = validateRegisterPassword()
   const isConfirmPasswordValid = validateConfirmPassword()
-  const isTermsAccepted = validateTerms()
-
-  if (isEmailValid && isPasswordValid && isConfirmPasswordValid && isTermsAccepted) {
+  const isTermsValid = validateTerms()
+  
+  if (isEmailValid && isPasswordValid && isConfirmPasswordValid && isTermsValid) {
     handleRegistration()
-  } else {
-    errors.registerForm = 'Please fix the errors above before submitting'
   }
 }
 
 // Form submission handlers
-const handleLogin = () => {
-  console.log('Login attempt with:', {
-    email: email.value,
-    password: password.value,
-    rememberMe: rememberMe.value,
-  })
+const handleLogin = async () => {
+  try {
+    // Show loading state
+    errors.form = 'Logging in...'
+    
+    // Call the login action from the user store
+    await userStore.login(email.value, password.value)
+    
+    // Check for redirect query parameter
+    const redirectPath = route.query.redirect || '/home'
+    router.push(redirectPath)
+  } catch {
+    // Display error message
+    errors.form = userStore.error || 'Login failed. Please try again.'
+  }
 }
 </script>
 
