@@ -12,17 +12,17 @@ const user = reactive({
   telephoneNumber: '(02) 8123-4567',
   intAreaCode: '+63',
   mobileNumber: '912 345 6789',
-  
+
   // Personal Information
   nationality: 'Filipino',
   civilStatus: 'Single',
   dateOfBirth: '1990-05-15',
   placeOfBirth: 'Manila, Philippines',
   gender: 'Male',
-  
+
   // Other
   avatar: '/Land_Transportation_Office.webp',
-  joinDate: 'January 2023'
+  joinDate: 'January 2023',
 })
 
 // Computed full name
@@ -46,16 +46,6 @@ const formErrors = reactive({
 
 // Active tab state
 const activeTab = ref('security')
-
-// Theme preference
-const themePreference = ref('light')
-const isDarkMode = computed(() => themePreference.value === 'dark')
-
-const toggleTheme = () => {
-  themePreference.value = themePreference.value === 'light' ? 'dark' : 'light'
-  // In a real app, this would update a theme in localStorage or user preferences API
-  document.documentElement.classList.toggle('dark-mode', isDarkMode.value)
-}
 
 const updatePassword = () => {
   // Reset errors
@@ -458,47 +448,5 @@ const saveNotificationPreferences = () => {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-/* Dark theme styles */
-.dark-theme {
-  background-color: #1a1a1a;
-  color: #f3f4f6;
-}
-
-.dark-theme .bg-white {
-  background-color: #2d2d2d;
-}
-
-.dark-theme .text-gray-900 {
-  color: #f3f4f6;
-}
-
-.dark-theme .text-gray-700 {
-  color: #d1d5db;
-}
-
-.dark-theme .text-gray-500 {
-  color: #9ca3af;
-}
-
-.dark-theme .border-gray-200 {
-  border-color: #4b5563;
-}
-
-.dark-theme .bg-gray-50 {
-  background-color: #374151;
-}
-
-.dark-theme input,
-.dark-theme select {
-  background-color: #4b5563;
-  border-color: #6b7280;
-  color: #f3f4f6;
-}
-
-.dark-theme input:focus,
-.dark-theme select:focus {
-  border-color: #3b82f6;
 }
 </style>

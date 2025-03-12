@@ -1,3 +1,115 @@
+<script setup>
+import { useUserStore } from '@/stores/user'
+import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
+import { computed } from 'vue'
+
+const userStore = useUserStore()
+const vehicleStore = useVehicleRegistrationStore()
+
+const user = computed(() => ({
+  name: userStore.fullName,
+  email: userStore.user?.email || '',
+  avatar: userStore.user?.avatar || '/Land_Transportation_Office.webp',
+}))
+
+const totalVehicles = computed(() => vehicleStore.userVehicles.length)
+const newVehiclesThisMonth = computed(() => {
+  const today = new Date()
+  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+  return vehicleStore.userVehicles.filter((vehicle) => {
+    const lastUpdated = new Date(vehicle.lastUpdated)
+    return lastUpdated >= firstDayOfMonth
+  }).length
+})
+
+const activePlates = computed(
+  () => vehicleStore.userPlates.filter((plate) => plate.status === 'Active').length,
+)
+const allPlatesUpToDate = computed(() => {
+  const today = new Date()
+  return vehicleStore.userPlates.every((plate) => {
+    const expiryDate = new Date(plate.expiryDate)
+    return expiryDate > today
+  })
+})
+
+const pendingRenewals = computed(() => vehicleStore.soonToExpireRegistrations.length)
+
+const recentActivity = computed(() => {
+  const activities = []
+
+  // Add new vehicles (last 30 days)
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+  vehicleStore.userVehicles.forEach((vehicle) => {
+    const lastUpdated = new Date(vehicle.lastUpdated)
+    if (lastUpdated >= thirtyDaysAgo) {
+      activities.push({
+        type: 'vehicle',
+        title: 'New Vehicle Added',
+        date: lastUpdated,
+        description: `${vehicle.make} ${vehicle.model} with plate number ${vehicle.plateNumber}`,
+        daysAgo: Math.floor((new Date() - lastUpdated) / (1000 * 60 * 60 * 24)),
+      })
+    }
+  })
+
+  // Add plate renewals (last 30 days)
+  vehicleStore.userRegistrations.forEach((registration) => {
+    if (registration.registrationType === 'Renewal' && registration.status === 'Approved') {
+      const submissionDate = new Date(registration.submissionDate)
+      if (submissionDate >= thirtyDaysAgo) {
+        const vehicle = vehicleStore.getVehicleById(registration.vehicleId)
+        const plate = vehicleStore.getPlateById(registration.plateId)
+        if (vehicle && plate) {
+          activities.push({
+            type: 'plate',
+            title: 'Plate Registration Renewed',
+            date: submissionDate,
+            description: `${vehicle.make} ${vehicle.model} with plate number ${plate.plateNumber}`,
+            daysAgo: Math.floor((new Date() - submissionDate) / (1000 * 60 * 60 * 24)),
+          })
+        }
+      }
+    }
+  })
+
+  // Add renewal notifications
+  vehicleStore.soonToExpireRegistrations.forEach((registration) => {
+    const vehicle = vehicleStore.getVehicleById(registration.vehicleId)
+    if (vehicle) {
+      activities.push({
+        type: 'renewal',
+        title: 'Renewal Notification',
+        date: new Date(),
+        description: `${vehicle.make} ${vehicle.model} plate expires in ${vehicleStore.getDaysRemaining(registration.expiryDate)} days`,
+        daysAgo: 3, // Placeholder for notification
+      })
+    }
+  })
+
+  // Sort by date (newest first) and take the first 3
+  return activities.sort((a, b) => b.date - a.date).slice(0, 3)
+})
+
+// Define emits
+const emit = defineEmits(['navigate'])
+
+// Navigation functions
+const navigateToVehicles = () => {
+  emit('navigate', 'Vehicles')
+}
+
+const navigateToPlates = () => {
+  emit('navigate', 'Plates')
+}
+
+const navigateToRegistration = () => {
+  emit('navigate', 'Registration')
+}
+</script>
+
 <template>
   <div class="dashboard-content p-6">
     <div class="max-w-7xl mx-auto">
@@ -28,10 +140,10 @@
               <font-awesome-icon :icon="['fas', 'car']" class="w-7 h-7" />
             </div>
           </div>
-          <div class="text-4xl font-bold text-dark-blue mb-3">12</div>
+          <div class="text-4xl font-bold text-dark-blue mb-3">{{ totalVehicles }}</div>
           <div class="flex items-center text-green-600">
             <font-awesome-icon :icon="['fas', 'arrow-up']" class="w-3 h-3 mr-1" />
-            <p class="text-sm">+2 new this month</p>
+            <p class="text-sm">+{{ newVehiclesThisMonth }} new this month</p>
           </div>
         </div>
 
@@ -48,10 +160,18 @@
               <font-awesome-icon :icon="['fas', 'id-card']" class="w-7 h-7" />
             </div>
           </div>
-          <div class="text-4xl font-bold text-gray-800 mb-3">8</div>
-          <div class="flex items-center text-green-600">
-            <font-awesome-icon :icon="['fas', 'check-circle']" class="w-4 h-4 mr-1" />
-            <p class="text-sm">All plates are up to date</p>
+          <div class="text-4xl font-bold text-gray-800 mb-3">{{ activePlates }}</div>
+          <div
+            class="flex items-center"
+            :class="allPlatesUpToDate ? 'text-green-600' : 'text-amber-600'"
+          >
+            <font-awesome-icon
+              :icon="['fas', allPlatesUpToDate ? 'check-circle' : 'exclamation-circle']"
+              class="w-4 h-4 mr-1"
+            />
+            <p class="text-sm">
+              {{ allPlatesUpToDate ? 'All plates are up to date' : 'Some plates need renewal' }}
+            </p>
           </div>
         </div>
 
@@ -68,10 +188,18 @@
               <font-awesome-icon :icon="['fas', 'file-contract']" class="w-7 h-7" />
             </div>
           </div>
-          <div class="text-4xl font-bold text-gray-800 mb-3">2</div>
-          <div class="flex items-center text-red-500">
-            <font-awesome-icon :icon="['fas', 'exclamation-circle']" class="w-4 h-4 mr-1" />
-            <p class="text-sm">Renewal needed within 30 days</p>
+          <div class="text-4xl font-bold text-gray-800 mb-3">{{ pendingRenewals }}</div>
+          <div
+            class="flex items-center"
+            :class="pendingRenewals > 0 ? 'text-red-500' : 'text-green-600'"
+          >
+            <font-awesome-icon
+              :icon="['fas', pendingRenewals > 0 ? 'exclamation-circle' : 'check-circle']"
+              class="w-4 h-4 mr-1"
+            />
+            <p class="text-sm">
+              {{ pendingRenewals > 0 ? 'Renewal needed within 30 days' : 'No pending renewals' }}
+            </p>
           </div>
         </div>
       </div>
@@ -86,95 +214,65 @@
         </div>
 
         <div class="divide-y divide-gray-100">
-          <!-- Activity Item 1 -->
-          <div class="p-6 hover:bg-blue-50 transition-colors duration-200">
+          <!-- Dynamic Activity Items -->
+          <div
+            v-for="(activity, index) in recentActivity"
+            :key="index"
+            class="p-6 transition-colors duration-200"
+            :class="{
+              'hover:bg-blue-50': activity.type === 'vehicle',
+              'hover:bg-green-50': activity.type === 'plate',
+              'hover:bg-amber-50': activity.type === 'renewal',
+            }"
+          >
             <div class="flex items-start">
               <div
-                class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-dark-blue mr-4 shadow-sm"
+                class="w-12 h-12 rounded-full flex items-center justify-center mr-4 shadow-sm"
+                :class="{
+                  'bg-blue-100 text-dark-blue': activity.type === 'vehicle',
+                  'bg-green-100 text-green-600': activity.type === 'plate',
+                  'bg-amber-100 text-amber-600': activity.type === 'renewal',
+                }"
               >
-                <font-awesome-icon :icon="['fas', 'car']" class="w-6 h-6" />
+                <font-awesome-icon
+                  :icon="[
+                    'fas',
+                    activity.type === 'vehicle'
+                      ? 'car'
+                      : activity.type === 'plate'
+                        ? 'id-card'
+                        : 'file-contract',
+                  ]"
+                  class="w-6 h-6"
+                />
               </div>
               <div class="flex-1">
                 <div class="flex justify-between items-start">
-                  <h4 class="text-base font-semibold text-dark-blue">New Vehicle Added</h4>
-                  <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full"
-                    >2 days ago</span
-                  >
+                  <h4 class="text-base font-semibold text-dark-blue">{{ activity.title }}</h4>
+                  <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                    {{
+                      activity.daysAgo === 0
+                        ? 'Today'
+                        : activity.daysAgo === 1
+                          ? 'Yesterday'
+                          : activity.daysAgo + ' days ago'
+                    }}
+                  </span>
                 </div>
-                <p class="text-sm text-gray-600 mt-1">Toyota Camry with plate number ABC-123</p>
+                <p class="text-sm text-gray-600 mt-1">{{ activity.description }}</p>
               </div>
             </div>
           </div>
 
-          <!-- Activity Item 2 -->
-          <div class="p-6 hover:bg-green-50 transition-colors duration-200">
-            <div class="flex items-start">
-              <div
-                class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-4 shadow-sm"
-              >
-                <font-awesome-icon :icon="['fas', 'id-card']" class="w-6 h-6" />
-              </div>
-              <div class="flex-1">
-                <div class="flex justify-between items-start">
-                  <h4 class="text-base font-semibold text-dark-blue">Plate Registration Renewed</h4>
-                  <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full"
-                    >1 week ago</span
-                  >
-                </div>
-                <p class="text-sm text-gray-600 mt-1">Honda Civic with plate number XYZ-789</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Activity Item 3 -->
-          <div class="p-6 hover:bg-amber-50 transition-colors duration-200">
-            <div class="flex items-start">
-              <div
-                class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 mr-4 shadow-sm"
-              >
-                <font-awesome-icon :icon="['fas', 'file-contract']" class="w-6 h-6" />
-              </div>
-              <div class="flex-1">
-                <div class="flex justify-between items-start">
-                  <h4 class="text-base font-semibold text-dark-blue">Renewal Notification</h4>
-                  <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full"
-                    >3 days ago</span
-                  >
-                </div>
-                <p class="text-sm text-gray-600 mt-1">Ford F-150 plate expires in 30 days</p>
-              </div>
-            </div>
+          <!-- Empty state if no activities -->
+          <div v-if="recentActivity.length === 0" class="p-6 text-center text-gray-500">
+            <p>No recent activity to display</p>
           </div>
         </div>
       </div>
     </div>
   </div>
 </template>
-
-<script setup>
-// User profile data (mock data)
-const user = {
-  name: 'Stanleigh Morales',
-  email: 'stanleighmorales@gmail.com',
-  avatar: '/Land_Transportation_Office.webp',
-}
-
-// Define emits
-const emit = defineEmits(['navigate'])
-
-// Navigation functions
-const navigateToVehicles = () => {
-  emit('navigate', 'Vehicles')
-}
-
-const navigateToPlates = () => {
-  emit('navigate', 'Plates')
-}
-
-const navigateToRegistration = () => {
-  emit('navigate', 'Registration')
-}
-</script>
 
 <style scoped>
 .dashboard-content {

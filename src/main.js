@@ -51,6 +51,22 @@ import {
   faCog,
   faCreditCard,
   faTrashAlt,
+  faFilter,
+  faSort,
+  faTag,
+  faFile,
+  faFileAlt,
+  faCalendar,
+  faCalendarAlt,
+  faClock,
+  faInfo,
+  faPrint,
+  faClipboardList,
+  faMoneyBillWave,
+  faDownload,
+  faPalette,
+  faCalendarCheck,
+  faCalendarTimes
 } from '@fortawesome/free-solid-svg-icons'
 import { faGoogle } from '@fortawesome/free-brands-svg-icons'
 
@@ -99,6 +115,22 @@ library.add(
   faCog,
   faCreditCard,
   faTrashAlt,
+  faFilter,
+  faSort,
+  faTag,
+  faFile,
+  faFileAlt,
+  faCalendar,
+  faCalendarAlt,
+  faClock,
+  faInfo,
+  faPrint,
+  faClipboardList,
+  faMoneyBillWave,
+  faDownload,
+  faPalette,
+  faCalendarCheck,
+  faCalendarTimes
 )
 
 const app = createApp(App)

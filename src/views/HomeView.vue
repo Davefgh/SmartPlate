@@ -1,10 +1,8 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, defineAsyncComponent } from 'vue'
 import { useUserStore } from '@/stores/user'
-import LogoutModal from '@/components/modals/LogoutModal.vue'
 
-const userStore = useUserStore()
-
+const LogoutModal = defineAsyncComponent(() => import('@/components/modals/LogoutModal.vue'))
 const DashboardContent = defineAsyncComponent(() => import('@/components/ui/DashboardContent.vue'))
 const VehicleInformation = defineAsyncComponent(
   () => import('@/components/ui/VehicleInformation.vue'),
@@ -13,6 +11,9 @@ const PlateInformation = defineAsyncComponent(() => import('@/components/ui/Plat
 const RegistrationContent = defineAsyncComponent(
   () => import('@/components/ui/RegistrationContent.vue'),
 )
+
+const userStore = useUserStore()
+
 // Sidebar state
 const isSidebarOpen = ref(false)
 const toggleSidebar = () => {
