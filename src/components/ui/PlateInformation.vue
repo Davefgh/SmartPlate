@@ -1,49 +1,31 @@
 <script setup>
 import { ref, computed, defineAsyncComponent } from 'vue'
-const PlateModal = defineAsyncComponent(() => import('./modals/PlateModal.vue'))
+import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
+import { useUserStore } from '@/stores/user'
 
-// Mock data for plates
-const plates = ref([
-  {
-    id: 1,
-    plateNumber: 'ABC-123',
-    vehicleMake: 'Toyota',
-    vehicleModel: 'Corolla',
-    registrationDate: '2024-10-15',
-    expiryDate: '2025-10-15',
-    status: 'Active',
-    owner: 'Stanleigh Morales',
-    type: 'Private',
-    plateType: 'Regular',
-    mvFileNumber: 'MV-2024-10001',
-  },
-  {
-    id: 2,
-    plateNumber: 'XYZ-789',
-    vehicleMake: 'Honda',
-    vehicleModel: 'Civic',
-    registrationDate: '2024-08-20',
-    expiryDate: '2025-08-20',
-    status: 'Active',
-    owner: 'Stanleigh Morales',
-    type: 'Private',
-    plateType: 'Temporary',
-    mvFileNumber: 'MV-2024-10002',
-  },
-  {
-    id: 3,
-    plateNumber: 'DEF-456',
-    vehicleMake: 'Ford',
-    vehicleModel: 'Mustang',
-    registrationDate: '2025-01-05',
-    expiryDate: '2026-01-05',
-    status: 'Pending',
-    owner: 'Stanleigh Morales',
-    type: 'Private',
-    plateType: 'Improvised',
-    mvFileNumber: 'MV-2025-10003',
-  },
-])
+const PlateModal = defineAsyncComponent(() => import('@/components/modals/PlateModal.vue'))
+
+// Get stores
+const vehicleRegistrationStore = useVehicleRegistrationStore()
+const userStore = useUserStore()
+
+// Get plates with relevant information
+const plates = computed(() => {
+  if (userStore.isAdmin) {
+    return vehicleRegistrationStore.platesWithVehicleInfo
+  } else {
+    return vehicleRegistrationStore.userPlates.map((plate) => {
+      const vehicle = vehicleRegistrationStore.getVehicleById(plate.vehicleId)
+      return {
+        ...plate,
+        vehicleMake: vehicle?.make || '',
+        vehicleModel: vehicle?.model || '',
+        vehicleYear: vehicle?.year || '',
+        owner: userStore.fullName,
+      }
+    })
+  }
+})
 
 // Search functionality
 const searchQuery = ref('')
@@ -61,11 +43,7 @@ const filteredPlates = computed(() => {
 
 // Calculate days remaining until expiry
 const getDaysRemaining = (expiryDateStr) => {
-  const today = new Date()
-  const expiryDate = new Date(expiryDateStr)
-  const diffTime = expiryDate - today
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-  return diffDays
+  return vehicleRegistrationStore.getDaysRemaining(expiryDateStr)
 }
 
 // Get status color based on days remaining
@@ -201,56 +179,34 @@ const closePlateModal = () => {
                 {{ plate.plateType }}
               </span>
             </div>
-            <div class="flex justify-between">
-              <span class="text-sm text-gray-500">MV File Number</span>
-              <span class="text-sm font-medium">{{ plate.mvFileNumber }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-sm text-gray-500">Status</span>
-              <span
-                :class="[
-                  'text-sm font-medium px-2 py-1 rounded-full text-xs',
-                  getExpiryStatusColor(plate.expiryDate),
-                ]"
-              >
-                {{ getExpiryStatusText(plate.expiryDate) }}
-              </span>
+          </div>
+
+          <!-- Status Badge -->
+          <div class="mt-4">
+            <div
+              class="flex justify-between items-center px-3 py-2 rounded-md"
+              :class="getExpiryStatusColor(plate.expiryDate)"
+            >
+              <span class="text-xs font-medium">{{ getExpiryStatusText(plate.expiryDate) }}</span>
+              <font-awesome-icon :icon="['fas', 'clock']" class="w-4 h-4" />
             </div>
           </div>
-        </div>
 
-        <!-- Plate Actions -->
-        <div class="bg-gray-50 p-4 border-t border-gray-100">
-          <div class="flex justify-between">
+          <!-- Footer -->
+          <div class="flex justify-between items-center mt-4">
+            <span class="text-sm text-gray-500">{{ plate.owner }}</span>
             <button
-              @click="openPlateModal(plate)"
-              class="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors flex items-center"
+              @click.prevent="openPlateModal(plate)"
+              class="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 font-medium rounded-md hover:bg-blue-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300"
             >
-              <font-awesome-icon :icon="['fas', 'eye']" class="mr-1" />
               View Details
             </button>
-            <button class="text-gray-600 hover:text-gray-800 text-sm font-medium transition-colors">
-              <font-awesome-icon :icon="['fas', 'print']" class="mr-1" />
-              Print
-            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Empty State -->
-    <div
-      v-if="filteredPlates.length === 0"
-      class="bg-white rounded-lg shadow-sm p-12 flex flex-col items-center justify-center"
-    >
-      <div class="bg-gray-100 rounded-full p-4 mb-4">
-        <font-awesome-icon :icon="['fas', 'id-card']" class="text-gray-400 w-8 h-8" />
-      </div>
-      <h3 class="text-lg font-medium text-gray-900 mb-1">No plates found</h3>
-      <p class="text-gray-500 mb-4">Try adjusting your search or filter criteria</p>
-    </div>
-
-    <!-- Plate Details Modal -->
+    <!-- Plate Modal -->
     <PlateModal
       :plate="selectedPlate"
       :isOpen="isPlateModalOpen && selectedPlate"
@@ -267,9 +223,11 @@ const closePlateModal = () => {
 @keyframes fadeIn {
   from {
     opacity: 0;
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>

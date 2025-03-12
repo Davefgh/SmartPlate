@@ -1,49 +1,29 @@
 <script setup>
 import { ref, computed, defineAsyncComponent } from 'vue'
-const VehicleModal = defineAsyncComponent(() => import('./modals/VehicleModal.vue'))
+import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
+import { useUserStore } from '@/stores/user'
 
-// Mock data for vehicles
-const vehicles = ref([
-  {
-    id: 1,
-    make: 'Toyota',
-    model: 'Corolla',
-    year: 2022,
-    plateNumber: 'ABC-123',
-    plateType: 'Regular',
-    mvFileNumber: 'MV-2024-10001',
-    color: 'White',
-    status: 'Active',
-    lastUpdated: '2025-02-15',
-    owner: 'Stanleigh Morales',
-  },
-  {
-    id: 2,
-    make: 'Honda',
-    model: 'Civic',
-    year: 2021,
-    plateNumber: 'XYZ-789',
-    plateType: 'Temporary',
-    mvFileNumber: 'MV-2024-10002',
-    color: 'Black',
-    status: 'Active',
-    lastUpdated: '2025-01-20',
-    owner: 'Stanleigh Morales',
-  },
-  {
-    id: 3,
-    make: 'Ford',
-    model: 'Mustang',
-    year: 2023,
-    plateNumber: 'DEF-456',
-    plateType: 'Improvised',
-    mvFileNumber: 'MV-2025-10003',
-    color: 'Red',
-    status: 'Pending',
-    lastUpdated: '2025-03-01',
-    owner: 'Stanleigh Morales',
-  },
-])
+const VehicleModal = defineAsyncComponent(() => import('@/components/modals/VehicleModal.vue'))
+
+// Get stores
+const vehicleRegistrationStore = useVehicleRegistrationStore()
+const userStore = useUserStore()
+
+// Get vehicles with owner information
+const vehicles = computed(() => {
+  if (userStore.isAdmin) {
+    return vehicleRegistrationStore.vehiclesWithOwnerInfo
+  } else {
+    return vehicleRegistrationStore.userVehicles.map((vehicle) => {
+      const plate = vehicleRegistrationStore.getPlateByVehicleId(vehicle.id)
+      return {
+        ...vehicle,
+        owner: userStore.fullName,
+        plateDetails: plate || null,
+      }
+    })
+  }
+})
 
 // Search functionality
 const searchQuery = ref('')
@@ -55,7 +35,7 @@ const filteredVehicles = computed(() => {
     (vehicle) =>
       vehicle.make.toLowerCase().includes(query) ||
       vehicle.model.toLowerCase().includes(query) ||
-      vehicle.plateNumber.toLowerCase().includes(query),
+      vehicle.plateNumber?.toLowerCase().includes(query),
   )
 })
 
@@ -176,10 +156,7 @@ const closeVehicleModal = () => {
 
             <div class="space-y-2 mb-4">
               <div class="flex items-center text-sm">
-                <font-awesome-icon
-                  :icon="['fas', 'id-card']"
-                  class="w-4 h-4 text-gray-400 mr-2"
-                />
+                <font-awesome-icon :icon="['fas', 'id-card']" class="w-4 h-4 text-gray-400 mr-2" />
                 <span class="text-gray-600">{{ vehicle.plateNumber }}</span>
               </div>
               <div class="flex items-center text-sm">
@@ -191,21 +168,18 @@ const closeVehicleModal = () => {
                 <span class="text-gray-600">{{ vehicle.mvFileNumber }}</span>
               </div>
               <div class="flex items-center text-sm">
-                <font-awesome-icon
-                  :icon="['fas', 'calendar']"
-                  class="w-4 h-4 text-gray-400 mr-2"
-                />
+                <font-awesome-icon :icon="['fas', 'calendar']" class="w-4 h-4 text-gray-400 mr-2" />
                 <span class="text-gray-600">Last Updated: {{ vehicle.lastUpdated }}</span>
               </div>
             </div>
 
-            <div class="flex justify-end">
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-gray-500">{{ vehicle.owner }}</span>
               <button
-                @click="openVehicleModal(vehicle)"
-                class="text-dark-blue hover:text-blue-700 text-sm font-medium flex items-center transition-colors"
+                @click.prevent="openVehicleModal(vehicle)"
+                class="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 font-medium rounded-md hover:bg-blue-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300"
               >
                 View Details
-                <font-awesome-icon :icon="['fas', 'chevron-right']" class="ml-1 w-3 h-3" />
               </button>
             </div>
           </div>
@@ -225,7 +199,7 @@ const closeVehicleModal = () => {
       </div>
     </div>
 
-    <!-- Vehicle Details Modal -->
+    <!-- Vehicle Modal -->
     <VehicleModal
       :vehicle="selectedVehicle"
       :isOpen="isVehicleModalOpen && selectedVehicle"
@@ -248,9 +222,5 @@ const closeVehicleModal = () => {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.timeline-dot {
-  z-index: 10;
 }
 </style>

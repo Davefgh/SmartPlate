@@ -1,15 +1,17 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, defineAsyncComponent } from 'vue'
 import { useUserStore } from '@/stores/user'
-import LogoutModal from '@/components/LogoutModal.vue'
+import LogoutModal from '@/components/modals/LogoutModal.vue'
 
 const userStore = useUserStore()
 
-const DashboardContent = defineAsyncComponent(() => import('@/components/DashboardContent.vue'))
-const VehicleInformation = defineAsyncComponent(() => import('@/components/VehicleInformation.vue'))
-const PlateInformation = defineAsyncComponent(() => import('@/components/PlateInformation.vue'))
+const DashboardContent = defineAsyncComponent(() => import('@/components/ui/DashboardContent.vue'))
+const VehicleInformation = defineAsyncComponent(
+  () => import('@/components/ui/VehicleInformation.vue'),
+)
+const PlateInformation = defineAsyncComponent(() => import('@/components/ui/PlateInformation.vue'))
 const RegistrationContent = defineAsyncComponent(
-  () => import('@/components/RegistrationContent.vue'),
+  () => import('@/components/ui/RegistrationContent.vue'),
 )
 // Sidebar state
 const isSidebarOpen = ref(false)
@@ -18,11 +20,14 @@ const toggleSidebar = () => {
 }
 
 // User profile data from store
-const user = computed(() => userStore.user || {
-  name: 'Guest User',
-  email: 'guest@example.com',
-  avatar: '/Land_Transportation_Office.webp',
-})
+const user = computed(
+  () =>
+    userStore.user || {
+      name: 'Guest User',
+      email: 'guest@example.com',
+      avatar: '/Land_Transportation_Office.webp',
+    },
+)
 
 // Format user's full name
 const userName = computed(() => {
@@ -285,12 +290,7 @@ onUnmounted(() => {
     </aside>
 
     <!-- Main Content -->
-    <main
-      :class="[
-        'transition-all duration-300 ease-in-out',
-        isSidebarOpen ? 'lg:ml-64' : 'ml-0',
-      ]"
-    >
+    <main :class="['transition-all duration-300 ease-in-out', isSidebarOpen ? 'lg:ml-64' : 'ml-0']">
       <!-- Header -->
       <header class="bg-white shadow-sm sticky top-0 z-10">
         <div class="flex items-center justify-between px-4 py-3">
@@ -494,11 +494,7 @@ onUnmounted(() => {
     </main>
 
     <!-- Logout Modal Component -->
-    <LogoutModal 
-      :show="showLogoutModal" 
-      @confirm="handleLogout" 
-      @cancel="cancelLogout"
-    />
+    <LogoutModal :show="showLogoutModal" @confirm="handleLogout" @cancel="cancelLogout" />
   </div>
 </template>
 
