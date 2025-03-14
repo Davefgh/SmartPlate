@@ -11,6 +11,9 @@ const PlateInformation = defineAsyncComponent(() => import('@/components/ui/Plat
 const RegistrationContent = defineAsyncComponent(
   () => import('@/components/ui/RegistrationContent.vue'),
 )
+const VehicleRegistrationForm = defineAsyncComponent(
+  () => import('@/components/ui/VehicleRegistrationForm.vue'),
+)
 
 const userStore = useUserStore()
 
@@ -101,6 +104,7 @@ const componentMap = {
   Vehicles: VehicleInformation,
   Plates: PlateInformation,
   Registration: RegistrationContent,
+  VehicleRegistrationForm: VehicleRegistrationForm,
 }
 
 // Active component computed property
