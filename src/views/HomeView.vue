@@ -11,9 +11,6 @@ const PlateInformation = defineAsyncComponent(() => import('@/components/ui/Plat
 const RegistrationContent = defineAsyncComponent(
   () => import('@/components/ui/RegistrationContent.vue'),
 )
-const VehicleRegistrationForm = defineAsyncComponent(
-  () => import('@/components/ui/VehicleRegistrationForm.vue'),
-)
 
 const userStore = useUserStore()
 
@@ -98,17 +95,22 @@ const setActiveMenuItem = (itemName) => {
     isSidebarOpen.value = false
   }
 }
+
 // Component mapping
 const componentMap = {
   Dashboard: DashboardContent,
   Vehicles: VehicleInformation,
   Plates: PlateInformation,
   Registration: RegistrationContent,
-  VehicleRegistrationForm: VehicleRegistrationForm,
 }
 
 // Active component computed property
 const activeComponent = computed(() => componentMap[activeMenuItem.value] || DashboardContent)
+
+// Set active menu item directly (no warning needed since we're using router for form)
+const handleNavigation = (itemName) => {
+  setActiveMenuItem(itemName)
+}
 
 // Logout functions
 const confirmLogout = () => {
@@ -145,20 +147,11 @@ const handleEscKey = (event) => {
 
 // Close sidebar and dropdown on outside click
 const handleOutsideClick = (event) => {
-  const sidebar = document.getElementById('sidebar')
-  const sidebarToggle = document.getElementById('sidebar-toggle')
-  const profileDropdown = document.getElementById('profile-dropdown')
-  const profileToggle = document.getElementById('profile-toggle')
-  const notificationDropdown = document.getElementById('notification-dropdown')
-  const notificationToggle = document.getElementById('notification-toggle')
-
   // Handle sidebar outside click
   if (
     isSidebarOpen.value &&
-    sidebar &&
-    !sidebar.contains(event.target) &&
-    sidebarToggle &&
-    !sidebarToggle.contains(event.target)
+    !event.target.closest('#sidebar') &&
+    !event.target.closest('#sidebar-toggle')
   ) {
     isSidebarOpen.value = false
   }
@@ -166,10 +159,8 @@ const handleOutsideClick = (event) => {
   // Handle profile dropdown outside click
   if (
     isProfileDropdownOpen.value &&
-    profileDropdown &&
-    !profileDropdown.contains(event.target) &&
-    profileToggle &&
-    !profileToggle.contains(event.target)
+    !event.target.closest('#profile-dropdown') &&
+    !event.target.closest('#profile-toggle')
   ) {
     isProfileDropdownOpen.value = false
   }
@@ -177,10 +168,8 @@ const handleOutsideClick = (event) => {
   // Handle notification dropdown outside click
   if (
     isNotificationDropdownOpen.value &&
-    notificationDropdown &&
-    !notificationDropdown.contains(event.target) &&
-    notificationToggle &&
-    !notificationToggle.contains(event.target)
+    !event.target.closest('#notification-dropdown') &&
+    !event.target.closest('#notification-toggle')
   ) {
     isNotificationDropdownOpen.value = false
   }
@@ -240,7 +229,7 @@ onUnmounted(() => {
                 'flex items-center p-3 rounded-lg transition-all duration-200 group hover:bg-blue-800',
                 item.active ? 'bg-blue-800' : '',
               ]"
-              @click.prevent="setActiveMenuItem(item.name)"
+              @click.prevent="handleNavigation(item.name)"
             >
               <div
                 class="w-8 h-8 flex items-center justify-center text-blue-300 group-hover:text-white transition-colors duration-200"
@@ -308,7 +297,13 @@ onUnmounted(() => {
             >
               <font-awesome-icon :icon="['fas', 'bars']" class="w-5 h-5" />
             </button>
-            <h2 class="ml-4 text-lg font-semibold text-gray-800">{{ activeMenuItem }}</h2>
+            <h2 class="ml-4 text-lg font-semibold text-gray-800">
+              {{
+                activeMenuItem === 'VehicleRegistrationForm'
+                  ? 'SmartPlate Vehicle Registration'
+                  : activeMenuItem
+              }}
+            </h2>
           </div>
 
           <!-- Right: Notifications and Profile -->

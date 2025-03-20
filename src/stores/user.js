@@ -11,6 +11,7 @@ const mockUsersData = [
     middleName: 'Garcia',
     role: 'user',
     password: 'password123',
+    status: 'active',
 
     // Contact Information
     email: 'stanleighmorales@gmail.com',
@@ -75,6 +76,7 @@ const mockUsersData = [
     role: 'admin',
     email: 'admin@smartplate.com',
     password: 'admin123',
+    status: 'active',
     avatar: '/Land_Transportation_Office.webp',
   },
   {
@@ -85,6 +87,7 @@ const mockUsersData = [
     role: 'user',
     email: 'maria.santos@gmail.com',
     password: 'maria123',
+    status: 'active',
     avatar: '/Land_Transportation_Office.webp',
   },
   {
@@ -95,6 +98,7 @@ const mockUsersData = [
     role: 'user',
     email: 'juan.reyes@gmail.com',
     password: 'juan123',
+    status: 'active',
     avatar: '/Land_Transportation_Office.webp',
   },
 ]

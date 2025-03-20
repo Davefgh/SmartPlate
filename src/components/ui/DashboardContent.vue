@@ -2,7 +2,6 @@
 import { useUserStore } from '@/stores/user'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
 import { computed } from 'vue'
-
 const userStore = useUserStore()
 const vehicleStore = useVehicleRegistrationStore()
 
@@ -93,10 +92,9 @@ const recentActivity = computed(() => {
   return activities.sort((a, b) => b.date - a.date).slice(0, 3)
 })
 
-// Define emits
+// Navigation functions
 const emit = defineEmits(['navigate'])
 
-// Navigation functions
 const navigateToVehicles = () => {
   emit('navigate', 'Vehicles')
 }
@@ -107,10 +105,6 @@ const navigateToPlates = () => {
 
 const navigateToRegistration = () => {
   emit('navigate', 'Registration')
-}
-
-const navigateToVehicleRegistrationForm = () => {
-  emit('navigate', 'VehicleRegistrationForm')
 }
 </script>
 
