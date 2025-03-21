@@ -5,9 +5,10 @@ import { useUserStore } from '@/stores/user'
 const userStore = useUserStore()
 
 // Search and filter state
+// Search and filter state
 const searchQuery = ref('')
-const selectedStatus = ref('all')
-const selectedRole = ref('all')
+const sortBy = ref('name')
+const sortDesc = ref(false)
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
 
@@ -24,23 +25,47 @@ const headers = [
   { text: 'Actions', value: 'actions', sortable: false },
 ]
 
-// Sorting state
-const sortBy = ref('name')
-const sortDesc = ref(false)
+// Status filters
+const statusFilters = ref([
+  { value: 'all', label: 'All Status', active: true },
+  { value: 'active', label: 'Active', active: false },
+  { value: 'pending', label: 'Pending', active: false },
+  { value: 'inactive', label: 'Inactive', active: false },
+])
 
-// Filter options
-const statusOptions = [
-  { value: 'all', label: 'All Status' },
-  { value: 'active', label: 'Active' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'inactive', label: 'Inactive' },
-]
+// Role filters
+const roleFilters = ref([
+  { value: 'all', label: 'All Roles', active: true },
+  { value: 'admin', label: 'Admin', active: false },
+  { value: 'user', label: 'User', active: false },
+])
 
-const roleOptions = [
-  { value: 'all', label: 'All Roles' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'user', label: 'User' },
-]
+// Active filters
+const activeStatusFilter = computed(() => {
+  const filter = statusFilters.value.find((f) => f.active === true)
+  return filter ? filter.value : 'all'
+})
+
+const activeRoleFilter = computed(() => {
+  const filter = roleFilters.value.find((f) => f.active === true)
+  return filter ? filter.value : 'all'
+})
+
+// Apply status filter
+const setStatusFilter = (value) => {
+  statusFilters.value = statusFilters.value.map((filter) => ({
+    ...filter,
+    active: filter.value === value,
+  }))
+}
+
+// Apply role filter
+const setRoleFilter = (value) => {
+  roleFilters.value = roleFilters.value.map((filter) => ({
+    ...filter,
+    active: filter.value === value,
+  }))
+}
 
 // Format and filter users
 const filteredUsers = computed(() => {
@@ -56,8 +81,9 @@ const filteredUsers = computed(() => {
         user.email.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
         user.ltoClientId.toLowerCase().includes(searchQuery.value.toLowerCase())
 
-      const matchesStatus = selectedStatus.value === 'all' || user.status === selectedStatus.value
-      const matchesRole = selectedRole.value === 'all' || user.role === selectedRole.value
+      const matchesStatus =
+        activeStatusFilter.value === 'all' || user.status === activeStatusFilter.value
+      const matchesRole = activeRoleFilter.value === 'all' || user.role === activeRoleFilter.value
 
       return matchesSearch && matchesStatus && matchesRole
     })
@@ -119,47 +145,56 @@ const sort = (header) => {
   <div class="p-6">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-semibold text-gray-800">Users Management</h2>
-      <button
-        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-      >
-        <font-awesome-icon :icon="['fas', 'plus']" />
-        Add New User
-      </button>
     </div>
 
-    <!-- Search and Filters -->
-    <div class="mb-6 space-y-4">
-      <div class="flex gap-4">
-        <div class="flex-1">
-          <div class="relative">
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Search by name, email, or ID..."
-              class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            <font-awesome-icon
-              :icon="['fas', 'search']"
-              class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-            />
+    <!-- Filters and Search -->
+    <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+      <div class="space-y-4">
+        <!-- Search Bar -->
+        <div class="relative">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search by name, email, or ID..."
+            class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-dark-blue/20 transition-all"
+          />
+          <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+            <i class="fas fa-search w-4 h-4"></i>
           </div>
         </div>
-        <select
-          v-model="selectedStatus"
-          class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-          <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-        </select>
-        <select
-          v-model="selectedRole"
-          class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-          <option v-for="option in roleOptions" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-        </select>
+
+        <!-- Status and Role Filters -->
+        <div class="flex flex-wrap gap-2">
+          <!-- Status Filters -->
+          <button
+            v-for="filter in statusFilters"
+            :key="filter.value"
+            @click="setStatusFilter(filter.value)"
+            :class="[
+              'px-3 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-dark-blue',
+              filter.active
+                ? 'bg-dark-blue text-white rounded-md'
+                : 'text-gray-700 hover:bg-gray-100 rounded-md',
+            ]"
+          >
+            {{ filter.label }}
+          </button>
+
+          <!-- Role Filters -->
+          <button
+            v-for="filter in roleFilters"
+            :key="filter.value"
+            @click="setRoleFilter(filter.value)"
+            :class="[
+              'px-3 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-dark-blue',
+              filter.active
+                ? 'bg-dark-blue text-white rounded-md'
+                : 'text-gray-700 hover:bg-gray-100 rounded-md',
+            ]"
+          >
+            {{ filter.label }}
+          </button>
+        </div>
       </div>
     </div>
 

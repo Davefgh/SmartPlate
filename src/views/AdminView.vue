@@ -1,8 +1,10 @@
 <script setup>
-import { ref, onMounted, watch, defineAsyncComponent } from 'vue'
+import { ref, onMounted, watch, defineAsyncComponent, computed } from 'vue'
+import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
 import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
 
+const LogoutModal = defineAsyncComponent(() => import('@/components/modals/LogoutModal.vue'))
 const UsersSection = defineAsyncComponent(() => import('@/components/admin/UsersSection.vue'))
 const VehiclesSection = defineAsyncComponent(() => import('@/components/admin/VehiclesSection.vue'))
 const PlatesSection = defineAsyncComponent(() => import('@/components/admin/PlatesSection.vue'))
@@ -14,7 +16,24 @@ const PendingRegistrationsSection = defineAsyncComponent(
 )
 
 const userStore = useUserStore()
+const vehicleRegistrationStore = useVehicleRegistrationStore()
 const router = useRouter()
+
+// Logout modal state
+const showLogoutModal = ref(false)
+
+const confirmLogout = () => {
+  showLogoutModal.value = true
+}
+
+const handleLogout = () => {
+  userStore.logout()
+  showLogoutModal.value = false
+}
+
+const cancelLogout = () => {
+  showLogoutModal.value = false
+}
 
 // Check if user is admin
 onMounted(() => {
@@ -32,11 +51,15 @@ const toggleSidebar = () => {
 // Active section management
 const activeSection = ref('users')
 
-// Mock data for admin dashboard
-const totalUsers = ref(1245)
-const newRegistrations = ref(87)
-const pendingApprovals = ref(32)
-const activeVehicles = ref(3567)
+// Dynamic data from stores
+const totalUsers = computed(
+  () => userStore.mockUsers.filter((user) => user.role !== 'admin').length,
+)
+const newRegistrations = computed(() => vehicleRegistrationStore.activeRegistrations.length)
+const pendingApprovals = computed(() => vehicleRegistrationStore.pendingRegistrations.length)
+const activeVehicles = computed(
+  () => vehicleRegistrationStore.vehicles.filter((v) => v.status === 'Active').length,
+)
 
 // Mock user list
 const users = ref([
@@ -107,10 +130,6 @@ const searchUsers = () => {
 watch(searchQuery, () => {
   searchUsers()
 })
-
-const goBack = () => {
-  router.push('/home')
-}
 </script>
 
 <template>
@@ -187,9 +206,21 @@ const goBack = () => {
             <font-awesome-icon :icon="['fas', 'clock']" class="w-5 h-5" />
             <span v-if="isSidebarOpen" class="ml-3">Pending Registrations</span>
           </button>
+
+          <!-- Logout Button -->
+          <button
+            @click="confirmLogout"
+            class="w-full flex items-center p-2 rounded-lg text-red hover:bg-red hover:bg-opacity-10 transition-colors mt-8"
+          >
+            <font-awesome-icon :icon="['fas', 'sign-out-alt']" class="w-5 h-5" />
+            <span v-if="isSidebarOpen" class="ml-3">Log Out</span>
+          </button>
         </nav>
       </div>
     </div>
+
+    <!-- Logout Modal -->
+    <LogoutModal :show="showLogoutModal" @confirm="handleLogout" @cancel="cancelLogout" />
 
     <!-- Main Content -->
     <div class="flex-1 overflow-auto">
@@ -198,22 +229,10 @@ const goBack = () => {
         <div class="container mx-auto px-4 py-4">
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-3">
-              <button
-                @click="goBack"
-                class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
-              >
-                <font-awesome-icon :icon="['fas', 'arrow-left']" class="w-5 h-5" />
-              </button>
               <h1 class="text-xl font-bold">Admin Dashboard</h1>
             </div>
             <div class="flex items-center space-x-4">
               <span class="text-sm">Welcome, {{ userStore.fullName }}</span>
-              <button
-                @click="userStore.logout"
-                class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
-              >
-                <font-awesome-icon :icon="['fas', 'sign-out-alt']" class="w-5 h-5" />
-              </button>
             </div>
           </div>
         </div>

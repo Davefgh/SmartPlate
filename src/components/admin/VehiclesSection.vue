@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
 
 const vehicleStore = useVehicleRegistrationStore()
@@ -7,16 +7,84 @@ const vehicleStore = useVehicleRegistrationStore()
 // Get all vehicles with owner information
 const vehicles = computed(() => vehicleStore.vehiclesWithOwnerInfo)
 
+// Status filters
+const statusFilters = ref([
+  { value: 'all', label: 'All Status', active: true },
+  { value: 'Active', label: 'Active', active: false },
+  { value: 'Pending', label: 'Pending', active: false },
+  { value: 'Inactive', label: 'Inactive', active: false },
+])
+
+// Search query
+const searchQuery = ref('')
+const sortBy = ref('make')
+const sortDesc = ref(false)
+
+// Active filters
+const activeStatusFilter = computed(() => {
+  const filter = statusFilters.value.find((f) => f.active === true)
+  return filter ? filter.value : 'all'
+})
+
+// Apply status filter
+const setStatusFilter = (value) => {
+  statusFilters.value = statusFilters.value.map((filter) => ({
+    ...filter,
+    active: filter.value === value,
+  }))
+}
+
+// Filtered vehicles based on active filters and search query
+const filteredVehicles = computed(() => {
+  let result = vehicles.value
+
+  // Apply status filter
+  if (activeStatusFilter.value !== 'all') {
+    result = result.filter((vehicle) => vehicle.status === activeStatusFilter.value)
+  }
+
+  // Apply search filter
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(
+      (vehicle) =>
+        vehicle.make.toLowerCase().includes(query) ||
+        vehicle.model.toLowerCase().includes(query) ||
+        vehicle.plateNumber?.toLowerCase().includes(query) ||
+        vehicle.owner.toLowerCase().includes(query),
+    )
+  }
+
+  // Apply sorting
+  return result.sort((a, b) => {
+    const modifier = sortDesc.value ? -1 : 1
+    if (a[sortBy.value] < b[sortBy.value]) return -1 * modifier
+    if (a[sortBy.value] > b[sortBy.value]) return 1 * modifier
+    return 0
+  })
+})
+
+// Sort handler
+const sort = (header) => {
+  if (!header.sortable) return
+  if (sortBy.value === header.value) {
+    sortDesc.value = !sortDesc.value
+  } else {
+    sortBy.value = header.value
+    sortDesc.value = false
+  }
+}
+
 // Table headers
 const headers = [
-  { text: 'Make', value: 'make' },
-  { text: 'Model', value: 'model' },
-  { text: 'Year', value: 'year' },
-  { text: 'Plate Number', value: 'plateNumber' },
-  { text: 'Color', value: 'color' },
-  { text: 'Status', value: 'status' },
-  { text: 'Owner', value: 'owner' },
-  { text: 'Actions', value: 'actions' },
+  { text: 'Make', value: 'make', sortable: true },
+  { text: 'Model', value: 'model', sortable: true },
+  { text: 'Year', value: 'year', sortable: true },
+  { text: 'Plate Number', value: 'plateNumber', sortable: true },
+  { text: 'Color', value: 'color', sortable: true },
+  { text: 'Status', value: 'status', sortable: true },
+  { text: 'Owner', value: 'owner', sortable: true },
+  { text: 'Actions', value: 'actions', sortable: false },
 ]
 </script>
 
@@ -24,11 +92,46 @@ const headers = [
   <div class="p-6">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-semibold text-gray-800">Vehicles Management</h2>
-      <button
-        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-      >
-        Add New Vehicle
-      </button>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+      <div class="space-y-4">
+        <!-- Search Bar -->
+        <div class="relative">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search by make, model, plate number, or owner..."
+            class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-dark-blue/20 transition-all"
+          />
+          <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+            <i class="fas fa-search w-4 h-4"></i>
+          </div>
+        </div>
+
+        <!-- Filter Options -->
+        <div class="flex flex-wrap gap-2">
+          <div class="mr-4">
+            <span class="text-sm font-medium text-gray-700 mr-2">Status:</span>
+            <div class="inline-flex rounded-md shadow-sm mt-1">
+              <button
+                v-for="filter in statusFilters"
+                :key="filter.value"
+                @click="setStatusFilter(filter.value)"
+                :class="[
+                  'px-3 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-dark-blue',
+                  filter.active
+                    ? 'bg-dark-blue text-white rounded-md'
+                    : 'text-gray-700 hover:bg-gray-100 rounded-md',
+                ]"
+              >
+                {{ filter.label }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Vehicles Table -->
@@ -39,14 +142,25 @@ const headers = [
             <th
               v-for="header in headers"
               :key="header.value"
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              @click="sort(header)"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+              :class="{ 'cursor-default': !header.sortable }"
             >
-              {{ header.text }}
+              <div class="flex items-center gap-2">
+                {{ header.text }}
+                <span v-if="header.sortable" class="text-gray-400">
+                  <font-awesome-icon
+                    v-if="sortBy === header.value"
+                    :icon="['fas', sortDesc ? 'sort-down' : 'sort-up']"
+                  />
+                  <font-awesome-icon v-else :icon="['fas', 'sort']" />
+                </span>
+              </div>
             </th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-          <tr v-for="vehicle in vehicles" :key="vehicle.id">
+          <tr v-for="vehicle in filteredVehicles" :key="vehicle.id">
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
               {{ vehicle.make }}
             </td>

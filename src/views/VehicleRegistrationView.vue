@@ -5,7 +5,6 @@ import ConfirmNavigationModal from '../components/modals/ConfirmNavigationModal.
 
 const router = useRouter()
 const showNavigationModal = ref(false)
-
 // Current step tracking
 const currentStep = ref(1)
 const totalSteps = 4

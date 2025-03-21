@@ -130,7 +130,7 @@ export const useUserStore = defineStore('user', {
 
   // Actions
   actions: {
-    login(email, password) {
+    login(email, password, isAdminLogin = false) {
       this.loading = true
       this.error = null
 
@@ -140,9 +140,14 @@ export const useUserStore = defineStore('user', {
         return new Promise((resolve, reject) => {
           setTimeout(() => {
             // Find user with matching email and password
-            const foundUser = this.mockUsers.find(
-              (user) => user.email === email && user.password === password,
-            )
+            const foundUser = this.mockUsers.find((user) => {
+              // For admin login, only match admin users
+              if (isAdminLogin) {
+                return user.role === 'admin' && user.email === email && user.password === password
+              }
+              // For regular login, only match non-admin users
+              return user.role !== 'admin' && user.email === email && user.password === password
+            })
 
             if (foundUser) {
               // Set user data (without the password)

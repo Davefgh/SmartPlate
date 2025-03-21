@@ -59,10 +59,16 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/admin-portal',
+      name: 'adminLogin',
+      component: () => import('../views/AdminLoginView.vue'),
+      meta: { requiresAuth: false, redirectIfAdmin: true },
+    },
+    {
       path: '/admin',
       name: 'admin',
       component: () => import('../views/AdminView.vue'),
-      meta: { requiresAuth: true, requiredRole: 'admin' },
+      meta: { requiresAuth: true, requiredRole: 'admin' }
     },
     {
       path: '/:pathMatch(.*)*',
@@ -90,7 +96,13 @@ router.beforeEach((to, from, next) => {
 
   // If route requires specific role and user doesn't have it
   if (to.meta.requiredRole && to.meta.requiredRole !== userRole) {
-    next({ name: 'home' })
+    next({ name: 'adminLogin' })
+    return
+  }
+
+  // Redirect from admin login if already authenticated as admin
+  if (to.meta.redirectIfAdmin && userRole === 'admin') {
+    next({ name: 'admin' })
     return
   }
 
