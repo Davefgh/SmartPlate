@@ -1,10 +1,13 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, defineAsyncComponent } from 'vue'
 import { useUserStore } from '@/stores/user'
+
+const UserDetailsModal = defineAsyncComponent(
+  () => import('@/components/modals/UserDetailsModal.vue'),
+)
 
 const userStore = useUserStore()
 
-// Search and filter state
 // Search and filter state
 const searchQuery = ref('')
 const sortBy = ref('name')
@@ -73,6 +76,8 @@ const filteredUsers = computed(() => {
     .map((user) => ({
       ...user,
       name: `${user.firstName} ${user.lastName}`,
+      role: user.role.charAt(0).toUpperCase() + user.role.slice(1),
+      status: user.status.charAt(0).toUpperCase() + user.status.slice(1),
     }))
     .filter((user) => {
       const matchesSearch =
@@ -82,8 +87,9 @@ const filteredUsers = computed(() => {
         user.ltoClientId.toLowerCase().includes(searchQuery.value.toLowerCase())
 
       const matchesStatus =
-        activeStatusFilter.value === 'all' || user.status === activeStatusFilter.value
-      const matchesRole = activeRoleFilter.value === 'all' || user.role === activeRoleFilter.value
+        activeStatusFilter.value === 'all' || user.status.toLowerCase() === activeStatusFilter.value
+      const matchesRole =
+        activeRoleFilter.value === 'all' || user.role.toLowerCase() === activeRoleFilter.value
 
       return matchesSearch && matchesStatus && matchesRole
     })
@@ -105,7 +111,7 @@ const paginatedUsers = computed(() => {
 
 // Status badge color
 const getStatusColor = (status) => {
-  switch (status) {
+  switch (status.toLowerCase()) {
     case 'active':
       return 'bg-green-100 text-green-800'
     case 'pending':
@@ -117,9 +123,8 @@ const getStatusColor = (status) => {
   }
 }
 
-// Role badge color
 const getRoleColor = (role) => {
-  switch (role) {
+  switch (role.toLowerCase()) {
     case 'admin':
       return 'bg-purple-100 text-purple-800'
     case 'user':
@@ -127,6 +132,21 @@ const getRoleColor = (role) => {
     default:
       return 'bg-gray-100 text-gray-800'
   }
+}
+
+// Modal state
+const showUserModal = ref(false)
+const selectedUser = ref(null)
+
+// Modal handlers
+const openUserModal = (user) => {
+  selectedUser.value = user
+  showUserModal.value = true
+}
+
+const closeUserModal = () => {
+  showUserModal.value = false
+  selectedUser.value = null
 }
 
 // Sorting handlers
@@ -259,6 +279,13 @@ const sort = (header) => {
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 <div class="flex items-center gap-3">
                   <button
+                    class="text-blue-600 hover:text-blue-900 flex items-center gap-1"
+                    @click="openUserModal(user)"
+                  >
+                    <font-awesome-icon :icon="['fas', 'eye']" />
+                    View
+                  </button>
+                  <button
                     class="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
                     @click="() => {}"
                   >
@@ -307,5 +334,13 @@ const sort = (header) => {
         </div>
       </div>
     </div>
+
+    <!-- User Details Modal -->
+    <UserDetailsModal
+      v-if="selectedUser"
+      :show="showUserModal"
+      :user="selectedUser"
+      @close="closeUserModal"
+    />
   </div>
 </template>

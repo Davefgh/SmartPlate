@@ -1,8 +1,8 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
-// Mock data for pending registrations
-const pendingRegistrations = ref([
+// Mock data for registrations
+const registrations = ref([
   {
     id: 1,
     submissionDate: '2023-07-15',
@@ -11,6 +11,10 @@ const pendingRegistrations = ref([
     vehicleType: 'Sedan',
     plateNumber: 'ABC-123',
     status: 'pending',
+    make: 'Toyota',
+    model: 'Corolla',
+    year: 2023,
+    color: 'White',
   },
   {
     id: 2,
@@ -19,7 +23,11 @@ const pendingRegistrations = ref([
     applicantEmail: 'maria.garcia@example.com',
     vehicleType: 'SUV',
     plateNumber: 'XYZ-789',
-    status: 'pending',
+    status: 'approved',
+    make: 'Honda',
+    model: 'CR-V',
+    year: 2022,
+    color: 'Blue',
   },
   {
     id: 3,
@@ -28,124 +36,270 @@ const pendingRegistrations = ref([
     applicantEmail: 'david.lee@example.com',
     vehicleType: 'Motorcycle',
     plateNumber: 'DEF-456',
-    status: 'pending',
+    status: 'archived',
+    make: 'Kawasaki',
+    model: 'Ninja',
+    year: 2023,
+    color: 'Red',
   },
 ])
 
-// Function to approve registration
+// Filter registrations by status
+const pendingRegistrations = computed(() =>
+  registrations.value.filter((reg) => reg.status === 'pending'),
+)
+
+const approvedRegistrations = computed(() =>
+  registrations.value.filter((reg) => reg.status === 'approved'),
+)
+
+const archivedRegistrations = computed(() =>
+  registrations.value.filter((reg) => reg.status === 'archived'),
+)
+
+// Search functionality
+const searchQuery = ref('')
+const activeTab = ref('pending')
+
+const filteredRegistrations = computed(() => {
+  let filtered
+  switch (activeTab.value) {
+    case 'pending':
+      filtered = pendingRegistrations.value
+      break
+    case 'approved':
+      filtered = approvedRegistrations.value
+      break
+    case 'archived':
+      filtered = archivedRegistrations.value
+      break
+    default:
+      filtered = []
+  }
+
+  if (!searchQuery.value) return filtered
+
+  const query = searchQuery.value.toLowerCase()
+  return filtered.filter(
+    (registration) =>
+      registration.applicantName.toLowerCase().includes(query) ||
+      registration.plateNumber.toLowerCase().includes(query) ||
+      registration.vehicleType.toLowerCase().includes(query),
+  )
+})
+
+// Registration actions
 const approveRegistration = (id) => {
-  const registration = pendingRegistrations.value.find((reg) => reg.id === id)
+  const registration = registrations.value.find((reg) => reg.id === id)
   if (registration) {
     registration.status = 'approved'
   }
 }
 
-// Function to reject registration
 const rejectRegistration = (id) => {
-  const registration = pendingRegistrations.value.find((reg) => reg.id === id)
+  const registration = registrations.value.find((reg) => reg.id === id)
   if (registration) {
-    registration.status = 'rejected'
+    registration.status = 'archived'
   }
 }
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <h2 class="text-2xl font-bold text-gray-900">Pending Registrations</h2>
+  <div class="space-y-6 p-6">
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">Registration Management</h1>
+        <p class="text-gray-600 mt-1">Review and manage vehicle registration requests</p>
+      </div>
     </div>
 
-    <!-- Pending Registrations Table -->
-    <div class="bg-white shadow-md rounded-lg overflow-hidden">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th
-              scope="col"
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+    <!-- Search and Filter Bar -->
+    <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="relative flex-grow">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search by name, plate number, or vehicle type..."
+            class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-dark-blue/20 transition-all"
+          />
+          <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+            <font-awesome-icon :icon="['fas', 'search']" class="w-4 h-4" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Tabs -->
+    <div class="border-b border-gray-200 mb-6">
+      <nav class="-mb-px flex space-x-8">
+        <button
+          @click="activeTab = 'pending'"
+          :class="[
+            'py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap',
+            activeTab === 'pending'
+              ? 'border-dark-blue text-dark-blue'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+          ]"
+        >
+          Pending
+          <span class="ml-2 py-0.5 px-2 text-xs rounded-full bg-yellow-100 text-yellow-800">{{
+            pendingRegistrations.length
+          }}</span>
+        </button>
+
+        <button
+          @click="activeTab = 'approved'"
+          :class="[
+            'py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap',
+            activeTab === 'approved'
+              ? 'border-dark-blue text-dark-blue'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+          ]"
+        >
+          Approved
+          <span class="ml-2 py-0.5 px-2 text-xs rounded-full bg-green-100 text-green-800">{{
+            approvedRegistrations.length
+          }}</span>
+        </button>
+
+        <button
+          @click="activeTab = 'archived'"
+          :class="[
+            'py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap',
+            activeTab === 'archived'
+              ? 'border-dark-blue text-dark-blue'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+          ]"
+        >
+          Archived
+          <span class="ml-2 py-0.5 px-2 text-xs rounded-full bg-gray-100 text-gray-800">{{
+            archivedRegistrations.length
+          }}</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Registration Cards Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div
+        v-for="registration in filteredRegistrations"
+        :key="registration.id"
+        class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
+      >
+        <!-- Vehicle Image Section -->
+        <div
+          :class="[
+            'h-48 relative overflow-hidden',
+            registration.status === 'pending'
+              ? 'bg-gradient-to-br from-yellow-50 via-orange-50 to-amber-100'
+              : registration.status === 'approved'
+                ? 'bg-gradient-to-br from-green-50 via-emerald-50 to-teal-100'
+                : 'bg-gradient-to-br from-gray-50 via-slate-50 to-zinc-100',
+          ]"
+        >
+          <div class="absolute inset-0 flex items-center justify-center">
+            <font-awesome-icon
+              :icon="
+                registration.vehicleType.toLowerCase() === 'motorcycle'
+                  ? ['fas', 'motorcycle']
+                  : ['fas', 'car']
+              "
+              class="w-24 h-24 opacity-80"
+              :class="[
+                registration.color.toLowerCase() === 'white'
+                  ? 'text-gray-300'
+                  : registration.color.toLowerCase() === 'black'
+                    ? 'text-gray-700'
+                    : registration.color.toLowerCase() === 'red'
+                      ? 'text-red-400'
+                      : registration.color.toLowerCase() === 'blue'
+                        ? 'text-blue-400'
+                        : 'text-gray-300',
+              ]"
+            />
+          </div>
+          <div class="absolute top-4 right-4">
+            <span
+              :class="[
+                'px-2 py-1 text-xs font-semibold rounded-full shadow-sm',
+                registration.status === 'pending'
+                  ? 'bg-yellow-100 text-yellow-800'
+                  : registration.status === 'approved'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-gray-100 text-gray-800',
+              ]"
             >
-              Submission Date
-            </th>
-            <th
-              scope="col"
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              {{ registration.status.charAt(0).toUpperCase() + registration.status.slice(1) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Registration Details -->
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="text-lg font-bold text-gray-800">
+              {{ registration.make }} {{ registration.model }}
+            </h3>
+            <span class="text-sm text-gray-500">{{ registration.year }}</span>
+          </div>
+
+          <div class="space-y-3 mb-4">
+            <div class="flex items-center text-sm">
+              <font-awesome-icon :icon="['fas', 'user']" class="w-4 h-4 text-gray-400 mr-2" />
+              <div>
+                <span class="font-medium text-gray-700">{{ registration.applicantName }}</span>
+                <span class="text-gray-500 block text-xs">{{ registration.applicantEmail }}</span>
+              </div>
+            </div>
+            <div class="flex items-center text-sm">
+              <font-awesome-icon :icon="['fas', 'id-card']" class="w-4 h-4 text-gray-400 mr-2" />
+              <span class="text-gray-600">{{ registration.plateNumber }}</span>
+            </div>
+            <div class="flex items-center text-sm">
+              <font-awesome-icon :icon="['fas', 'calendar']" class="w-4 h-4 text-gray-400 mr-2" />
+              <span class="text-gray-600">Submitted: {{ registration.submissionDate }}</span>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex justify-end space-x-2 mt-4 pt-4 border-t border-gray-100">
+            <button
+              class="px-4 py-2 bg-dark-blue text-white rounded-md hover:bg-blue-700 transition-colors"
+              @click="() => {}"
             >
-              Applicant
-            </th>
-            <th
-              scope="col"
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Vehicle Type
-            </th>
-            <th
-              scope="col"
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Plate Number
-            </th>
-            <th
-              scope="col"
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Status
-            </th>
-            <th
-              scope="col"
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-          <tr v-for="registration in pendingRegistrations" :key="registration.id">
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              {{ registration.submissionDate }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-              <div class="text-sm font-medium text-gray-900">{{ registration.applicantName }}</div>
-              <div class="text-sm text-gray-500">{{ registration.applicantEmail }}</div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              {{ registration.vehicleType }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              {{ registration.plateNumber }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-              <span
-                :class="[
-                  'px-2 inline-flex text-xs leading-5 font-semibold rounded-full',
-                  registration.status === 'pending'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : registration.status === 'approved'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-red-100 text-red-800',
-                ]"
-              >
-                {{ registration.status }}
-              </span>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+              View Details
+            </button>
+            <template v-if="registration.status === 'pending'">
               <button
                 @click="approveRegistration(registration.id)"
-                class="text-green-600 hover:text-green-900"
-                :disabled="registration.status !== 'pending'"
+                class="px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
               >
                 Approve
               </button>
               <button
                 @click="rejectRegistration(registration.id)"
-                class="text-red-600 hover:text-red-900"
-                :disabled="registration.status !== 'pending'"
+                class="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
               >
                 Reject
               </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div
+        v-if="filteredRegistrations.length === 0"
+        class="col-span-full py-12 flex flex-col items-center justify-center bg-white rounded-lg shadow-sm"
+      >
+        <div class="bg-gray-100 rounded-full p-4 mb-4">
+          <font-awesome-icon :icon="['fas', 'clipboard-list']" class="text-gray-400 w-8 h-8" />
+        </div>
+        <h3 class="text-lg font-medium text-gray-900 mb-1">No registrations found</h3>
+        <p class="text-gray-500">Try adjusting your search criteria</p>
+      </div>
     </div>
   </div>
 </template>

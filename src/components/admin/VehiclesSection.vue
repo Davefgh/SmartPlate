@@ -1,11 +1,29 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, defineAsyncComponent } from 'vue'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
+
+const VehicleDetailsModal = defineAsyncComponent(
+  () => import('@/components/modals/VehicleDetailsModal.vue'),
+)
 
 const vehicleStore = useVehicleRegistrationStore()
 
 // Get all vehicles with owner information
-const vehicles = computed(() => vehicleStore.vehiclesWithOwnerInfo)
+const vehicles = computed(() => {
+  return vehicleStore.vehicles.map((vehicle) => {
+    const plate = vehicleStore.platesWithVehicleInfo.find((p) => p.vehicleId === vehicle.id)
+    return {
+      id: vehicle.id,
+      make: vehicle.vehicleMake,
+      model: vehicle.vehicleSeries,
+      year: vehicle.yearModel,
+      plateNumber: plate ? plate.plate_number : 'N/A',
+      color: vehicle.color,
+      status: plate ? plate.status : 'N/A',
+      owner: vehicle.ownerId,
+    }
+  })
+})
 
 // Status filters
 const statusFilters = ref([
@@ -15,10 +33,12 @@ const statusFilters = ref([
   { value: 'Inactive', label: 'Inactive', active: false },
 ])
 
-// Search query
+// Search and filter state
 const searchQuery = ref('')
 const sortBy = ref('make')
 const sortDesc = ref(false)
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
 
 // Active filters
 const activeStatusFilter = computed(() => {
@@ -64,6 +84,14 @@ const filteredVehicles = computed(() => {
   })
 })
 
+// Pagination
+const totalPages = computed(() => Math.ceil(filteredVehicles.value.length / itemsPerPage.value))
+const paginatedVehicles = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  const end = start + itemsPerPage.value
+  return filteredVehicles.value.slice(start, end)
+})
+
 // Sort handler
 const sort = (header) => {
   if (!header.sortable) return
@@ -73,6 +101,21 @@ const sort = (header) => {
     sortBy.value = header.value
     sortDesc.value = false
   }
+}
+
+// Modal state
+const showModal = ref(false)
+const selectedVehicle = ref(null)
+
+const openVehicleDetails = (vehicle) => {
+  // Get the complete vehicle details from the store
+  selectedVehicle.value = vehicleStore.vehicles.find((v) => v.id === vehicle.id)
+  showModal.value = true
+}
+
+const closeModal = () => {
+  showModal.value = false
+  selectedVehicle.value = null
 }
 
 // Table headers
@@ -136,70 +179,131 @@ const headers = [
 
     <!-- Vehicles Table -->
     <div class="bg-white rounded-lg shadow overflow-hidden">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th
-              v-for="header in headers"
-              :key="header.value"
-              @click="sort(header)"
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-              :class="{ 'cursor-default': !header.sortable }"
-            >
-              <div class="flex items-center gap-2">
-                {{ header.text }}
-                <span v-if="header.sortable" class="text-gray-400">
-                  <font-awesome-icon
-                    v-if="sortBy === header.value"
-                    :icon="['fas', sortDesc ? 'sort-down' : 'sort-up']"
-                  />
-                  <font-awesome-icon v-else :icon="['fas', 'sort']" />
-                </span>
-              </div>
-            </th>
-          </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-          <tr v-for="vehicle in filteredVehicles" :key="vehicle.id">
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ vehicle.make }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ vehicle.model }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ vehicle.year }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ vehicle.plateNumber }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ vehicle.color }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              <span
-                :class="{
-                  'px-2 py-1 rounded-full text-xs font-medium': true,
-                  'bg-green-100 text-green-800': vehicle.status === 'Active',
-                  'bg-yellow-100 text-yellow-800': vehicle.status === 'Pending',
-                  'bg-red-100 text-red-800': vehicle.status === 'Inactive',
-                }"
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th
+                v-for="header in headers"
+                :key="header.value"
+                @click="sort(header)"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                :class="{ 'cursor-default': !header.sortable }"
               >
-                {{ vehicle.status }}
-              </span>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ vehicle.owner }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              <button class="text-indigo-600 hover:text-indigo-900 mr-3" @click="() => {}">
-                Edit
-              </button>
-              <button class="text-red-600 hover:text-red-900" @click="() => {}">Delete</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+                <div class="flex items-center gap-2">
+                  {{ header.text }}
+                  <span v-if="header.sortable" class="text-gray-400">
+                    <font-awesome-icon
+                      v-if="sortBy === header.value"
+                      :icon="['fas', sortDesc ? 'sort-down' : 'sort-up']"
+                    />
+                    <font-awesome-icon v-else :icon="['fas', 'sort']" />
+                  </span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr
+              v-for="vehicle in paginatedVehicles"
+              :key="vehicle.id"
+              class="hover:bg-gray-50 transition-colors"
+            >
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ vehicle.make }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ vehicle.model }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ vehicle.year }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ vehicle.plateNumber }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ vehicle.color }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <span
+                  :class="{
+                    'px-2 py-1 rounded-full text-xs font-medium': true,
+                    'bg-green-100 text-green-800': vehicle.status === 'Active',
+                    'bg-yellow-100 text-yellow-800': vehicle.status === 'Pending',
+                    'bg-red-100 text-red-800': vehicle.status === 'Inactive',
+                  }"
+                >
+                  {{ vehicle.status }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ vehicle.owner }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <div class="flex items-center gap-3">
+                  <button
+                    class="text-blue-600 hover:text-blue-900 flex items-center gap-1"
+                    @click="openVehicleDetails(vehicle)"
+                  >
+                    <font-awesome-icon :icon="['fas', 'eye']" />
+                    View
+                  </button>
+                  <button
+                    class="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
+                    @click="() => {}"
+                  >
+                    <font-awesome-icon :icon="['fas', 'edit']" />
+                    Edit
+                  </button>
+                  <button
+                    class="text-red-600 hover:text-red-900 flex items-center gap-1"
+                    @click="() => {}"
+                  >
+                    <font-awesome-icon :icon="['fas', 'trash']" />
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-gray-700">
+            Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
+            {{ Math.min(currentPage * itemsPerPage, filteredVehicles.length) }} of
+            {{ filteredVehicles.length }} entries
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              @click="currentPage--"
+              :disabled="currentPage === 1"
+              class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+            >
+              <font-awesome-icon :icon="['fas', 'chevron-left']" />
+            </button>
+            <span class="text-sm text-gray-700">Page {{ currentPage }} of {{ totalPages }}</span>
+            <button
+              @click="currentPage++"
+              :disabled="currentPage === totalPages"
+              class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+            >
+              <font-awesome-icon :icon="['fas', 'chevron-right']" />
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- Vehicle Details Modal -->
+    <VehicleDetailsModal
+      v-if="selectedVehicle"
+      :show="showModal"
+      :vehicle="selectedVehicle"
+      @close="closeModal"
+    />
   </div>
 </template>

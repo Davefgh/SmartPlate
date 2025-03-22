@@ -22,8 +22,12 @@ const typeFilters = ref([
   { value: 'Renewal', label: 'Renewal', active: false },
 ])
 
-// Search query
+// Search and filter state
 const searchQuery = ref('')
+const sortBy = ref('submissionDate')
+const sortDesc = ref(false)
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
 
 // Active filters
 const activeStatusFilter = computed(() => {
@@ -85,19 +89,60 @@ const filteredRegistrations = computed(() => {
     )
   }
 
-  return result
+  // Apply sorting
+  return result.sort((a, b) => {
+    const modifier = sortDesc.value ? -1 : 1
+    if (a[sortBy.value] < b[sortBy.value]) return -1 * modifier
+    if (a[sortBy.value] > b[sortBy.value]) return 1 * modifier
+    return 0
+  })
 })
 
 // Table headers
 const headers = [
-  { text: 'Vehicle', value: 'vehicleInfo' },
-  { text: 'Plate Number', value: 'plateNumber' },
-  { text: 'Registration Type', value: 'registrationType' },
-  { text: 'Submission Date', value: 'submissionDate' },
-  { text: 'Expiry Date', value: 'expiryDate' },
-  { text: 'Status', value: 'status' },
-  { text: 'Actions', value: 'actions' },
+  { text: 'Vehicle', value: 'vehicleInfo', sortable: true },
+  { text: 'Plate Number', value: 'plateNumber', sortable: true },
+  { text: 'Registration Type', value: 'registrationType', sortable: true },
+  { text: 'Submission Date', value: 'submissionDate', sortable: true },
+  { text: 'Expiry Date', value: 'expiryDate', sortable: true },
+  { text: 'Status', value: 'status', sortable: true },
+  { text: 'Actions', value: 'actions', sortable: false },
 ]
+
+// Pagination
+const totalPages = computed(() =>
+  Math.ceil(filteredRegistrations.value.length / itemsPerPage.value),
+)
+const paginatedRegistrations = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  const end = start + itemsPerPage.value
+  return filteredRegistrations.value.slice(start, end)
+})
+
+// Status badge color
+const getStatusColor = (status) => {
+  switch (status.toLowerCase()) {
+    case 'approved':
+      return 'bg-green-100 text-green-800'
+    case 'pending':
+      return 'bg-yellow-100 text-yellow-800'
+    case 'expired':
+      return 'bg-red-100 text-red-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
+}
+
+// Sort handler
+const sort = (header) => {
+  if (!header.sortable) return
+  if (sortBy.value === header.value) {
+    sortDesc.value = !sortDesc.value
+  } else {
+    sortBy.value = header.value
+    sortDesc.value = false
+  }
+}
 </script>
 
 <template>
@@ -167,47 +212,118 @@ const headers = [
 
     <!-- Registrations Table -->
     <div class="bg-white rounded-lg shadow overflow-hidden">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th
-              v-for="header in headers"
-              :key="header.value"
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th
+                v-for="header in headers"
+                :key="header.value"
+                @click="sort(header)"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                :class="{ 'cursor-default': !header.sortable }"
+              >
+                <div class="flex items-center gap-2">
+                  {{ header.text }}
+                  <span v-if="header.sortable" class="text-gray-400">
+                    <font-awesome-icon
+                      v-if="sortBy === header.value"
+                      :icon="['fas', sortDesc ? 'sort-down' : 'sort-up']"
+                    />
+                    <font-awesome-icon v-else :icon="['fas', 'sort']" />
+                  </span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr
+              v-for="registration in paginatedRegistrations"
+              :key="registration.id"
+              class="hover:bg-gray-50 transition-colors"
             >
-              {{ header.text }}
-            </th>
-          </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-          <tr v-for="registration in filteredRegistrations" :key="registration.id">
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ registration.vehicleInfo }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ registration.plateNumber }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ registration.registrationType }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ registration.submissionDate }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ registration.expiryDate }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ registration.status }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              <button class="text-indigo-600 hover:text-indigo-900 mr-3" @click="() => {}">
-                Edit
-              </button>
-              <button class="text-red-600 hover:text-red-900" @click="() => {}">Delete</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ registration.vehicleInfo }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ registration.plateNumber }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ registration.registrationType }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ registration.submissionDate }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ registration.expiryDate }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <span
+                  :class="[
+                    'px-2 py-1 rounded-full text-xs font-medium',
+                    getStatusColor(registration.status),
+                  ]"
+                >
+                  {{ registration.status }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <div class="flex items-center gap-3">
+                  <button
+                    class="text-blue-600 hover:text-blue-900 flex items-center gap-1"
+                    @click="() => {}"
+                  >
+                    <font-awesome-icon :icon="['fas', 'eye']" />
+                    View
+                  </button>
+                  <button
+                    class="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
+                    @click="() => {}"
+                  >
+                    <font-awesome-icon :icon="['fas', 'edit']" />
+                    Edit
+                  </button>
+                  <button
+                    class="text-red-600 hover:text-red-900 flex items-center gap-1"
+                    @click="() => {}"
+                  >
+                    <font-awesome-icon :icon="['fas', 'trash']" />
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-gray-700">
+            Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
+            {{ Math.min(currentPage * itemsPerPage, filteredRegistrations.length) }} of
+            {{ filteredRegistrations.length }} entries
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              @click="currentPage--"
+              :disabled="currentPage === 1"
+              class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+            >
+              <font-awesome-icon :icon="['fas', 'chevron-left']" />
+            </button>
+            <span class="text-sm text-gray-700">Page {{ currentPage }} of {{ totalPages }}</span>
+            <button
+              @click="currentPage++"
+              :disabled="currentPage === totalPages"
+              class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+            >
+              <font-awesome-icon :icon="['fas', 'chevron-right']" />
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>

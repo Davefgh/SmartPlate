@@ -8,6 +8,8 @@ const vehicleStore = useVehicleRegistrationStore()
 const searchQuery = ref('')
 const sortBy = ref('plateNumber')
 const sortDesc = ref(false)
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
 
 // Status filters
 const statusFilters = ref([
@@ -58,7 +60,14 @@ const plates = computed(() => {
     const vehicle = vehicleStore.vehicles.find((v) => v.id === plate.vehicleId)
     return {
       ...plate,
-      vehicle: vehicle ? `${vehicle.make} ${vehicle.model} ${vehicle.year}` : 'N/A',
+      registrationDate: plate.plate_issue_date,
+      expiryDate: plate.plate_expiration_date,
+      plateNumber: plate.plate_number,
+      type: 'Private',
+      plateType: plate.plate_type,
+      vehicle: vehicle
+        ? `${vehicle.vehicleMake} ${vehicle.vehicleSeries} ${vehicle.yearModel}`
+        : 'N/A',
     }
   })
 })
@@ -95,6 +104,28 @@ const filteredPlates = computed(() => {
     return 0
   })
 })
+
+// Pagination
+const totalPages = computed(() => Math.ceil(filteredPlates.value.length / itemsPerPage.value))
+const paginatedPlates = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  const end = start + itemsPerPage.value
+  return filteredPlates.value.slice(start, end)
+})
+
+// Status badge color
+const getStatusColor = (status) => {
+  switch (status.toLowerCase()) {
+    case 'active':
+      return 'bg-green-100 text-green-800'
+    case 'pending':
+      return 'bg-yellow-100 text-yellow-800'
+    case 'expired':
+      return 'bg-red-100 text-red-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
+}
 
 // Sort handler
 const sort = (header) => {
@@ -178,58 +209,118 @@ const headers = [
 
     <!-- Plates Table -->
     <div class="bg-white rounded-lg shadow overflow-hidden">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th
-              v-for="header in headers"
-              :key="header.value"
-              @click="sort(header)"
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-              :class="{ 'cursor-default': !header.sortable }"
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th
+                v-for="header in headers"
+                :key="header.value"
+                @click="sort(header)"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                :class="{ 'cursor-default': !header.sortable }"
+              >
+                <div class="flex items-center gap-2">
+                  {{ header.text }}
+                  <span v-if="header.sortable" class="text-gray-400">
+                    <font-awesome-icon
+                      v-if="sortBy === header.value"
+                      :icon="['fas', sortDesc ? 'sort-down' : 'sort-up']"
+                    />
+                    <font-awesome-icon v-else :icon="['fas', 'sort']" />
+                  </span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr
+              v-for="plate in paginatedPlates"
+              :key="plate.id"
+              class="hover:bg-gray-50 transition-colors"
             >
-              <div class="flex items-center gap-2">
-                {{ header.text }}
-                <span v-if="header.sortable" class="text-gray-400">
-                  <font-awesome-icon
-                    v-if="sortBy === header.value"
-                    :icon="['fas', sortDesc ? 'sort-down' : 'sort-up']"
-                  />
-                  <font-awesome-icon v-else :icon="['fas', 'sort']" />
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ plate.plateNumber }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ plate.vehicle }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ plate.registrationDate }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ plate.expiryDate }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <span
+                  :class="[
+                    'px-2 py-1 rounded-full text-xs font-medium',
+                    getStatusColor(plate.status),
+                  ]"
+                >
+                  {{ plate.status }}
                 </span>
-              </div>
-            </th>
-          </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-          <tr v-for="plate in filteredPlates" :key="plate.id">
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ plate.plateNumber }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ plate.vehicle }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ plate.registrationDate }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ plate.expiryDate }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ plate.status }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ plate.type }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              <button class="text-indigo-600 hover:text-indigo-900 mr-3" @click="() => {}">
-                Edit
-              </button>
-              <button class="text-red-600 hover:text-red-900" @click="() => {}">Delete</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ plate.type }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <div class="flex items-center gap-3">
+                  <button
+                    class="text-blue-600 hover:text-blue-900 flex items-center gap-1"
+                    @click="() => {}"
+                  >
+                    <font-awesome-icon :icon="['fas', 'eye']" />
+                    View
+                  </button>
+                  <button
+                    class="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
+                    @click="() => {}"
+                  >
+                    <font-awesome-icon :icon="['fas', 'edit']" />
+                    Edit
+                  </button>
+                  <button
+                    class="text-red-600 hover:text-red-900 flex items-center gap-1"
+                    @click="() => {}"
+                  >
+                    <font-awesome-icon :icon="['fas', 'trash']" />
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-gray-700">
+            Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
+            {{ Math.min(currentPage * itemsPerPage, filteredPlates.length) }} of
+            {{ filteredPlates.length }} entries
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              @click="currentPage--"
+              :disabled="currentPage === 1"
+              class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+            >
+              <font-awesome-icon :icon="['fas', 'chevron-left']" />
+            </button>
+            <span class="text-sm text-gray-700">Page {{ currentPage }} of {{ totalPages }}</span>
+            <button
+              @click="currentPage++"
+              :disabled="currentPage === totalPages"
+              class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+            >
+              <font-awesome-icon :icon="['fas', 'chevron-right']" />
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
