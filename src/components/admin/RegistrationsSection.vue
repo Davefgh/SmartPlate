@@ -1,8 +1,26 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, defineAsyncComponent } from 'vue'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
 
+const RegistrationDetailsModal = defineAsyncComponent(
+  () => import('@/components/modals/RegistrationDetailsModal.vue'),
+)
+
 const vehicleStore = useVehicleRegistrationStore()
+
+// Modal state
+const selectedRegistration = ref(null)
+const showDetailsModal = ref(false)
+
+const openDetailsModal = (registration) => {
+  selectedRegistration.value = registration
+  showDetailsModal.value = true
+}
+
+const closeDetailsModal = () => {
+  showDetailsModal.value = false
+  selectedRegistration.value = null
+}
 
 // Get all registrations with details
 const registrations = computed(() => vehicleStore.registrationsWithDetails)
@@ -271,7 +289,7 @@ const sort = (header) => {
                 <div class="flex items-center gap-3">
                   <button
                     class="text-blue-600 hover:text-blue-900 flex items-center gap-1"
-                    @click="() => {}"
+                    @click="openDetailsModal(registration)"
                   >
                     <font-awesome-icon :icon="['fas', 'eye']" />
                     View
@@ -325,5 +343,12 @@ const sort = (header) => {
         </div>
       </div>
     </div>
+
+    <!-- Registration Details Modal -->
+    <RegistrationDetailsModal
+      :show="showDetailsModal"
+      :registration="selectedRegistration"
+      @close="closeDetailsModal"
+    />
   </div>
 </template>

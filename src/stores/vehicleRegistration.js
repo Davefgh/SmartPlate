@@ -376,12 +376,14 @@ export const useVehicleRegistrationStore = defineStore('vehicleRegistration', {
     registrationsWithDetails: (state) => {
       return state.registrations.map((registration) => {
         const vehicle = state.vehicles.find((v) => v.id === registration.vehicleId)
-        const plate = state.plates.find((p) => p.id === registration.plateId)
+        const plate = state.plates.find((p) => p.vehicleId === registration.vehicleId)
 
         return {
           ...registration,
-          vehicleInfo: vehicle ? `${vehicle.make} ${vehicle.model} ${vehicle.year}` : '',
-          plateNumber: plate?.plateNumber || '',
+          vehicleInfo: vehicle
+            ? `${vehicle.vehicleMake} ${vehicle.vehicleSeries} ${vehicle.yearModel}`
+            : 'No vehicle information',
+          plateNumber: plate?.plate_number || 'No plate assigned',
         }
       })
     },

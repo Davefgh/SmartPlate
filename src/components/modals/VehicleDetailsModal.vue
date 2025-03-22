@@ -63,7 +63,7 @@ const getStatusColor = (status) => {
               <h4 class="text-lg font-semibold text-gray-900">
                 {{ vehicle.vehicleMake }} {{ vehicle.vehicleSeries }}
               </h4>
-              <p class="text-gray-600">Plate No: {{ plateDetails?.plateNumber || 'N/A' }}</p>
+              <p class="text-gray-600">Plate No: {{ plateDetails?.plate_number || 'N/A' }}</p>
               <div class="flex gap-2 mt-1">
                 <span
                   :class="[
@@ -194,33 +194,6 @@ const getStatusColor = (status) => {
                 <div class="flex justify-between">
                   <span class="text-gray-600">Gross Weight</span>
                   <span class="font-medium text-gray-900">{{ vehicle.gvw }} kg</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Insurance Information -->
-          <div class="bg-gray-50 rounded-lg p-4 mb-6">
-            <h5 class="font-medium text-gray-900 mb-3">Insurance Information</h5>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="space-y-2">
-                <div class="flex justify-between">
-                  <span class="text-gray-600">Insurance Provider</span>
-                  <span class="font-medium text-gray-900">{{ vehicle.insuranceProvider }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">Policy Number</span>
-                  <span class="font-medium text-gray-900">{{ vehicle.policyNumber }}</span>
-                </div>
-              </div>
-              <div class="space-y-2">
-                <div class="flex justify-between">
-                  <span class="text-gray-600">Coverage Start</span>
-                  <span class="font-medium text-gray-900">{{ vehicle.coverageStart }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">Coverage End</span>
-                  <span class="font-medium text-gray-900">{{ vehicle.coverageEnd }}</span>
                 </div>
               </div>
             </div>

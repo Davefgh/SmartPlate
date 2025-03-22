@@ -1,6 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, defineAsyncComponent } from 'vue'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
+
+const PlateDetailsModal = defineAsyncComponent(
+  () => import('@/components/modals/PlateDetailsModal.vue'),
+)
 
 const vehicleStore = useVehicleRegistrationStore()
 
@@ -139,6 +143,21 @@ const sort = (header) => {
 }
 
 // Table headers
+// Modal state
+const selectedPlate = ref(null)
+const showPlateModal = ref(false)
+
+// Modal handlers
+const openPlateModal = (plate) => {
+  selectedPlate.value = plate
+  showPlateModal.value = true
+}
+
+const closePlateModal = () => {
+  selectedPlate.value = null
+  showPlateModal.value = false
+}
+
 const headers = [
   { text: 'Plate Number', value: 'plateNumber', sortable: true },
   { text: 'Vehicle', value: 'vehicle', sortable: true },
@@ -268,7 +287,7 @@ const headers = [
                 <div class="flex items-center gap-3">
                   <button
                     class="text-blue-600 hover:text-blue-900 flex items-center gap-1"
-                    @click="() => {}"
+                    @click="openPlateModal(plate)"
                   >
                     <font-awesome-icon :icon="['fas', 'eye']" />
                     View
@@ -322,5 +341,13 @@ const headers = [
         </div>
       </div>
     </div>
+
+    <!-- Plate Details Modal -->
+    <PlateDetailsModal
+      v-if="selectedPlate"
+      :show="showPlateModal"
+      :plate="selectedPlate"
+      @close="closePlateModal"
+    />
   </div>
 </template>
