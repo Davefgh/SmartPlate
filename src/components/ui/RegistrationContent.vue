@@ -22,8 +22,10 @@ const registrations = computed(() => {
 
       return {
         ...registration,
-        vehicleInfo: vehicle ? `${vehicle.make} ${vehicle.model} ${vehicle.year}` : '',
-        plateNumber: plate?.plateNumber || '',
+        vehicleInfo: vehicle
+          ? `${vehicle.vehicleMake} ${vehicle.vehicleSeries} ${vehicle.yearModel}`
+          : '',
+        plateNumber: plate?.plate_number || '',
         owner: userStore.fullName,
       }
     })

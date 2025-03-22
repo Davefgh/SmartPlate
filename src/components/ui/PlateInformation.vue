@@ -12,16 +12,36 @@ const userStore = useUserStore()
 // Get plates with relevant information
 const plates = computed(() => {
   if (userStore.isAdmin) {
-    return vehicleRegistrationStore.platesWithVehicleInfo
+    return vehicleRegistrationStore.platesWithVehicleInfo.map((plate) => ({
+      id: plate.plateId,
+      plateNumber: plate.plate_number,
+      plateType: plate.plate_type,
+      registrationDate: plate.plate_issue_date,
+      expiryDate: plate.plate_expiration_date,
+      type: 'Standard',
+      status: plate.status,
+      vehicleMake: plate.vehicleMake,
+      vehicleModel: plate.vehicleModel,
+      vehicleYear: plate.vehicleYear,
+      owner: 'Admin View',
+      vehicleId: plate.vehicleId,
+    }))
   } else {
     return vehicleRegistrationStore.userPlates.map((plate) => {
       const vehicle = vehicleRegistrationStore.getVehicleById(plate.vehicleId)
       return {
-        ...plate,
-        vehicleMake: vehicle?.make || '',
-        vehicleModel: vehicle?.model || '',
-        vehicleYear: vehicle?.year || '',
+        id: plate.plateId,
+        plateNumber: plate.plate_number,
+        plateType: plate.plate_type,
+        registrationDate: plate.plate_issue_date,
+        expiryDate: plate.plate_expiration_date,
+        type: 'Standard',
+        status: plate.status,
+        vehicleMake: vehicle?.vehicleMake || '',
+        vehicleModel: vehicle?.vehicleSeries || '',
+        vehicleYear: vehicle?.yearModel || '',
         owner: userStore.fullName,
+        vehicleId: plate.vehicleId,
       }
     })
   }
