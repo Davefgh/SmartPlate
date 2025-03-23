@@ -1,48 +1,33 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useVehicleRegistrationFormStore } from '@/stores/vehicleRegistrationForm'
+import { useUserStore } from '@/stores/user'
 
-// Mock data for registrations
-const registrations = ref([
-  {
-    id: 1,
-    submissionDate: '2023-07-15',
-    applicantName: 'John Smith',
-    applicantEmail: 'john.smith@example.com',
-    vehicleType: 'Sedan',
-    plateNumber: 'ABC-123',
-    status: 'pending',
-    make: 'Toyota',
-    model: 'Corolla',
-    year: 2023,
-    color: 'White',
-  },
-  {
-    id: 2,
-    submissionDate: '2023-07-14',
-    applicantName: 'Maria Garcia',
-    applicantEmail: 'maria.garcia@example.com',
-    vehicleType: 'SUV',
-    plateNumber: 'XYZ-789',
-    status: 'approved',
-    make: 'Honda',
-    model: 'CR-V',
-    year: 2022,
-    color: 'Blue',
-  },
-  {
-    id: 3,
-    submissionDate: '2023-07-13',
-    applicantName: 'David Lee',
-    applicantEmail: 'david.lee@example.com',
-    vehicleType: 'Motorcycle',
-    plateNumber: 'DEF-456',
-    status: 'archived',
-    make: 'Kawasaki',
-    model: 'Ninja',
-    year: 2023,
-    color: 'Red',
-  },
-])
+const vehicleRegistrationFormStore = useVehicleRegistrationFormStore()
+const userStore = useUserStore()
+
+// Get registrations from store
+const registrations = computed(() => {
+  const forms = vehicleRegistrationFormStore.forms
+  return forms.map((form) => ({
+    id: form.id,
+    submissionDate: form.appointmentDate || 'Not scheduled',
+    applicantName:
+      userStore.mockUsers.find((user) => user.ltoClientId === form.userId)?.firstName +
+        ' ' +
+        userStore.mockUsers.find((user) => user.ltoClientId === form.userId)?.lastName ||
+      'Unknown User',
+    applicantEmail:
+      userStore.mockUsers.find((user) => user.ltoClientId === form.userId)?.email || 'No email',
+    vehicleType: form.vehicleType,
+    plateNumber: 'Pending',
+    status: form.inspectionStatus,
+    make: form.make,
+    model: form.model,
+    year: form.year,
+    color: form.color,
+  }))
+})
 
 // Filter registrations by status
 const pendingRegistrations = computed(() =>
@@ -54,7 +39,7 @@ const approvedRegistrations = computed(() =>
 )
 
 const archivedRegistrations = computed(() =>
-  registrations.value.filter((reg) => reg.status === 'archived'),
+  registrations.value.filter((reg) => reg.status === 'rejected'),
 )
 
 // Search functionality

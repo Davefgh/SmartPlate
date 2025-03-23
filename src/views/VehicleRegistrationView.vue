@@ -1,219 +1,42 @@
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref } from 'vue'
+import FormNavigationGuard from '../components/navigation/FormNavigationGuard.vue'
 import { useRouter } from 'vue-router'
+import { useVehicleRegistrationFormStore } from '../stores/vehicleRegistrationForm'
+import { storeToRefs } from 'pinia'
 import ConfirmNavigationModal from '../components/modals/ConfirmNavigationModal.vue'
 
 const router = useRouter()
+const store = useVehicleRegistrationFormStore()
 const showNavigationModal = ref(false)
-// Current step tracking
-const currentStep = ref(1)
 const totalSteps = 4
 
-// Form data
-const formData = reactive({
-  // Step 1: Vehicle Information
-  vehicleType: '',
-  make: '',
-  model: '',
-  year: null,
-  engineNumber: '',
-  chassisNumber: '',
-  color: '',
+// Use store's state and computed properties
+const { formData, errors, currentStep } = storeToRefs(store)
 
-  // Step 2: Ownership Documents
-  isNewVehicle: true,
-  documents: {
-    csr: null, // Certificate of Stock Report
-    salesInvoice: null,
-    insurance: null,
-    orCr: null, // Official Receipt/Certificate of Registration
-    deedOfSale: null,
-    pnpHpgClearance: null,
-  },
+// Use store's actions
+const {
+  validateVehicleInfo,
+  validateDocuments,
+  validateAppointment,
+  validatePayment,
+  submitRegistration,
+} = store
 
-  // Step 3: Inspection & Verification
-  appointmentDate: null,
-  appointmentTime: null,
-  referenceCode: '',
-  inspectionStatus: 'pending',
-
-  // Step 4: Payment & Processing
-  referenceSlip: null,
-  paymentStatus: 'pending',
-  verificationStatus: 'pending',
-  privacyConsent: false,
-  declarationConsent: false,
-})
-
-// Form validation errors
-const errors = reactive({
-  vehicleType: '',
-  make: '',
-  model: '',
-  year: '',
-  engineNumber: '',
-  chassisNumber: '',
-  color: '',
-  documents: {
-    csr: '',
-    salesInvoice: '',
-    insurance: '',
-    orCr: '',
-    deedOfSale: '',
-    pnpHpgClearance: '',
-  },
-  referenceSlip: '',
-  privacyConsent: '',
-  declarationConsent: '',
-})
-
-// Required documents based on vehicle type
-const requiredDocuments = computed(() => {
-  if (formData.isNewVehicle) {
-    return ['csr', 'salesInvoice', 'insurance']
-  } else {
-    return ['orCr', 'deedOfSale', 'pnpHpgClearance']
-  }
-})
-
-// Validation functions
-const validateVehicleInfo = () => {
-  let isValid = true
-
-  // Reset errors
-  errors.vehicleType = ''
-  errors.make = ''
-  errors.model = ''
-  errors.year = ''
-  errors.engineNumber = ''
-  errors.chassisNumber = ''
-  errors.color = ''
-
-  // Vehicle type validation
-  if (!formData.vehicleType) {
-    errors.vehicleType = 'Please select a vehicle type'
-    isValid = false
-  }
-
-  // Make validation
-  if (!formData.make) {
-    errors.make = 'Vehicle make is required'
-    isValid = false
-  } else if (formData.make.length < 2) {
-    errors.make = 'Vehicle make must be at least 2 characters'
-    isValid = false
-  }
-
-  // Model validation
-  if (!formData.model) {
-    errors.model = 'Vehicle model is required'
-    isValid = false
-  } else if (formData.model.length < 2) {
-    errors.model = 'Vehicle model must be at least 2 characters'
-    isValid = false
-  }
-
-  // Year validation
-  const currentYear = new Date().getFullYear()
-  if (!formData.year) {
-    errors.year = 'Vehicle year is required'
-    isValid = false
-  } else if (isNaN(formData.year) || formData.year < 1900 || formData.year > currentYear + 1) {
-    errors.year = `Year must be between 1900 and ${currentYear + 1}`
-    isValid = false
-  }
-
-  // Engine number validation
-  if (!formData.engineNumber) {
-    errors.engineNumber = 'Engine number is required'
-    isValid = false
-  } else if (!/^[A-Z0-9-]{5,20}$/i.test(formData.engineNumber)) {
-    errors.engineNumber = 'Enter a valid engine number (5-20 alphanumeric characters)'
-    isValid = false
-  }
-
-  // Chassis number validation
-  if (!formData.chassisNumber) {
-    errors.chassisNumber = 'Chassis number is required'
-    isValid = false
-  } else if (!/^[A-Z0-9-]{10,20}$/i.test(formData.chassisNumber)) {
-    errors.chassisNumber = 'Enter a valid chassis number (10-20 alphanumeric characters)'
-    isValid = false
-  }
-
-  // Color validation
-  if (!formData.color) {
-    errors.color = 'Vehicle color is required'
-    isValid = false
-  }
-
-  return isValid
-}
-
-const validateDocuments = () => {
-  let isValid = true
-
-  // Reset document errors
-  Object.keys(errors.documents).forEach((doc) => {
-    errors.documents[doc] = ''
-  })
-
-  // Check required documents
-  requiredDocuments.value.forEach((docType) => {
-    if (!formData.documents[docType]) {
-      errors.documents[docType] = 'This document is required'
-      isValid = false
-    }
-  })
-
-  return isValid
-}
-
-const validateAppointment = () => {
-  let isValid = true
-
-  if (!formData.appointmentDate || !formData.appointmentTime) {
-    alert('Please schedule an appointment first')
-    isValid = false
-  }
-
-  return isValid
-}
-
-const validatePayment = () => {
-  let isValid = true
-
-  if (!formData.referenceSlip) {
-    errors.referenceSlip = 'Please upload your payment reference slip'
-    isValid = false
-  }
-
-  if (!formData.privacyConsent) {
-    errors.privacyConsent = 'Please consent to data privacy'
-    isValid = false
-  }
-
-  if (!formData.declarationConsent) {
-    errors.declarationConsent = 'Please declare the accuracy of your information'
-    isValid = false
-  }
-
-  return isValid
-}
-
-// Navigation functions with validation
 const nextStep = () => {
-  let canProceed = true
+  let isValid = false
 
   if (currentStep.value === 1) {
-    canProceed = validateVehicleInfo()
+    isValid = validateVehicleInfo()
   } else if (currentStep.value === 2) {
-    canProceed = validateDocuments()
+    isValid = validateDocuments()
   } else if (currentStep.value === 3) {
-    canProceed = validateAppointment()
+    isValid = validateAppointment()
+  } else if (currentStep.value === 4) {
+    isValid = validatePayment()
   }
 
-  if (canProceed && currentStep.value < totalSteps) {
+  if (isValid && currentStep.value < totalSteps) {
     currentStep.value++
   }
 }
@@ -277,22 +100,19 @@ const handleFileUpload = (event, documentType) => {
 }
 
 // Submit the registration
-const submitRegistration = () => {
-  // In a real app, this would send the data to the backend
-  // For now, we'll just show success and reset
-  alert('Registration submitted successfully!')
-  router.push('/home')
-}
-
-const validateFinalStep = () => {
+const validateFinalStep = async () => {
   if (validatePayment()) {
-    submitRegistration()
+    const success = await submitRegistration()
+    if (success) {
+      router.push('/home')
+    }
   }
 }
 </script>
 
 <template>
   <div class="p-6 max-w-4xl mx-auto">
+    <FormNavigationGuard />
     <ConfirmNavigationModal
       :is-open="showNavigationModal"
       @confirm="handleNavigationConfirm"

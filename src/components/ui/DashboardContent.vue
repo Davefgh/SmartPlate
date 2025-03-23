@@ -2,6 +2,9 @@
 import { useUserStore } from '@/stores/user'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 const userStore = useUserStore()
 const vehicleStore = useVehicleRegistrationStore()
 
@@ -103,8 +106,8 @@ const navigateToPlates = () => {
   emit('navigate', 'Plates')
 }
 
-const navigateToRegistration = () => {
-  emit('navigate', 'Registration')
+const navigateToVehicleRegistrationForm = () => {
+  router.push('/vehicle-registration')
 }
 </script>
 

@@ -250,20 +250,6 @@ onUnmounted(() => {
               </span>
             </a>
           </li>
-
-          <!-- Logout Button -->
-          <li class="mt-8">
-            <a
-              href="#"
-              class="flex items-center p-3 rounded-lg text-red hover:bg-red hover:bg-opacity-10 transition-all duration-200 group"
-              @click.prevent="confirmLogout"
-            >
-              <div class="w-8 h-8 flex items-center justify-center">
-                <font-awesome-icon :icon="['fas', 'sign-out-alt']" class="w-5 h-5" />
-              </div>
-              <span class="ml-3 font-medium">Log Out</span>
-            </a>
-          </li>
         </ul>
       </nav>
 

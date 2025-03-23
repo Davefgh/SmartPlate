@@ -56,7 +56,7 @@ const router = createRouter({
       path: '/vehicle-registration',
       name: 'vehicleRegistration',
       component: () => import('../views/VehicleRegistrationView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresRegistering: false },
     },
     {
       path: '/admin-portal',
@@ -68,7 +68,7 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: () => import('../views/AdminView.vue'),
-      meta: { requiresAuth: true, requiredRole: 'admin' }
+      meta: { requiresAuth: true, requiredRole: 'admin' },
     },
     {
       path: '/:pathMatch(.*)*',
