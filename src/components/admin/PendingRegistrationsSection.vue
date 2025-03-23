@@ -1,7 +1,25 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, defineAsyncComponent } from 'vue'
 import { useVehicleRegistrationFormStore } from '@/stores/vehicleRegistrationForm'
 import { useUserStore } from '@/stores/user'
+
+const RegistrationDetailsModal = defineAsyncComponent(
+  () => import('@/components/modals/RegistrationDetailsModal.vue'),
+)
+
+// Modal state
+const selectedRegistration = ref(null)
+const showDetailsModal = ref(false)
+
+const openDetailsModal = (registration) => {
+  selectedRegistration.value = registration
+  showDetailsModal.value = true
+}
+
+const closeDetailsModal = () => {
+  showDetailsModal.value = false
+  selectedRegistration.value = null
+}
 
 const vehicleRegistrationFormStore = useVehicleRegistrationFormStore()
 const userStore = useUserStore()
@@ -19,13 +37,25 @@ const registrations = computed(() => {
       'Unknown User',
     applicantEmail:
       userStore.mockUsers.find((user) => user.ltoClientId === form.userId)?.email || 'No email',
-    vehicleType: form.vehicleType,
+    applicantPhone:
+      userStore.mockUsers.find((user) => user.ltoClientId === form.userId)?.phone || 'Not provided',
+    vehicleType: form.vehicleType || 'car',
     plateNumber: 'Pending',
     status: form.inspectionStatus,
     make: form.make,
     model: form.model,
     year: form.year,
     color: form.color,
+    engineNumber: form.engineNumber,
+    chassisNumber: form.chassisNumber,
+    registrationType: form.isNewVehicle ? 'New Vehicle' : 'Renewal',
+    expiryDate: 'Not applicable',
+    referenceCode: form.referenceCode,
+    inspectionStatus: form.inspectionStatus,
+    paymentStatus: form.paymentStatus,
+    verificationStatus: form.verificationStatus,
+    appointmentDate: form.appointmentDate,
+    appointmentTime: form.appointmentTime,
   }))
 })
 
@@ -187,7 +217,7 @@ const rejectRegistration = (id) => {
           <div class="absolute inset-0 flex items-center justify-center">
             <font-awesome-icon
               :icon="
-                registration.vehicleType.toLowerCase() === 'motorcycle'
+                (registration.vehicleType || 'car').toLowerCase() === 'motorcycle'
                   ? ['fas', 'motorcycle']
                   : ['fas', 'car']
               "
@@ -252,7 +282,7 @@ const rejectRegistration = (id) => {
           <div class="flex justify-end space-x-2 mt-4 pt-4 border-t border-gray-100">
             <button
               class="px-4 py-2 bg-dark-blue text-white rounded-md hover:bg-blue-700 transition-colors"
-              @click="() => {}"
+              @click="openDetailsModal(registration)"
             >
               View Details
             </button>
@@ -286,5 +316,13 @@ const rejectRegistration = (id) => {
         <p class="text-gray-500">Try adjusting your search criteria</p>
       </div>
     </div>
+
+    <!-- Registration Details Modal -->
+    <RegistrationDetailsModal
+      v-if="selectedRegistration"
+      :show="showDetailsModal"
+      :registration="selectedRegistration"
+      @close="closeDetailsModal"
+    />
   </div>
 </template>

@@ -24,133 +24,219 @@ const getStatusColor = (status) => {
       return 'bg-green-100 text-green-800'
     case 'pending':
       return 'bg-yellow-100 text-yellow-800'
-    case 'expired':
+    case 'rejected':
       return 'bg-red-100 text-red-800'
     default:
       return 'bg-gray-100 text-gray-800'
   }
 }
+
+const getStatusIcon = (status) => {
+  switch (status?.toLowerCase()) {
+    case 'approved':
+      return ['fas', 'check-circle']
+    case 'pending':
+      return ['fas', 'clock']
+    case 'rejected':
+      return ['fas', 'times-circle']
+    default:
+      return ['fas', 'question-circle']
+  }
+}
 </script>
 
 <template>
-  <div
-    v-if="show"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    @click.self="closeModal"
-  >
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 overflow-hidden">
-      <!-- Modal Header -->
-      <div class="border-b px-6 py-4 flex items-center justify-between">
-        <h3 class="text-xl font-semibold text-gray-900">Registration Details</h3>
-        <button @click="closeModal" class="text-gray-400 hover:text-gray-500 focus:outline-none">
-          <font-awesome-icon :icon="['fas', 'times']" class="w-5 h-5" />
-        </button>
+  <div v-if="show" class="fixed inset-0 z-50 overflow-y-auto">
+    <div
+      class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0"
+    >
+      <!-- Background overlay with blur effect -->
+      <div class="fixed inset-0 transition-opacity" @click="closeModal">
+        <div class="absolute inset-0 bg-gray-700 opacity-60 backdrop-blur-sm"></div>
       </div>
+      <!-- Modal panel -->
+      <div
+        class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full"
+      >
+        <!-- Modal Header -->
+        <div class="border-b px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <font-awesome-icon
+              :icon="getStatusIcon(registration.status)"
+              :class="[getStatusColor(registration.status), 'w-6 h-6']"
+            />
+            <h3 class="text-xl font-semibold text-gray-900">Registration Details</h3>
+          </div>
+          <button @click="closeModal" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+            <font-awesome-icon :icon="['fas', 'times']" class="w-5 h-5" />
+          </button>
+        </div>
 
-      <!-- Modal Content -->
-      <div class="px-6 py-4 max-h-[80vh] overflow-y-auto">
-        <!-- Registration Status Section -->
-        <div class="mb-6">
-          <div class="flex items-center mb-4">
-            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mr-4">
-              <font-awesome-icon :icon="['fas', 'clipboard-list']" class="w-8 h-8 text-blue-600" />
-            </div>
-            <div>
-              <h4 class="text-lg font-semibold text-gray-900">
-                {{ registration.vehicleInfo }}
-              </h4>
-              <p class="text-gray-600">Plate No: {{ registration.plateNumber }}</p>
-              <div class="flex gap-2 mt-1">
-                <span
-                  :class="[
-                    'px-2 py-1 rounded-full text-xs font-medium',
-                    getStatusColor(registration.status),
-                  ]"
-                >
-                  {{ registration.status }}
-                </span>
+        <!-- Modal Content -->
+        <div class="px-6 py-4 max-h-[80vh] overflow-y-auto">
+          <!-- Vehicle Information -->
+          <div class="mb-6">
+            <h4 class="text-lg font-semibold text-gray-900 mb-4">Vehicle Information</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="bg-gray-50 rounded-lg p-4">
+                <div class="space-y-3">
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Make</span>
+                    <span class="font-medium">{{ registration.make }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Model</span>
+                    <span class="font-medium">{{ registration.model }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Year</span>
+                    <span class="font-medium">{{ registration.year }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Color</span>
+                    <span class="font-medium">{{ registration.color }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-gray-50 rounded-lg p-4">
+                <div class="space-y-3">
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Engine Number</span>
+                    <span class="font-medium">{{ registration.engineNumber }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Chassis Number</span>
+                    <span class="font-medium">{{ registration.chassisNumber }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Plate Number</span>
+                    <span class="font-medium">{{ registration.plateNumber }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Vehicle Type</span>
+                    <span class="font-medium">{{ registration.vehicleType }}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Registration Information -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <!-- Applicant Information -->
+          <div class="mb-6">
+            <h4 class="text-lg font-semibold text-gray-900 mb-4">Applicant Information</h4>
             <div class="bg-gray-50 rounded-lg p-4">
-              <h5 class="font-medium text-gray-900 mb-3">Registration Details</h5>
-              <div class="space-y-2">
+              <div class="space-y-3">
                 <div class="flex justify-between">
-                  <span class="text-gray-600">Type</span>
-                  <span class="font-medium">{{ registration.registrationType }}</span>
+                  <span class="text-gray-600">Name</span>
+                  <span class="font-medium">{{ registration.applicantName }}</span>
                 </div>
                 <div class="flex justify-between">
-                  <span class="text-gray-600">Submission Date</span>
-                  <span class="font-medium">{{ registration.submissionDate }}</span>
+                  <span class="text-gray-600">Email</span>
+                  <span class="font-medium">{{ registration.applicantEmail }}</span>
                 </div>
                 <div class="flex justify-between">
-                  <span class="text-gray-600">Expiry Date</span>
-                  <span class="font-medium">{{ registration.expiryDate }}</span>
+                  <span class="text-gray-600">Phone</span>
+                  <span class="font-medium">{{ registration.applicantPhone }}</span>
                 </div>
               </div>
             </div>
+          </div>
 
+          <!-- Registration Details -->
+          <div class="mb-6">
+            <h4 class="text-lg font-semibold text-gray-900 mb-4">Registration Details</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="bg-gray-50 rounded-lg p-4">
+                <div class="space-y-3">
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Registration Type</span>
+                    <span class="font-medium">{{ registration.registrationType }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Reference Code</span>
+                    <span class="font-medium">{{ registration.referenceCode }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Submission Date</span>
+                    <span class="font-medium">{{ registration.submissionDate }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Expiry Date</span>
+                    <span class="font-medium">{{ registration.expiryDate }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-gray-50 rounded-lg p-4">
+                <div class="space-y-3">
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Inspection Status</span>
+                    <span
+                      :class="[
+                        'px-2 py-1 rounded-full text-xs font-medium',
+                        getStatusColor(registration.inspectionStatus),
+                      ]"
+                    >
+                      {{ registration.inspectionStatus }}
+                    </span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Payment Status</span>
+                    <span
+                      :class="[
+                        'px-2 py-1 rounded-full text-xs font-medium',
+                        getStatusColor(registration.paymentStatus),
+                      ]"
+                    >
+                      {{ registration.paymentStatus }}
+                    </span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Verification Status</span>
+                    <span
+                      :class="[
+                        'px-2 py-1 rounded-full text-xs font-medium',
+                        getStatusColor(registration.verificationStatus),
+                      ]"
+                    >
+                      {{ registration.verificationStatus }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Appointment Details -->
+          <div class="mb-6">
+            <h4 class="text-lg font-semibold text-gray-900 mb-4">Appointment Details</h4>
             <div class="bg-gray-50 rounded-lg p-4">
-              <h5 class="font-medium text-gray-900 mb-3">Fees</h5>
-              <div class="space-y-2">
-                <div
-                  v-for="(value, key) in registration.fees"
-                  :key="key"
-                  class="flex justify-between"
-                >
-                  <span class="text-gray-600">{{
-                    key === 'total'
-                      ? 'Total'
-                      : key
-                          .replace(/([A-Z])/g, ' $1')
-                          .trim()
-                          .split(' ')
-                          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                          .join(' ')
+              <div class="space-y-3">
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Date</span>
+                  <span class="font-medium">{{
+                    registration.appointmentDate || 'Not scheduled'
                   }}</span>
-                  <span :class="['font-medium', key === 'total' ? 'text-green-600' : '']"
-                    >₱{{ value.toLocaleString() }}</span
-                  >
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Documents Section -->
-          <div class="bg-gray-50 rounded-lg p-4">
-            <h5 class="font-medium text-gray-900 mb-3">Documents</h5>
-            <div class="grid grid-cols-1 gap-2">
-              <div
-                v-for="(doc, index) in registration.documents"
-                :key="index"
-                class="flex items-center bg-white p-3 rounded-lg"
-              >
-                <font-awesome-icon :icon="['fas', 'file-alt']" class="text-gray-400 mr-3" />
-                <span>{{ doc }}</span>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Time</span>
+                  <span class="font-medium">{{
+                    registration.appointmentTime || 'Not scheduled'
+                  }}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Modal Footer -->
-      <div class="bg-gray-50 px-6 py-4 border-t flex justify-end space-x-3">
-        <button
-          v-if="registration.status === 'Approved'"
-          class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          <font-awesome-icon :icon="['fas', 'download']" class="mr-2" />
-          Download Certificate
-        </button>
-        <button
-          @click="closeModal"
-          class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 bg-white rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          Close
-        </button>
+        <!-- Modal Footer -->
+        <div class="bg-gray-50 px-6 py-4 border-t flex justify-end space-x-3">
+          <button
+            @click="closeModal"
+            class="px-4 py-2 border border-gray-300 text-gray-700 bg-white rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   </div>
