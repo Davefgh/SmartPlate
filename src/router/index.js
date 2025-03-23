@@ -71,6 +71,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiredRole: 'admin' },
     },
     {
+      path: '/test',
+      name: 'test',
+      component: () => import('../views/testDisplay.vue'),
+      meta: { requiresAuth: false, redirectIfAdmin: false },
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'NotFound',
       component: () => import('../views/NotFoundView.vue'),
