@@ -14,7 +14,7 @@ func main() {
 
 	// CORS Configuration (Must be FIRST middleware)
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"http://localhost:5174"},
+		AllowOrigins:     []string{"http://localhost:5174","http://localhost:5173"},
 		AllowMethods:     []string{http.MethodGet, http.MethodOptions},
 		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -26,9 +26,8 @@ func main() {
 
 	// Explicit OPTIONS handler
 	e.OPTIONS("/vehicle", func(c echo.Context) error {
-		return c.NoContent(http.StatusOK)
+		return c.NoContent(http.StatusNoContent)
 	})
-	
 
 	// Main endpoint
 	e.GET("/vehicle", vehicleHandler.GetItems)
