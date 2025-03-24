@@ -3,22 +3,18 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"os"
 
 	"github.com/labstack/echo/v4"
 )
 
 type vehicleHandler struct {
 	pocketBaseURL string
-	adminToken    string
 	client        *http.Client
 }
 
-// Corrected constructor name to be exported
 func NewVehicleHandler() *vehicleHandler {
 	return &vehicleHandler{
 		pocketBaseURL: "http://localhost:8090",
-		adminToken:    os.Getenv("PB_ADMIN_TOKEN"),
 		client:        &http.Client{},
 	}
 }
@@ -28,22 +24,34 @@ func (h *vehicleHandler) GetItems(c echo.Context) error {
 
 	req, err := http.NewRequest("GET", pbURL, nil)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Request creation failed"})
-	}
-
-	if h.adminToken != "" {
-		req.Header.Add("Authorization", h.adminToken)
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Failed to create request: " + err.Error(),
+		})
 	}
 
 	resp, err := h.client.Do(req)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to contact PocketBase"})
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Failed to contact PocketBase: " + err.Error(),
+		})
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		var pbError map[string]interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&pbError); err != nil {
+			return c.JSON(resp.StatusCode, map[string]string{
+				"error": "Received status " + resp.Status,
+			})
+		}
+		return c.JSON(resp.StatusCode, pbError)
+	}
+
 	var result map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to parse response"})
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Failed to parse response: " + err.Error(),
+		})
 	}
 
 	return c.JSON(http.StatusOK, result)
