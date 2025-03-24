@@ -94,7 +94,7 @@ const mockRegistrationForms = [
 export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationForm', {
   persist: {
     storage: sessionStorage,
-    paths: ['formData', 'currentStep', 'hasUnsavedChanges'],
+    paths: ['formData', 'currentStep'],
   },
   state: () => ({
     hasUnsavedChanges: false,
@@ -187,10 +187,6 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
   },
 
   actions: {
-    setUnsavedChanges(value) {
-      this.hasUnsavedChanges = value
-    },
-
     validateVehicleInfo() {
       let isValid = true
 
@@ -202,9 +198,6 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
       this.errors.engineNumber = ''
       this.errors.chassisNumber = ''
       this.errors.color = ''
-
-      // Mark form as having unsaved changes
-      this.setUnsavedChanges(true)
 
       // Vehicle type validation
       if (!this.formData.vehicleType) {
@@ -266,6 +259,11 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
       }
 
       return isValid
+    },
+
+    // Form actions
+    setUnsavedChanges(value) {
+      this.hasUnsavedChanges = value
     },
 
     async submitRegistration() {
