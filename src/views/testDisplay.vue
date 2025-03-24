@@ -26,6 +26,11 @@
           <th
             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
           >
+            PlateNumber
+          </th>
+          <th
+            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+          >
             Created
           </th>
           <th
@@ -39,6 +44,9 @@
         <tr v-for="vehicle in vehicles" :key="vehicle.id">
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ vehicle.id }}</td>
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ vehicle.make }}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            {{ vehicle.platenumber }}
+          </td>
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ vehicle.model }}</td>
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
             {{ formatDate(vehicle.created) }}
@@ -62,7 +70,7 @@ const error = ref(null)
 
 const fetchVehicles = async () => {
   try {
-    const response = await axios.get('http://localhost:8090/api/collections/vehicle/records')
+    const response = await axios.get('http://localhost:1323/vehicle')
     vehicles.value = response.data.items
     loading.value = false
   } catch (err) {
