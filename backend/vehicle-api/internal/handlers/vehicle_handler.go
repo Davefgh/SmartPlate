@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"vehicle-api/internal/models"
@@ -36,12 +37,15 @@ func (h *VehicleHandler) CreateVehicle(c echo.Context) error {
 }
 
 // GetAllVehicles handles GET /vehicles
+// Change this in your VehicleHandler
 func (h *VehicleHandler) GetAllVehicles(c echo.Context) error {
-	vehicles, err := h.repo.GetAll()
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch vehicles"})
-	}
-	return c.JSON(http.StatusOK, vehicles)
+    vehicles, err := h.repo.GetAll()
+    if err != nil {
+        return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+    }
+    log.Printf("Returning %d vehicles", len(vehicles)) // Add this
+    // Return direct array instead of wrapping in "items"
+    return c.JSON(http.StatusOK, vehicles)
 }
 
 // GetVehicle handles GET /vehicles/:id

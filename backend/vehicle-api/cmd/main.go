@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"vehicle-api/internal/database"
 	"vehicle-api/internal/handlers"
 	"vehicle-api/internal/repository"
@@ -11,6 +12,7 @@ import (
 )
 
 func main() {
+	e := echo.New()
 	// Initialize database connection
 	db, err := database.ConnectDB()
 	if err != nil {
@@ -18,20 +20,29 @@ func main() {
 	}
 	defer db.Close()
 
-	// Initialize repositories
+	// Initialize repositories and handlers
 	vehicleRepo := repository.NewVehicleRepository(db)
-
-	// Initialize handlers
 	vehicleHandler := handlers.NewVehicleHandler(vehicleRepo)
 
-	// Create Echo instance
-	e := echo.New()
+
 
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-
-	// Routes for Vehicle CRUD
+	
+	// Enhanced CORS configuration
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:5174"},
+		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		ExposeHeaders:    []string{"Content-Length", "Content-Type"},
+		AllowCredentials: true,
+		MaxAge:           3600,
+	}))
+	// Vehicle routes
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "Vehicle API is running")
+	})
 	e.POST("/vehicles", vehicleHandler.CreateVehicle)
 	e.GET("/vehicles", vehicleHandler.GetAllVehicles)
 	e.GET("/vehicles/:id", vehicleHandler.GetVehicle)
@@ -39,5 +50,5 @@ func main() {
 	e.DELETE("/vehicles/:id", vehicleHandler.DeleteVehicle)
 
 	// Start server
-	e.Logger.Fatal(e.Start(":8080"))
+	e.Logger.Fatal(e.Start(":8081"))
 }

@@ -1,96 +1,178 @@
 <template>
-  <div class="container mx-auto p-4">
-    <h1 class="text-2xl font-bold mb-4">Vehicle List</h1>
-
-    <div v-if="loading" class="text-gray-600">Loading vehicles...</div>
-    <div v-if="error" class="text-red-600">{{ error }}</div>
-
-    <table v-if="vehicles.length" class="min-w-full divide-y divide-gray-200">
-      <thead class="bg-gray-50">
-        <tr>
-          <th
-            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-          >
-            ID
-          </th>
-          <th
-            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-          >
-            Make
-          </th>
-          <th
-            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-          >
-            Model
-          </th>
-          <th
-            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-          >
-            PlateNumber
-          </th>
-          <th
-            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-          >
-            Created
-          </th>
-          <th
-            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-          >
-            Updated
-          </th>
-        </tr>
-      </thead>
-      <tbody class="bg-white divide-y divide-gray-200">
-        <tr v-for="vehicle in vehicles" :key="vehicle.id">
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ vehicle.id }}</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ vehicle.make }}</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ vehicle.model }}</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-            {{ vehicle.platenumber }}
-          </td>
-
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            {{ formatDate(vehicle.created) }}
-          </td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            {{ formatDate(vehicle.updated) }}
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <div>
+    <h1>Vehicle List</h1>
+    <div v-if="loading" class="loading">Loading... ({{ loadingDots }})</div>
+    <div v-else-if="error" class="error">
+      Error: {{ error }}
+      <button @click="retryFetch">Retry</button>
+    </div>
+    <div v-else>
+      <div v-if="vehicles.length === 0" class="no-data">No vehicles found in database</div>
+      <table v-else class="vehicle-table">
+        <thead>
+          <tr>
+            <th v-for="header in tableHeaders" :key="header">
+              {{ header }}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="vehicle in vehicles" :key="vehicle.id">
+            <td>{{ vehicle.id }}</td>
+            <td>{{ vehicle.make }}</td>
+            <td>{{ vehicle.model }}</td>
+            <td>{{ vehicle.plate }}</td>
+            <td>{{ formatDate(vehicle.created) }}</td>
+            <td>{{ formatDate(vehicle.updated) }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="debug-info">Loaded {{ vehicles.length }} vehicles</div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
 
 const vehicles = ref([])
 const loading = ref(true)
 const error = ref(null)
+const loadingDots = ref('')
+const tableHeaders = ['ID', 'Make', 'Model', 'Plate', 'Created', 'Updated']
 
-const fetchVehicles = async () => {
+// Animate loading dots
+let interval = null
+
+const formatDate = (dateString) => {
   try {
-    const response = await axios.get('http://localhost:1323/vehicle')
-    vehicles.value = response.data.items
-    loading.value = false
-  } catch (err) {
-    error.value = 'Failed to load vehicles: ' + err.message
-    loading.value = false
+    const options = {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }
+    return new Date(dateString).toLocaleDateString(undefined, options)
+  } catch (e) {
+    console.error('Date formatting error:', e)
+    return 'Invalid date'
   }
 }
 
-const formatDate = (timestamp) => {
-  if (!timestamp) return '-'
-  const date = new Date(timestamp)
-  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
+const startLoadingAnimation = () => {
+  interval = setInterval(() => {
+    loadingDots.value = '.'.repeat((Date.now() % 3) + 1)
+  }, 500)
+}
+
+const fetchData = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    startLoadingAnimation()
+
+    console.log('Starting data fetch...')
+    const response = await fetch('http://localhost:8081/vehicles')
+    console.log('Received response status:', response.status)
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`HTTP ${response.status}: ${errorText || 'Unknown error'}`)
+    }
+
+    const data = await response.json()
+    console.log('API response data:', data)
+
+    // Handle different response formats
+    if (Array.isArray(data)) {
+      vehicles.value = data
+    } else if (data.items && Array.isArray(data.items)) {
+      vehicles.value = data.items
+    } else {
+      throw new Error('Unexpected response format. Expected array or items array')
+    }
+
+    console.log('Processed vehicles:', vehicles.value)
+  } catch (err) {
+    error.value = `Failed to load: ${err.message}`
+    console.error('Fetch error:', err)
+  } finally {
+    loading.value = false
+    clearInterval(interval)
+  }
+}
+
+const retryFetch = () => {
+  fetchData()
 }
 
 onMounted(() => {
-  fetchVehicles()
+  startLoadingAnimation()
+  fetchData()
 })
 </script>
 
 <style scoped>
-/* Add any custom styles here if needed */
+.loading {
+  color: #666;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  margin: 1rem 0;
+}
+
+.error {
+  color: #dc3545;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 4px;
+}
+
+.error button {
+  margin-left: 1rem;
+  padding: 0.25rem 0.5rem;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.vehicle-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.vehicle-table th,
+.vehicle-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.vehicle-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+}
+
+.vehicle-table tr:hover {
+  background-color: #f8f9fa;
+}
+
+.debug-info {
+  color: #666;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.no-data {
+  color: #666;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  margin: 1rem 0;
+}
 </style>
