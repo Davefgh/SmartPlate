@@ -77,6 +77,12 @@ const router = createRouter({
       meta: { requiresAuth: false, redirectIfAdmin: false },
     },
     {
+      path: '/crud',
+      name: 'crud',
+      component: () => import('../views/testCrud.vue'),
+      meta: { requiresAuth: false, redirectIfAdmin: false },
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'NotFound',
       component: () => import('../views/NotFoundView.vue'),
