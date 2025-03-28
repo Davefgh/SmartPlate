@@ -1,254 +1,247 @@
 <template>
   <div class="crud-container">
-    <h1>Vehicle CRUD Operations</h1>
-
     <!-- Create/Edit Form -->
-    <div class="vehicle-form">
-      <h2>{{ editing ? 'Edit Vehicle' : 'Create New Vehicle' }}</h2>
-      <form @submit.prevent="handleSubmit">
-        <div class="form-group">
-          <label>Make:</label>
-          <input v-model="formData.make" required>
+    <div class="form-section">
+      <h2>{{ editing ? 'Edit User' : 'Create User' }}</h2>
+      <div class="lto-generator">
+        <div class="prefix-display">
+          <span>LTO ID Prefix: </span>
+          <strong>LTO</strong>
         </div>
-        <div class="form-group">
-          <label>Model:</label>
-          <input v-model="formData.model" required>
-        </div>
-        <div class="form-group">
-          <label>Plate:</label>
-          <input v-model="formData.plate" required>
-        </div>
-        <div class="form-actions">
-          <button type="submit">{{ editing ? 'Update' : 'Create' }}</button>
-          <button v-if="editing" @click="cancelEdit">Cancel</button>
-        </div>
-      </form>
+        <button @click="generateLtoId" :disabled="editing">Generate LTO ID</button>
+        <input v-model="form.lto_client_id" placeholder="LTO Client ID" readonly />
+      </div>
+
+      <input v-model="form.first_name" placeholder="First Name" />
+      <input v-model="form.last_name" placeholder="Last Name" />
+      <input v-model="form.middle_name" placeholder="Middle Name" />
+      <input v-model="form.email" placeholder="Email" type="email" />
+      <input v-model="form.password" placeholder="Password" type="password" />
+      <select v-model="form.role">
+        <option value="user">User</option>
+        <option value="admin">Admin</option>
+      </select>
+      <select v-model="form.status">
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+
+      <div class="form-actions">
+        <button v-if="!editing" @click="createUser">Create</button>
+        <button v-if="editing" @click="updateUser">Update</button>
+        <button v-if="editing" @click="cancelEdit">Cancel</button>
+      </div>
     </div>
 
-    <!-- Vehicle List -->
-    <div class="vehicle-list">
-      <div v-if="loading">Loading vehicles...</div>
-      <div v-else-if="error" class="error">{{ error }}</div>
-      <div v-else>
-        <div v-if="vehicles.length === 0" class="no-data">No vehicles found</div>
-        <div v-else class="vehicle-grid">
-          <div v-for="vehicle in vehicles" :key="vehicle.id" class="vehicle-card">
-            <div class="vehicle-info">
-              <div><strong>ID:</strong> {{ vehicle.id }}</div>
-              <div><strong>Make:</strong> {{ vehicle.make }}</div>
-              <div><strong>Model:</strong> {{ vehicle.model }}</div>
-              <div><strong>Plate:</strong> {{ vehicle.plate }}</div>
-              <div><strong>Created:</strong> {{ formatDate(vehicle.created) }}</div>
-              <div><strong>Updated:</strong> {{ formatDate(vehicle.updated) }}</div>
-            </div>
-            <div class="vehicle-actions">
-              <button @click="startEdit(vehicle)">Edit</button>
-              <button @click="deleteVehicle(vehicle.id)">Delete</button>
-            </div>
-          </div>
-        </div>
-      </div>
+    <!-- User Table -->
+    <div class="table-section">
+      <table>
+        <thead>
+          <tr>
+            <th>LTO ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="user in users" :key="user.lto_client_id">
+            <td>{{ user.lto_client_id }}</td>
+            <td>{{ user.last_name }}, {{ user.first_name }}</td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.role }}</td>
+            <td>{{ user.status }}</td>
+            <td>
+              <button @click="editUser(user)">Edit</button>
+              <button @click="deleteUser(user.lto_client_id)">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import axios from 'axios'
 
-const vehicles = ref([])
-const loading = ref(true)
-const error = ref(null)
-const editing = ref(false)
-const currentVehicleId = ref(null)
-
-const formData = reactive({
-  make: '',
-  model: '',
-  plate: ''
+// Reactive state
+const users = ref([])
+const form = reactive({
+  lto_client_id: '',
+  first_name: '',
+  last_name: '',
+  middle_name: '',
+  email: '',
+  password: '',
+  role: 'user',
+  status: 'active',
 })
+const ltoPrefix = ref('LTO')
+const editing = ref(false)
 
-// Format dates
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleString()
-}
+// Lifecycle hook
+onMounted(fetchUsers)
 
-// Fetch all vehicles
-const fetchVehicles = async () => {
+// Methods
+async function generateLtoId() {
   try {
-    loading.value = true
-    const response = await fetch('http://localhost:8081/vehicles')
-    if (!response.ok) throw new Error('Failed to fetch vehicles')
-    vehicles.value = await response.json()
-    error.value = null
-  } catch (err) {
-    error.value = err.message
-    console.error('Fetch error:', err)
-  } finally {
-    loading.value = false
+    const response = await axios.get('http://localhost:8081/generate-lto-id')
+    form.lto_client_id = response.data.lto_client_id
+  } catch (error) {
+    alert('Error generating LTO ID: ' + error.response?.data?.error)
   }
 }
 
-// Handle form submission
-const handleSubmit = async () => {
+async function fetchUsers() {
   try {
-    const url = editing.value
-      ? `http://localhost:8081/vehicles/${currentVehicleId.value}`
-      : 'http://localhost:8081/vehicles'
+    const response = await axios.get('http://localhost:8081/users')
+    users.value = response.data
+  } catch (error) {
+    alert('Error fetching users')
+  }
+}
 
-    const method = editing.value ? 'PUT' : 'POST'
+async function createUser() {
+  if (!validateForm()) return
 
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(formData)
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Request failed')
-    }
-
-    await fetchVehicles()
+  try {
+    await axios.post('http://localhost:8081/users', form)
+    await fetchUsers()
     resetForm()
-  } catch (err) {
-    error.value = err.message
-    console.error('Submission error:', err)
+  } catch (error) {
+    alert('Error creating user!')
   }
 }
 
-// Start editing a vehicle
-const startEdit = (vehicle) => {
+function editUser(user) {
+  Object.assign(form, user)
   editing.value = true
-  currentVehicleId.value = vehicle.id
-  formData.make = vehicle.make
-  formData.model = vehicle.model
-  formData.plate = vehicle.plate
+  ltoPrefix.value = user.lto_client_id.substring(0, 3)
 }
 
-// Cancel editing
-const cancelEdit = () => {
-  resetForm()
-}
+async function updateUser() {
+  if (!validateForm()) return
 
-// Delete a vehicle
-const deleteVehicle = async (id) => {
   try {
-    const response = await fetch(`http://localhost:8081/vehicles/${id}`, {
-      method: 'DELETE'
-    })
-
-    if (!response.ok) throw new Error('Failed to delete vehicle')
-
-    await fetchVehicles()
-    error.value = null
-  } catch (err) {
-    error.value = err.message
-    console.error('Delete error:', err)
+    await axios.put(`http://localhost:8081/users/by-lto/${form.lto_client_id}`, form)
+    await fetchUsers()
+    cancelEdit()
+  } catch (error) {
+    alert('Error updating user!')
   }
 }
 
-// Reset form
-const resetForm = () => {
-  editing.value = false
-  currentVehicleId.value = null
-  formData.make = ''
-  formData.model = ''
-  formData.plate = ''
+async function deleteUser(ltoId) {
+  if (confirm('Are you sure you want to delete this user?')) {
+    try {
+      await axios.delete(`http://localhost:8081/users/by-lto/${ltoId}`)
+      await fetchUsers()
+    } catch (error) {
+      alert('Error deleting user!')
+    }
+  }
 }
 
-// Initial load
-onMounted(fetchVehicles)
+function validateForm() {
+  if (!form.lto_client_id) {
+    alert('Please generate an LTO Client ID')
+    return false
+  }
+  if (!form.email.includes('@')) {
+    alert('Please enter a valid email address')
+    return false
+  }
+  if (form.password.length < 6) {
+    alert('Password must be at least 6 characters')
+    return false
+  }
+  return true
+}
+
+function resetForm() {
+  Object.assign(form, {
+    lto_client_id: '',
+    first_name: '',
+    last_name: '',
+    middle_name: '',
+    email: '',
+    password: '',
+    role: 'user',
+    status: 'active',
+  })
+}
+
+function cancelEdit() {
+  resetForm()
+  editing.value = false
+}
 </script>
 
 <style scoped>
+.prefix-display {
+  margin-right: 10px;
+  padding: 8px;
+  background: #f0f0f0;
+  border-radius: 4px;
+}
+
 .crud-container {
-  max-width: 800px;
+  padding: 20px;
+  max-width: 1000px;
   margin: 0 auto;
+}
+
+.form-section {
+  margin-bottom: 30px;
   padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
 }
 
-.vehicle-form {
-  background: #f5f5f5;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
-.form-group {
-  margin-bottom: 15px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-}
-
-.form-group input {
-  width: 100%;
+input,
+select,
+button {
+  margin: 5px;
   padding: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
 }
 
-.form-actions {
-  margin-top: 15px;
-}
-
 button {
-  padding: 8px 15px;
-  margin-right: 10px;
-  border: none;
-  border-radius: 4px;
   cursor: pointer;
-  background-color: #007bff;
+  background-color: #4caf50;
   color: white;
+  border: none;
 }
 
 button:hover {
-  background-color: #0056b3;
+  opacity: 0.8;
 }
 
-.vehicle-grid {
-  display: grid;
-  gap: 15px;
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
 }
 
-.vehicle-card {
-  background: white;
+th,
+td {
   border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 15px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  padding: 8px;
+  text-align: left;
 }
 
-.vehicle-info {
-  flex-grow: 1;
+th {
+  background-color: #f2f2f2;
 }
 
-.vehicle-actions {
+.lto-generator {
   display: flex;
   gap: 10px;
-}
-
-.error {
-  color: #dc3545;
-  padding: 10px;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  border-radius: 4px;
-  margin: 10px 0;
-}
-
-.no-data {
-  color: #666;
-  padding: 20px;
-  text-align: center;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  margin-bottom: 15px;
 }
 </style>

@@ -7,8 +7,8 @@
       <button @click="retryFetch">Retry</button>
     </div>
     <div v-else>
-      <div v-if="vehicles.length === 0" class="no-data">No vehicles found in database</div>
-      <table v-else class="vehicle-table">
+      <div v-if="users.length === 0" class="no-data">No vehicles found in database</div>
+      <table v-else class="users-table">
         <thead>
           <tr>
             <th v-for="header in tableHeaders" :key="header">
@@ -17,17 +17,21 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="vehicle in vehicles" :key="vehicle.id">
-            <td>{{ vehicle.id }}</td>
-            <td>{{ vehicle.make }}</td>
-            <td>{{ vehicle.model }}</td>
-            <td>{{ vehicle.plate }}</td>
-            <td>{{ formatDate(vehicle.created) }}</td>
-            <td>{{ formatDate(vehicle.updated) }}</td>
+          <tr v-for="user in users" :key="user.user_id">
+            <td>{{ user.user_id }}</td>
+            <td>{{ user.last_name }}</td>
+            <td>{{ user.first_name }}</td>
+            <td>{{ user.middle_name }}</td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.role }}</td>
+            <td>{{ user.status }}</td>
+            <td>{{ user.lto_client_id }}</td>
+            <td>{{ formatDate(user.created) }}</td>
+            <td>{{ formatDate(user.updated) }}</td>
           </tr>
         </tbody>
       </table>
-      <div class="debug-info">Loaded {{ vehicles.length }} vehicles</div>
+      <div class="debug-info">Loaded {{ users.length }} users</div>
     </div>
   </div>
 </template>
@@ -35,11 +39,22 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 
-const vehicles = ref([])
+const users = ref([])
 const loading = ref(true)
 const error = ref(null)
 const loadingDots = ref('')
-const tableHeaders = ['ID', 'Make', 'Model', 'Plate', 'Created', 'Updated']
+const tableHeaders = [
+  'USER_ID',
+  'LAST_NAME',
+  'FIRST_NAME',
+  'MIDDLE_NAME',
+  'EMAIL',
+  'ROLE',
+  'STATUS',
+  'LTO_CLIENT_ID',
+  'Created',
+  'Updated',
+]
 
 // Animate loading dots
 let interval = null
@@ -73,7 +88,7 @@ const fetchData = async () => {
     startLoadingAnimation()
 
     console.log('Starting data fetch...')
-    const response = await fetch('http://localhost:8081/vehicles')
+    const response = await fetch('http://localhost:8081/users')
     console.log('Received response status:', response.status)
 
     if (!response.ok) {
@@ -86,14 +101,14 @@ const fetchData = async () => {
 
     // Handle different response formats
     if (Array.isArray(data)) {
-      vehicles.value = data
+      users.value = data
     } else if (data.items && Array.isArray(data.items)) {
-      vehicles.value = data.items
+      users.value = data.items
     } else {
       throw new Error('Unexpected response format. Expected array or items array')
     }
 
-    console.log('Processed vehicles:', vehicles.value)
+    console.log('Processed Users:', users.value)
   } catch (err) {
     error.value = `Failed to load: ${err.message}`
     console.error('Fetch error:', err)

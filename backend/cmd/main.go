@@ -2,7 +2,9 @@ package main
 
 import (
 	"log"
+	"math/rand"
 	"net/http"
+	"time"
 	"vehicle-api/internal/database"
 	"vehicle-api/internal/handlers"
 	"vehicle-api/internal/repository"
@@ -14,16 +16,15 @@ import (
 func main() {
 	e := echo.New()
 	// Initialize database connection
-	db, err := database.ConnectDB()
+	db, err := database.Connect()
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
-
+	rand.Seed(time.Now().UnixNano())
 	// Initialize repositories and handlers
-	vehicleRepo := repository.NewVehicleRepository(db)
-	vehicleHandler := handlers.NewVehicleHandler(vehicleRepo)
-
+	userRepo := repository.NewUserRepository(db)
+	userHandler := handlers.NewUserHandler(userRepo)
 
 
 	// Middleware
@@ -41,13 +42,20 @@ func main() {
 	}))
 	// Vehicle routes
 	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Vehicle API is running")
+		return c.String(http.StatusOK, "Server is running")
 	})
-	e.POST("/vehicles", vehicleHandler.CreateVehicle)
-	e.GET("/vehicles", vehicleHandler.GetAllVehicles)
-	e.GET("/vehicles/:id", vehicleHandler.GetVehicle)
-	e.PUT("/vehicles/:id", vehicleHandler.UpdateVehicle)
-	e.DELETE("/vehicles/:id", vehicleHandler.DeleteVehicle)
+	e.GET("/generate-lto-id", userHandler.GenerateLTOID)
+	e.POST("/users", userHandler.CreateUser)
+	e.GET("/users", userHandler.GetAllUsers)
+	e.GET("/users/:id", userHandler.GetUserByID)
+	e.GET("/users/email/:email", userHandler.GetUserByEmail)
+	e.PUT("/users/:id", userHandler.UpdateUser)	
+	//for getting user by lto client id
+	e.GET("/users/lto/:lto_client_id", userHandler.GetUserByLTOClientID)
+	e.PUT("/users/by-lto/:lto_client_id", userHandler.UpdateUserByLTO)
+	e.DELETE("/users/by-lto/:lto_client_id", userHandler.DeleteUserByLTO)
+
+
 
 	// Start server
 	e.Logger.Fatal(e.Start(":8081"))
