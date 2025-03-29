@@ -6,7 +6,7 @@
       <div class="lto-generator">
         <div class="prefix-display">
           <span>LTO ID Prefix: </span>
-          <strong>LTO</strong>
+          <strong>325</strong>
         </div>
         <button @click="generateLtoId" :disabled="editing">Generate LTO ID</button>
         <input v-model="form.lto_client_id" placeholder="LTO Client ID" readonly />

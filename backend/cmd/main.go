@@ -2,9 +2,7 @@ package main
 
 import (
 	"log"
-	"math/rand"
 	"net/http"
-	"time"
 	"vehicle-api/internal/database"
 	"vehicle-api/internal/handlers"
 	"vehicle-api/internal/repository"
@@ -21,7 +19,6 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
-	rand.Seed(time.Now().UnixNano())
 	// Initialize repositories and handlers
 	userRepo := repository.NewUserRepository(db)
 	userHandler := handlers.NewUserHandler(userRepo)
@@ -44,16 +41,18 @@ func main() {
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Server is running")
 	})
-	e.GET("/generate-lto-id", userHandler.GenerateLTOID)
 	e.POST("/users", userHandler.CreateUser)
 	e.GET("/users", userHandler.GetAllUsers)
 	e.GET("/users/:id", userHandler.GetUserByID)
 	e.GET("/users/email/:email", userHandler.GetUserByEmail)
 	e.PUT("/users/:id", userHandler.UpdateUser)	
+
 	//for getting user by lto client id
-	e.GET("/users/lto/:lto_client_id", userHandler.GetUserByLTOClientID)
+	e.GET("/users/lto/:lto_client_id", userHandler.GetUserByLTOID)
 	e.PUT("/users/by-lto/:lto_client_id", userHandler.UpdateUserByLTO)
 	e.DELETE("/users/by-lto/:lto_client_id", userHandler.DeleteUserByLTO)
+	//for generating lto client id
+	e.GET("/generate-lto-id", userHandler.GenerateLTOID)  
 
 
 

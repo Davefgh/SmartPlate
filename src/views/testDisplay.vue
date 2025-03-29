@@ -1,41 +1,3 @@
-<template>
-  <div>
-    <h1>Vehicle List</h1>
-    <div v-if="loading" class="loading">Loading... ({{ loadingDots }})</div>
-    <div v-else-if="error" class="error">
-      Error: {{ error }}
-      <button @click="retryFetch">Retry</button>
-    </div>
-    <div v-else>
-      <div v-if="users.length === 0" class="no-data">No vehicles found in database</div>
-      <table v-else class="users-table">
-        <thead>
-          <tr>
-            <th v-for="header in tableHeaders" :key="header">
-              {{ header }}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="user in users" :key="user.user_id">
-            <td>{{ user.user_id }}</td>
-            <td>{{ user.last_name }}</td>
-            <td>{{ user.first_name }}</td>
-            <td>{{ user.middle_name }}</td>
-            <td>{{ user.email }}</td>
-            <td>{{ user.role }}</td>
-            <td>{{ user.status }}</td>
-            <td>{{ user.lto_client_id }}</td>
-            <td>{{ formatDate(user.created) }}</td>
-            <td>{{ formatDate(user.updated) }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="debug-info">Loaded {{ users.length }} users</div>
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { ref, onMounted } from 'vue'
 
@@ -127,67 +89,166 @@ onMounted(() => {
   fetchData()
 })
 </script>
+<template>
+  <div class="container">
+    <h1>User List</h1>
+    <!-- Changed from Vehicle List to User List -->
+    <div v-if="loading" class="status-message loading">Loading...</div>
+    <div v-else-if="error" class="status-message error">
+      Error: {{ error }}
+      <button @click="retryFetch" class="retry-btn">Retry</button>
+    </div>
+    <div v-else>
+      <div v-if="users.length === 0" class="status-message info">No users found</div>
+      <div v-else class="table-container">
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Contact Info</th>
+              <th>Emergency Contact</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="user in users" :key="user.user_id">
+              <td>{{ user.user_id }}</td>
+              <td>
+                {{ user.first_name }}
+                {{ user.middle_name }}
+                {{ user.last_name }}
+              </td>
+              <td>{{ user.email }}</td>
+              <td>{{ user.role }}</td>
+              <td class="status-cell">
+                <span :class="user.status.toLowerCase()">{{ user.status }}</span>
+              </td>
+              <td>
+                <div v-if="user.contact">
+                  <div>📞 {{ user.contact.mobile_number || 'N/A' }}</div>
+                  <div>☎️ {{ user.contact.telephone_number || 'N/A' }}</div>
+                </div>
+                <div v-else>N/A</div>
+              </td>
+              <td>
+                <div v-if="user.contact?.emergency_contact_name">
+                  {{ user.contact.emergency_contact_name }}<br />
+                  {{ user.contact.emergency_contact_number }}<br />
+                  ({{ user.contact.emergency_contact_relationship }})
+                </div>
+                <div v-else>N/A</div>
+              </td>
+              <td>{{ formatDate(user.created) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="table-footer">Showing {{ users.length }} users</div>
+      </div>
+    </div>
+  </div>
+</template>
 
 <style scoped>
-.loading {
-  color: #666;
+.container {
   padding: 1rem;
-  border: 1px solid #ddd;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.status-message {
+  padding: 1rem;
+  border-radius: 4px;
   margin: 1rem 0;
+  text-align: center;
+}
+
+.loading {
+  background: #e9f5ff;
+  color: #004085;
+  border: 1px solid #b8daff;
 }
 
 .error {
-  color: #dc3545;
-  background-color: #f8d7da;
+  background: #f8d7da;
+  color: #721c24;
   border: 1px solid #f5c6cb;
-  padding: 1rem;
-  margin: 1rem 0;
-  border-radius: 4px;
 }
 
-.error button {
+.info {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.retry-btn {
   margin-left: 1rem;
-  padding: 0.25rem 0.5rem;
-  background-color: #dc3545;
+  padding: 0.25rem 1rem;
+  background: #dc3545;
   color: white;
   border: none;
   border-radius: 3px;
   cursor: pointer;
+  transition: opacity 0.2s;
 }
 
-.vehicle-table {
+.retry-btn:hover {
+  opacity: 0.8;
+}
+
+.table-container {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.user-table {
   width: 100%;
   border-collapse: collapse;
-  margin: 1rem 0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  min-width: 800px;
 }
 
-.vehicle-table th,
-.vehicle-table td {
-  padding: 12px;
+.user-table th,
+.user-table td {
+  padding: 12px 15px;
   text-align: left;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid #eee;
 }
 
-.vehicle-table th {
+.user-table th {
   background-color: #f8f9fa;
   font-weight: 600;
 }
 
-.vehicle-table tr:hover {
+.user-table tr:hover {
   background-color: #f8f9fa;
 }
 
-.debug-info {
-  color: #666;
-  font-size: 0.9rem;
-  margin-top: 0.5rem;
+.status-cell span {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.85em;
 }
 
-.no-data {
+.active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.inactive {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.table-footer {
+  padding: 12px;
+  background: #f8f9fa;
   color: #666;
-  padding: 1rem;
-  border: 1px solid #ddd;
-  margin: 1rem 0;
+  font-size: 0.9em;
+  text-align: center;
+  border-top: 1px solid #eee;
 }
 </style>
