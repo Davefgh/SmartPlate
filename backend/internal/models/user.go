@@ -10,12 +10,12 @@ type User struct {
     FIRST_NAME     string    `json:"first_name" db:"first_name"`
     MIDDLE_NAME    string    `json:"middle_name,omitempty" db:"middle_name"`
     EMAIL          string    `json:"email" db:"email"`
-    PASSWORD       string    `json:"-" db:"password"`  // Hidden in JSON responses for security purposes nigus
-    ROLE           string    `json:"role,omitempty" db:"role"`
-    STATUS         string    `json:"status,omitempty" db:"status"`
+   	PASSWORD 	   string 	 `json:"password" db:"password" binding:"required"`
+    ROLE           string    `json:"role" db:"role"`
+    STATUS         string    `json:"status" db:"status"`
     LTO_CLIENT_ID  string    `json:"lto_client_id" db:"lto_client_id"`
-    CREATED        time.Time `json:"created" db:"created"`
-    UPDATED        time.Time `json:"updated" db:"updated"`
+    CREATED        time.Time `json:"-" db:"created"`
+    UPDATED        time.Time `json:"-" db:"updated"`
 	Contact        Contact   `json:"contact" db:"contact"`
 }
 

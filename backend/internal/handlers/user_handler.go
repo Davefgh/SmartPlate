@@ -21,49 +21,47 @@ func NewUserHandler(repo *repository.UserRepository) *UserHandler {
 	return &UserHandler{repo: repo}
 }
 
-//create handles POST /users
-// func (h *UserHandler) CreateUser(c echo.Context) error{
-// 	var user models.User
-// 	if err := c.Bind(&user); err != nil {
-// 		return c.JSON(http.StatusBadRequest, map[string] string{"error": "invalid request body"})
-
-// 	}
-// 	if user.LAST_NAME == "" || user.FIRST_NAME == "" || user.MIDDLE_NAME == "" || user.EMAIL == "" || user.PASSWORD == "" || user.ROLE == "" || user.STATUS == "" || user.LTO_CLIENT_ID == "" {
-// 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "All fields are required"})
-// 	}
-// 	if err := h.repo.Create(&user); err != nil {
-// 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create user"})
-// 	}
-// 	return c.JSON(http.StatusOK, user)
-// }
 func (h *UserHandler) CreateUser(c echo.Context) error {
-	var user models.User
-	if err := c.Bind(&user); err != nil {
-		log.Printf("CreateUser bind error: %v", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
-	}
+    var user models.User
+    if err := c.Bind(&user); err != nil {
+        log.Printf("CreateUser bind error: %v", err)
+        return c.JSON(http.StatusBadRequest, map[string]string{
+            "error": "Invalid request body",
+            "details": err.Error(),
+        })
+    }
 
-	// Validate required fields
-	if user.LAST_NAME == "" || user.FIRST_NAME == "" || user.EMAIL == "" || user.PASSWORD == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Missing required fields"})
-	}
+    // Validate required fields
+    if user.LAST_NAME == "" || user.FIRST_NAME == "" || user.EMAIL == "" || user.PASSWORD == "" {
+        return c.JSON(http.StatusBadRequest, map[string]string{
+            "error": "Missing required fields: last_name, first_name, email, password",
+        })
+    }
 
-	// Generate LTO_CLIENT_ID if not provided
-	if user.LTO_CLIENT_ID == "" {
-		ltoID, err := h.generateUniqueLTOID()
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to generate LTO ID"})
-		}
-		user.LTO_CLIENT_ID = ltoID
-	}
+    // Generate LTO ID if not provided
+    if user.LTO_CLIENT_ID == "" {
+        ltoID, err := h.generateUniqueLTOID()
+        if err != nil {
+            log.Printf("LTO ID generation failed: %v", err)
+            return c.JSON(http.StatusInternalServerError, map[string]string{
+                "error": "Failed to generate unique LTO ID",
+            })
+        }
+        user.LTO_CLIENT_ID = ltoID
+    }
 
-	// Create user with transaction
-	if err := h.repo.Create(&user); err != nil {
-		log.Printf("CreateUser error: %v", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create user"})
-	}
+    // Create user with transaction
+    if err := h.repo.Create(&user); err != nil {
+        log.Printf("CreateUser error: %v", err) // Detailed logging
+        return c.JSON(http.StatusInternalServerError, map[string]string{
+            "error": "Failed to create user",
+            "details": err.Error(), // Return actual error to client
+        })
+    }
 
-	return c.JSON(http.StatusCreated, user)
+    // Clear sensitive data before response
+    user.PASSWORD = ""
+    return c.JSON(http.StatusCreated, user)
 }
 
 
@@ -205,7 +203,7 @@ func (h *UserHandler) GenerateLTOID(c echo.Context) error {
 	})
 }
 
-// Helper function with proper 15-digit generation
+//15-digit generation
 func (h *UserHandler) generateUniqueLTOID() (string, error) {
 	const (
 		prefix      = "25" // 2-digit prefix 25 for 2025

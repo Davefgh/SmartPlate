@@ -6,7 +6,7 @@
       <div class="lto-generator">
         <div class="prefix-display">
           <span>LTO ID Prefix: </span>
-          <strong>325</strong>
+          <strong>25</strong>
         </div>
         <button @click="generateLtoId" :disabled="editing">Generate LTO ID</button>
         <input v-model="form.lto_client_id" placeholder="LTO Client ID" readonly />
@@ -17,6 +17,18 @@
       <input v-model="form.middle_name" placeholder="Middle Name" />
       <input v-model="form.email" placeholder="Email" type="email" />
       <input v-model="form.password" placeholder="Password" type="password" />
+      <input v-model="form.contact.telephone_number" placeholder="Telephone Number" />
+      <input v-model="form.contact.mobile_number" placeholder="Mobile Number" />
+      <input
+        v-model="form.contact.emergency_contact_number"
+        placeholder="Emergency Contact Number"
+      />
+      <input v-model="form.contact.emergency_contact_name" placeholder="Emergency Contact Name" />
+      <input
+        v-model="form.contact.emergency_contact_relationship"
+        placeholder="Emergency Relationship"
+      />
+      <input v-model="form.contact.emergency_contact_address" placeholder="Emergency Address" />
       <select v-model="form.role">
         <option value="user">User</option>
         <option value="admin">Admin</option>
@@ -60,6 +72,24 @@
           </tr>
         </tbody>
       </table>
+      <table>
+        <thead>
+          <tr>
+            <th>Mobile</th>
+            <th>Emergency Contact</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="user in users" :key="user.lto_client_id">
+            <td>{{ user.contact.mobile_number }}</td>
+            <td>
+              {{ user.contact.emergency_contact_name }} ({{
+                user.contact.emergency_contact_number
+              }})
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </template>
@@ -79,6 +109,14 @@ const form = reactive({
   password: '',
   role: 'user',
   status: 'active',
+  contact: {
+    telephone_number: '',
+    mobile_number: '',
+    emergency_contact_number: '',
+    emergency_contact_name: '',
+    emergency_contact_relationship: '',
+    emergency_contact_address: '',
+  },
 })
 const ltoPrefix = ref('LTO')
 const editing = ref(false)
@@ -109,9 +147,13 @@ async function createUser() {
   if (!validateForm()) return
 
   try {
-    await axios.post('http://localhost:8081/users', form)
-    await fetchUsers()
-    resetForm()
+    const payload = {
+      ...this.form,
+      last_name: this.form.last_name, // Explicit mapping if needed
+      first_name: this.form.first_name,
+      password: this.form.password,
+    }
+    await axios.post('http://localhost:8081/users', payload)
   } catch (error) {
     alert('Error creating user!')
   }
@@ -157,6 +199,10 @@ function validateForm() {
   }
   if (form.password.length < 6) {
     alert('Password must be at least 6 characters')
+    return false
+  }
+  if (!form.contact.mobile_number) {
+    alert('Mobile number is required')
     return false
   }
   return true

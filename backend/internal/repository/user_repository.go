@@ -17,51 +17,66 @@ func NewUserRepository(db *sqlx.DB) *UserRepository {
 
 //create a new user
 func (r *UserRepository) Create(user *models.User) error {
-	tx := r.db.MustBegin()
-    
+    tx := r.db.MustBegin()
 
-    // Insert user
+    // Insert user with explicit parameter binding
     err := tx.QueryRow(`
         INSERT INTO users (
-            last_name, first_name, middle_name, email, password, role, status, lto_client_id
-        ) VALUES (
-            :last_name, :first_name, :middle_name, :email, :password, :role, :status, :lto_client_id
-        )
+            last_name, first_name, middle_name, email, 
+            password, role, status, lto_client_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING user_id, created, updated
-    `, user).Scan(&user.USER_ID, &user.CREATED, &user.UPDATED)
+    `,
+    user.LAST_NAME,
+    user.FIRST_NAME,
+    user.MIDDLE_NAME,
+    user.EMAIL,
+    user.PASSWORD,
+    user.ROLE,
+    user.STATUS,
+    user.LTO_CLIENT_ID,
+    ).Scan(&user.USER_ID, &user.CREATED, &user.UPDATED)
     
     if err != nil {
         tx.Rollback()
-        return err
+        return fmt.Errorf("user insertion failed: %w", err)
     }
 
-    // Insert contact if any data exists
+    // Insert contact with proper null handling
     _, err = tx.NamedExec(`
-            INSERT INTO contacts (
-                lto_client_id, telephone_number, int_area_code, mobile_number,
-                emergency_contact_number, emergency_contact_name, emergency_contact_relationship, emergency_contact_address
-            ) VALUES (
-                :lto_client_id, :telephone_number, :int_area_code, :mobile_number,
-                :emergency_contact_number, :emergency_contact_name, :emergency_contact_relationship, :emergency_contact_address
-            )`,
-			map[string]interface{}{
+        INSERT INTO contacts (
+            lto_client_id, telephone_number, mobile_number,
+            emergency_contact_number, emergency_contact_name,
+            emergency_contact_relationship, emergency_contact_address
+        ) VALUES (
+            :lto_client_id, :telephone_number, :mobile_number,
+            :emergency_contact_number, :emergency_contact_name,
+            :emergency_contact_relationship, :emergency_contact_address
+        )`,
+        map[string]interface{}{
             "lto_client_id":                  user.LTO_CLIENT_ID,
-            "telephone_number":               user.Contact.TELEPHONE_NUMBER,
-            "int_area_code":                  user.Contact.INT_AREA_CODE,
-            "mobile_number":                  user.Contact.MOBILE_NUMBER,
-            "emergency_contact_number":       user.Contact.EMERGENCY_CONTACT_NUMBER,
-            "emergency_contact_name":         user.Contact.EMERGENCY_CONTACT_NAME,
-            "emergency_contact_relationship": user.Contact.EMERGENCY_CONTACT_RELATIONSHIP,
-            "emergency_contact_address":      user.Contact.EMERGENCY_CONTACT_ADDRESS,
-        	},
-	)
-	if err != nil {
-        tx.Rollback()
-        return err
-    }
+            "telephone_number":               toNullString(user.Contact.TELEPHONE_NUMBER),
+            "mobile_number":                 toNullString(user.Contact.MOBILE_NUMBER),
+            "emergency_contact_number":      toNullString(user.Contact.EMERGENCY_CONTACT_NUMBER),
+            "emergency_contact_name":        toNullString(user.Contact.EMERGENCY_CONTACT_NAME),
+            "emergency_contact_relationship": toNullString(user.Contact.EMERGENCY_CONTACT_RELATIONSHIP),
+            "emergency_contact_address":     toNullString(user.Contact.EMERGENCY_CONTACT_ADDRESS),
+        })
     
+    if err != nil {
+        tx.Rollback()
+        return fmt.Errorf("contact insertion failed: %w", err)
+    }
 
     return tx.Commit()
+}
+
+// Helper function to handle null strings
+func toNullString(s *string) interface{} {
+    if s == nil || *s == "" {
+        return nil
+    }
+    return *s
 }
 
 
@@ -110,9 +125,7 @@ func (r *UserRepository) GetByID(user_id int) (models.User, error) {
     err := r.db.Get(&user, query, user_id)
     return user, err
 }
-// Similarly update GetByEmail, GetByLTOClientID, etc.
 
-// In your repository/user_repository.go
 func (r *UserRepository) GetByLTOClientID(ltoClientID string) (models.User, error) {
     var user models.User
     err := r.db.Get(&user, "SELECT * FROM users WHERE lto_client_id = $1", ltoClientID)
