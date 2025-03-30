@@ -12,7 +12,30 @@ const selectedRegistration = ref(null)
 const showDetailsModal = ref(false)
 
 const openDetailsModal = (registration) => {
-  selectedRegistration.value = registration
+  // Ensure all required properties are present in the registration object
+  selectedRegistration.value = {
+    ...registration,
+    // Add any missing properties with default values
+    applicantName: registration.applicantName || 'Unknown',
+    applicantEmail: registration.applicantEmail || 'No email',
+    applicantPhone: registration.applicantPhone || 'Not provided',
+    make: registration.make || 'Unknown',
+    model: registration.model || 'Unknown',
+    year: registration.year || 'Unknown',
+    color: registration.color || 'Unknown',
+    engineNumber: registration.engineNumber || 'Unknown',
+    chassisNumber: registration.chassisNumber || 'Unknown',
+    plateNumber: registration.plateNumber || 'Pending',
+    vehicleType: registration.vehicleType || 'Unknown',
+    registrationType: registration.registrationType || 'Unknown',
+    referenceCode: registration.referenceCode || 'Unknown',
+    submissionDate: registration.submissionDate || 'Not specified',
+    expiryDate: registration.expiryDate || 'Not applicable',
+    inspectionStatus: registration.inspectionStatus || 'pending',
+    paymentStatus: registration.paymentStatus || 'pending',
+    verificationStatus: registration.verificationStatus || 'pending',
+    status: registration.status || 'pending',
+  }
   showDetailsModal.value = true
 }
 
