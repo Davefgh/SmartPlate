@@ -13,7 +13,28 @@ const selectedRegistration = ref(null)
 const showDetailsModal = ref(false)
 
 const openDetailsModal = (registration) => {
-  selectedRegistration.value = registration
+  selectedRegistration.value = {
+    ...registration,
+    applicantName: registration.applicantName || 'Unknown',
+    applicantEmail: registration.applicantEmail || 'No email',
+    applicantPhone: registration.applicantPhone || 'Not provided',
+    make: registration.make || registration.vehicleInfo?.split(' ')[0] || 'Unknown',
+    model: registration.model || registration.vehicleInfo?.split(' ')[1] || 'Unknown',
+    year: registration.year || registration.vehicleInfo?.split(' ')[2] || 'Unknown',
+    color: registration.color || 'Unknown',
+    engineNumber: registration.engineNumber || 'Unknown',
+    chassisNumber: registration.chassisNumber || 'Unknown',
+    plateNumber: registration.plateNumber || 'Pending',
+    vehicleType: registration.vehicleType || 'Unknown',
+    registrationType: registration.registrationType || 'Unknown',
+    referenceCode: registration.referenceCode || 'Unknown',
+    submissionDate: registration.submissionDate || 'Not specified',
+    expiryDate: registration.expiryDate || 'Not applicable',
+    inspectionStatus: registration.inspectionStatus || registration.status || 'pending',
+    paymentStatus: registration.paymentStatus || 'pending',
+    verificationStatus: registration.verificationStatus || 'pending',
+    status: registration.status || 'pending',
+  }
   showDetailsModal.value = true
 }
 

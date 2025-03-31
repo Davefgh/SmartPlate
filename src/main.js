@@ -71,6 +71,7 @@ import {
   faPalette,
   faCalendarCheck,
   faCalendarTimes,
+  faTachometerAlt,
 } from '@fortawesome/free-solid-svg-icons'
 import { faGoogle } from '@fortawesome/free-brands-svg-icons'
 
@@ -139,6 +140,7 @@ library.add(
   faPalette,
   faCalendarCheck,
   faCalendarTimes,
+  faTachometerAlt,
 )
 
 const app = createApp(App)

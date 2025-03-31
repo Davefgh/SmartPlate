@@ -100,7 +100,12 @@ const validateAndLogin = () => {
               :class="{ 'border-red-500': errors.email }"
               placeholder="Admin Email"
             />
-            <p v-if="errors.email" class="mt-1 text-sm text-red-600">{{ errors.email }}</p>
+            <p
+              v-if="errors.email"
+              class="mt-1 text-sm text-red-600 animate-appear font-medium pl-1"
+            >
+              {{ errors.email }}
+            </p>
           </div>
 
           <div>
@@ -117,16 +122,24 @@ const validateAndLogin = () => {
               :class="{ 'border-red-500': errors.password }"
               placeholder="Password"
             />
-            <p v-if="errors.password" class="mt-1 text-sm text-red-600">{{ errors.password }}</p>
+            <p
+              v-if="errors.password"
+              class="mt-1 text-sm text-red-600 animate-appear font-medium pl-1"
+            >
+              {{ errors.password }}
+            </p>
           </div>
         </div>
 
-        <div v-if="errors.form" class="rounded-md bg-red-50 p-4">
+        <div
+          v-if="errors.form"
+          class="rounded-md bg-red-50 p-4 animate-appear border border-red-100 shadow-sm"
+        >
           <div class="flex">
             <div class="flex-shrink-0">
               <font-awesome-icon
                 :icon="['fas', 'exclamation-circle']"
-                class="h-5 w-5 text-red-400"
+                class="h-5 w-5 text-red-500"
               />
             </div>
             <div class="ml-3">
@@ -153,3 +166,20 @@ const validateAndLogin = () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.animate-appear {
+  animation: appear 0.3s ease-in-out;
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>

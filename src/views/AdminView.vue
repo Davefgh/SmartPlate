@@ -1,10 +1,12 @@
 <script setup>
-import { ref, onMounted, watch, defineAsyncComponent, computed } from 'vue'
-import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
+import { ref, onMounted, watch, defineAsyncComponent } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
 
 const LogoutModal = defineAsyncComponent(() => import('@/components/modals/LogoutModal.vue'))
+const DashboardSection = defineAsyncComponent(
+  () => import('@/components/admin/DashboardSection.vue'),
+)
 const UsersSection = defineAsyncComponent(() => import('@/components/admin/UsersSection.vue'))
 const VehiclesSection = defineAsyncComponent(() => import('@/components/admin/VehiclesSection.vue'))
 const PlatesSection = defineAsyncComponent(() => import('@/components/admin/PlatesSection.vue'))
@@ -16,7 +18,6 @@ const PendingRegistrationsSection = defineAsyncComponent(
 )
 
 const userStore = useUserStore()
-const vehicleRegistrationStore = useVehicleRegistrationStore()
 const router = useRouter()
 
 // Logout modal state
@@ -49,18 +50,7 @@ const toggleSidebar = () => {
 }
 
 // Active section management
-const activeSection = ref('users')
-
-// Dynamic data from stores
-const totalUsers = computed(
-  () => userStore.mockUsers.filter((user) => user.role !== 'admin').length,
-)
-const newRegistrations = computed(() => vehicleRegistrationStore.activeRegistrations.length)
-const pendingApprovals = computed(() => vehicleRegistrationStore.pendingRegistrations.length)
-const activeVehicles = computed(
-  () => vehicleRegistrationStore.vehicles.filter((v) => v.status === 'Active').length,
-)
-
+const activeSection = ref('dashboard')
 // Mock user list
 const users = ref([
   {
@@ -151,6 +141,17 @@ watch(searchQuery, () => {
         <!-- Navigation Menu -->
         <nav class="space-y-2">
           <button
+            @click="activeSection = 'dashboard'"
+            :class="[
+              'w-full flex items-center p-2 rounded-lg transition-colors',
+              activeSection === 'dashboard' ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100',
+            ]"
+          >
+            <font-awesome-icon :icon="['fas', 'tachometer-alt']" class="w-5 h-5" />
+            <span v-if="isSidebarOpen" class="ml-3">Dashboard</span>
+          </button>
+
+          <button
             @click="activeSection = 'users'"
             :class="[
               'w-full flex items-center p-2 rounded-lg transition-colors',
@@ -240,77 +241,22 @@ watch(searchQuery, () => {
 
       <!-- Dashboard Content -->
       <main class="p-6">
-        <!-- Stats Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-          <!-- Total Users -->
-          <div class="bg-white rounded-xl shadow-md p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-gray-500 text-sm">Total Users</p>
-                <h3 class="text-2xl font-bold text-gray-900">{{ totalUsers }}</h3>
-              </div>
-              <div class="bg-blue-100 p-3 rounded-full">
-                <font-awesome-icon :icon="['fas', 'users']" class="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-          </div>
-
-          <!-- New Registrations -->
-          <div class="bg-white rounded-xl shadow-md p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-gray-500 text-sm">New Registrations</p>
-                <h3 class="text-2xl font-bold text-gray-900">{{ newRegistrations }}</h3>
-              </div>
-              <div class="bg-green-100 p-3 rounded-full">
-                <font-awesome-icon
-                  :icon="['fas', 'clipboard-list']"
-                  class="w-6 h-6 text-green-600"
-                />
-              </div>
-            </div>
-          </div>
-
-          <!-- Pending Approvals -->
-          <div class="bg-white rounded-xl shadow-md p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-gray-500 text-sm">Pending Approvals</p>
-                <h3 class="text-2xl font-bold text-gray-900">{{ pendingApprovals }}</h3>
-              </div>
-              <div class="bg-yellow-100 p-3 rounded-full">
-                <font-awesome-icon :icon="['fas', 'clock']" class="w-6 h-6 text-yellow-600" />
-              </div>
-            </div>
-          </div>
-
-          <!-- Active Vehicles -->
-          <div class="bg-white rounded-xl shadow-md p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-gray-500 text-sm">Active Vehicles</p>
-                <h3 class="text-2xl font-bold text-gray-900">{{ activeVehicles }}</h3>
-              </div>
-              <div class="bg-red-100 p-3 rounded-full">
-                <font-awesome-icon :icon="['fas', 'car']" class="w-6 h-6 text-red-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- Dynamic Section Content -->
         <component
           :is="
-            activeSection === 'users'
-              ? UsersSection
-              : activeSection === 'vehicles'
-                ? VehiclesSection
-                : activeSection === 'plates'
-                  ? PlatesSection
-                  : activeSection === 'pending-registrations'
-                    ? PendingRegistrationsSection
-                    : RegistrationsSection
+            activeSection === 'dashboard'
+              ? DashboardSection
+              : activeSection === 'users'
+                ? UsersSection
+                : activeSection === 'vehicles'
+                  ? VehiclesSection
+                  : activeSection === 'plates'
+                    ? PlatesSection
+                    : activeSection === 'pending-registrations'
+                      ? PendingRegistrationsSection
+                      : RegistrationsSection
           "
+          @change-section="activeSection = $event"
         />
       </main>
     </div>
