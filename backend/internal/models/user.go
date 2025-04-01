@@ -17,9 +17,11 @@ type User struct {
     CREATED        time.Time `json:"-" db:"created"`
     UPDATED        time.Time `json:"-" db:"updated"`
 	Contact        Contact   `json:"contact" db:"contact"`
+	Address        Address   `json:"address" db:"address"`
+	MedicalInformation MedicalInformation `json:"medical_information" db:"medical_information"`
+	
 }
 
-// models/user.go
 type Contact struct {
     CONTACT_ID                     *int    `json:"contact_id,omitempty" db:"contact_id"`
     LTO_CLIENT_ID                  *string `json:"lto_client_id,omitempty" db:"lto_client_id"`
@@ -32,27 +34,27 @@ type Contact struct {
     EMERGENCY_CONTACT_ADDRESS      *string `json:"emergency_contact_address,omitempty" db:"emergency_contact_address"`
 }
 type Address struct {
-	ADDRESS_ID        int    `json:"address_id" db:"address_id"`
-	HOUSE_NO          string `json:"house_no" db:"house_no"`
-	STREET            string `json:"street" db:"street"`
-	PROVINCE          string `json:"province" db:"province"`
-	CITY_MUNICIPALITY string `json:"city_municipality" db:"city_municipality"`
-	BARANGAY          string `json:"barangay" db:"barangay"`
-	ZIP_CODE          string `json:"zip_code" db:"zip_code"`
-	LTO_CLIENT_ID     string `json:"lto_client_id" db:"lto_client_id"`
+    ADDRESS_ID         *int    `json:"address_id,omitempty" db:"address_id"`
+    HOUSE_NO          *string `json:"house_no,omitempty" db:"house_no"`
+    STREET            *string `json:"street,omitempty" db:"street"`
+    PROVINCE          *string `json:"province,omitempty" db:"province"`
+    CITY_MUNICIPALITY *string `json:"city_municipality,omitempty" db:"city_municipality"`
+    BARANGAY          *string `json:"barangay,omitempty" db:"barangay"`
+    ZIP_CODE          *string `json:"zip_code,omitempty" db:"zip_code"`
+    LTO_CLIENT_ID     *string `json:"lto_client_id,omitempty" db:"lto_client_id"`
 }
 
 type MedicalInformation struct {
-	MEDICAL_ID    int    `json:"medical_id" db:"medical_id"`
-	GENDER        string `json:"gender" db:"gender"`
-	BLOOD_TYPE    string `json:"blood_type" db:"blood_type"`
-	COMPLEXION    string `json:"complexion" db:"complexion"`
-	EYE_COLOR     string `json:"eye_color" db:"eye_color"`
-	HAIR_COLOR    string `json:"hair_color" db:"hair_color"`
-	WEIGHT        int    `json:"weight" db:"weight"`
-	HEIGHT        int    `json:"height" db:"height"`
-	ORGAN_DONOR   bool   `json:"organ_donor" db:"organ_donor"`
-	LTO_CLIENT_ID string `json:"lto_client_id" db:"lto_client_id"`
+    MEDICAL_ID    *int    `json:"medical_id" db:"medical_id"`
+    GENDER        *string `json:"gender" db:"gender"`
+    BLOOD_TYPE    *string `json:"blood_type" db:"blood_type"`
+    COMPLEXION    *string `json:"complexion" db:"complexion"`
+    EYE_COLOR     *string `json:"eye_color" db:"eye_color"`
+    HAIR_COLOR    *string `json:"hair_color" db:"hair_color"`
+    WEIGHT        *int    `json:"weight" db:"weight"`
+    HEIGHT        *int    `json:"height" db:"height"`
+    ORGAN_DONOR   *bool   `json:"organ_donor" db:"organ_donor"`
+    LTO_CLIENT_ID *string `json:"lto_client_id" db:"lto_client_id"`
 }
 
 type People struct {
