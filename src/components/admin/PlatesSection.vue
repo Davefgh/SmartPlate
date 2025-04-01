@@ -3,6 +3,10 @@ import { ref, computed, defineAsyncComponent } from 'vue'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
 import type { Plate, Vehicle } from '@/types/vehicle'
 
+interface ExtendedVehicle extends Vehicle {
+  id: number
+}
+
 interface PlateWithVehicle extends Plate {
   registrationDate: string
   expiryDate: string
@@ -10,6 +14,14 @@ interface PlateWithVehicle extends Plate {
   type: string
   plateType: string
   vehicle: string
+  status: string
+  id: number
+  vehicleId: number
+  plate_issue_date: string
+  plate_expiration_date: string
+  plate_number: string
+  plate_type: string
+  [key: string]: string | number
 }
 
 interface Filter {
@@ -65,7 +77,7 @@ const activeTypeFilter = computed(() => {
 })
 
 // Apply status filter
-const setStatusFilter = (value) => {
+const setStatusFilter = (value: string) => {
   statusFilters.value = statusFilters.value.map((filter) => ({
     ...filter,
     active: filter.value === value,
@@ -73,7 +85,7 @@ const setStatusFilter = (value) => {
 }
 
 // Apply type filter
-const setTypeFilter = (value) => {
+const setTypeFilter = (value: string) => {
   typeFilters.value = typeFilters.value.map((filter) => ({
     ...filter,
     active: filter.value === value,
@@ -81,25 +93,32 @@ const setTypeFilter = (value) => {
 }
 
 // Get all plates with vehicle information
-const plates = computed(() => {
+const plates = computed((): PlateWithVehicle[] => {
   return vehicleStore.platesWithVehicleInfo.map((plate) => {
-    const vehicle = vehicleStore.vehicles.find((v) => v.id === plate.vehicleId)
+    const vehicle = vehicleStore.vehicles.find(
+      (v): v is ExtendedVehicle => v.id === plate.vehicleId,
+    )
+
+    const vehicleInfo = vehicle
+      ? `${vehicle.vehicleMake} ${vehicle.vehicleSeries} ${vehicle.yearModel}`
+      : 'N/A'
+
     return {
       ...plate,
+      id: plate.plateId,
       registrationDate: plate.plate_issue_date,
       expiryDate: plate.plate_expiration_date,
       plateNumber: plate.plate_number,
       type: 'Private',
       plateType: plate.plate_type,
-      vehicle: vehicle
-        ? `${vehicle.vehicleMake} ${vehicle.vehicleSeries} ${vehicle.yearModel}`
-        : 'N/A',
+      vehicle: vehicleInfo,
+      status: plate.status || 'Pending',
     }
   })
 })
 
 // Filtered and sorted plates
-const filteredPlates = computed(() => {
+const filteredPlates = computed((): PlateWithVehicle[] => {
   let result = plates.value
 
   // Apply status filter
@@ -125,9 +144,32 @@ const filteredPlates = computed(() => {
   // Apply sorting
   return result.sort((a, b) => {
     const modifier = sortDesc.value ? -1 : 1
-    if (a[sortBy.value] < b[sortBy.value]) return -1 * modifier
-    if (a[sortBy.value] > b[sortBy.value]) return 1 * modifier
-    return 0
+    const sortField = sortBy.value as keyof PlateWithVehicle
+    const aValue = a[sortField]
+    const bValue = b[sortField]
+
+    // Handle undefined or null values
+    if (aValue === undefined || aValue === null) return 1 * modifier
+    if (bValue === undefined || bValue === null) return -1 * modifier
+
+    // Handle date fields specially
+    if (sortField === 'registrationDate' || sortField === 'expiryDate') {
+      const aDate = new Date(String(aValue)).getTime()
+      const bDate = new Date(String(bValue)).getTime()
+      return isNaN(aDate) || isNaN(bDate) ? 0 : (aDate - bDate) * modifier
+    }
+
+    // Handle numeric fields
+    const aNum = Number(aValue)
+    const bNum = Number(bValue)
+    if (!isNaN(aNum) && !isNaN(bNum)) {
+      return (aNum - bNum) * modifier
+    }
+
+    // Default string comparison
+    const aStr = String(aValue).toLowerCase()
+    const bStr = String(bValue).toLowerCase()
+    return aStr.localeCompare(bStr) * modifier
   })
 })
 
@@ -140,7 +182,7 @@ const paginatedPlates = computed(() => {
 })
 
 // Status badge color
-const getStatusColor = (status) => {
+const getStatusColor = (status: string) => {
   switch (status.toLowerCase()) {
     case 'active':
       return 'bg-green-100 text-green-800'
@@ -170,7 +212,7 @@ const selectedPlate = ref<PlateWithVehicle | null>(null)
 const showPlateModal = ref<boolean>(false)
 
 // Modal handlers
-const openPlateModal = (plate: PlateWithVehicle) => {
+const openPlateModal = (plate: PlateWithVehicle & { id: number }) => {
   selectedPlate.value = plate
   showPlateModal.value = true
 }
