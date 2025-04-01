@@ -1,6 +1,28 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
+import type { Plate, Vehicle } from '@/types/vehicle'
+
+interface PlateWithVehicle extends Plate {
+  registrationDate: string
+  expiryDate: string
+  plateNumber: string
+  type: string
+  plateType: string
+  vehicle: string
+}
+
+interface Filter {
+  value: string
+  label: string
+  active: boolean
+}
+
+interface TableHeader {
+  text: string
+  value: string
+  sortable: boolean
+}
 
 const PlateDetailsModal = defineAsyncComponent(
   () => import('@/components/modals/PlateDetailsModal.vue'),
@@ -9,14 +31,14 @@ const PlateDetailsModal = defineAsyncComponent(
 const vehicleStore = useVehicleRegistrationStore()
 
 // Search and filter state
-const searchQuery = ref('')
-const sortBy = ref('plateNumber')
-const sortDesc = ref(false)
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
+const searchQuery = ref<string>('')
+const sortBy = ref<string>('plateNumber')
+const sortDesc = ref<boolean>(false)
+const currentPage = ref<number>(1)
+const itemsPerPage = ref<number>(10)
 
 // Status filters
-const statusFilters = ref([
+const statusFilters = ref<Filter[]>([
   { value: 'all', label: 'All Status', active: true },
   { value: 'Active', label: 'Active', active: false },
   { value: 'Expired', label: 'Expired', active: false },
@@ -24,7 +46,7 @@ const statusFilters = ref([
 ])
 
 // Type filters
-const typeFilters = ref([
+const typeFilters = ref<Filter[]>([
   { value: 'all', label: 'All Types', active: true },
   { value: 'Regular', label: 'Regular', active: false },
   { value: 'Special', label: 'Special', active: false },
@@ -132,7 +154,7 @@ const getStatusColor = (status) => {
 }
 
 // Sort handler
-const sort = (header) => {
+const sort = (header: TableHeader) => {
   if (!header.sortable) return
   if (sortBy.value === header.value) {
     sortDesc.value = !sortDesc.value
@@ -144,11 +166,11 @@ const sort = (header) => {
 
 // Table headers
 // Modal state
-const selectedPlate = ref(null)
-const showPlateModal = ref(false)
+const selectedPlate = ref<PlateWithVehicle | null>(null)
+const showPlateModal = ref<boolean>(false)
 
 // Modal handlers
-const openPlateModal = (plate) => {
+const openPlateModal = (plate: PlateWithVehicle) => {
   selectedPlate.value = plate
   showPlateModal.value = true
 }
@@ -158,7 +180,7 @@ const closePlateModal = () => {
   showPlateModal.value = false
 }
 
-const headers = [
+const headers: TableHeader[] = [
   { text: 'Plate Number', value: 'plateNumber', sortable: true },
   { text: 'Vehicle', value: 'vehicle', sortable: true },
   { text: 'Registration Date', value: 'registrationDate', sortable: true },

@@ -1,17 +1,43 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue'
 import { useVehicleRegistrationFormStore } from '@/stores/vehicleRegistrationForm'
 import { useUserStore } from '@/stores/user'
+import type { VehicleRegistrationForm } from '@/types/vehicleRegistration'
+
+interface Registration {
+  id: string
+  submissionDate: string
+  applicantName: string
+  applicantEmail: string
+  applicantPhone: string
+  vehicleType: string
+  plateNumber: string
+  status: string
+  make: string
+  model: string
+  year: string
+  color: string
+  engineNumber: string
+  chassisNumber: string
+  registrationType: string
+  expiryDate: string
+  referenceCode: string
+  inspectionStatus: string
+  paymentStatus: string
+  verificationStatus: string
+  appointmentDate: string
+  appointmentTime: string
+}
 
 const RegistrationDetailsModal = defineAsyncComponent(
   () => import('@/components/modals/RegistrationDetailsModal.vue'),
 )
 
 // Modal state
-const selectedRegistration = ref(null)
-const showDetailsModal = ref(false)
+const selectedRegistration = ref<Registration | null>(null)
+const showDetailsModal = ref<boolean>(false)
 
-const openDetailsModal = (registration) => {
+const openDetailsModal = (registration: Registration) => {
   // Ensure all required properties are present in the registration object
   selectedRegistration.value = {
     ...registration,
@@ -48,20 +74,21 @@ const vehicleRegistrationFormStore = useVehicleRegistrationFormStore()
 const userStore = useUserStore()
 
 // Get registrations from store
-const registrations = computed(() => {
+const registrations = computed((): Registration[] => {
   const forms = vehicleRegistrationFormStore.forms
   return forms.map((form) => ({
     id: form.id,
     submissionDate: form.appointmentDate || 'Not scheduled',
     applicantName:
-      userStore.mockUsers.find((user) => user.ltoClientId === form.userId)?.firstName +
+      userStore.users.find((user) => user.ltoClientId === form.userId)?.firstName +
         ' ' +
-        userStore.mockUsers.find((user) => user.ltoClientId === form.userId)?.lastName ||
+        userStore.users.find((user) => user.ltoClientId === form.userId)?.lastName ||
       'Unknown User',
     applicantEmail:
-      userStore.mockUsers.find((user) => user.ltoClientId === form.userId)?.email || 'No email',
+      userStore.users.find((user) => user.ltoClientId === form.userId)?.email || 'No email',
     applicantPhone:
-      userStore.mockUsers.find((user) => user.ltoClientId === form.userId)?.phone || 'Not provided',
+      userStore.users.find((user) => user.ltoClientId === form.userId)?.mobileNumber ||
+      'Not provided',
     vehicleType: form.vehicleType || 'car',
     plateNumber: 'Pending',
     status: form.inspectionStatus,
@@ -83,23 +110,23 @@ const registrations = computed(() => {
 })
 
 // Filter registrations by status
-const pendingRegistrations = computed(() =>
+const pendingRegistrations = computed((): Registration[] =>
   registrations.value.filter((reg) => reg.status === 'pending'),
 )
 
-const approvedRegistrations = computed(() =>
+const approvedRegistrations = computed((): Registration[] =>
   registrations.value.filter((reg) => reg.status === 'approved'),
 )
 
-const archivedRegistrations = computed(() =>
+const archivedRegistrations = computed((): Registration[] =>
   registrations.value.filter((reg) => reg.status === 'rejected'),
 )
 
 // Search functionality
-const searchQuery = ref('')
-const activeTab = ref('pending')
+const searchQuery = ref<string>('')
+const activeTab = ref<'pending' | 'approved' | 'archived'>('pending')
 
-const filteredRegistrations = computed(() => {
+const filteredRegistrations = computed((): Registration[] => {
   let filtered
   switch (activeTab.value) {
     case 'pending':
@@ -127,14 +154,14 @@ const filteredRegistrations = computed(() => {
 })
 
 // Registration actions
-const approveRegistration = (id) => {
+const approveRegistration = (id: string) => {
   const registration = registrations.value.find((reg) => reg.id === id)
   if (registration) {
     registration.status = 'approved'
   }
 }
 
-const rejectRegistration = (id) => {
+const rejectRegistration = (id: string) => {
   const registration = registrations.value.find((reg) => reg.id === id)
   if (registration) {
     registration.status = 'archived'

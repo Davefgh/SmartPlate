@@ -1,6 +1,23 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue'
 import { useUserStore } from '@/stores/user'
+import type { User } from '@/types/user'
+
+interface FilterOption {
+  value: string
+  label: string
+  active: boolean
+}
+
+interface TableHeader {
+  text: string
+  value: keyof (User & { name: string; actions: string }) | 'actions'
+  sortable: boolean
+}
+
+interface ExtendedUser extends User {
+  name: string
+}
 
 const UserDetailsModal = defineAsyncComponent(
   () => import('@/components/modals/UserDetailsModal.vue'),
@@ -9,17 +26,17 @@ const UserDetailsModal = defineAsyncComponent(
 const userStore = useUserStore()
 
 // Search and filter state
-const searchQuery = ref('')
-const sortBy = ref('name')
-const sortDesc = ref(false)
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
+const searchQuery = ref<string>('')
+const sortBy = ref<string>('name')
+const sortDesc = ref<boolean>(false)
+const currentPage = ref<number>(1)
+const itemsPerPage = ref<number>(10)
 
 // Get all users from the store
-const users = computed(() => userStore.mockUsers)
+const users = computed((): User[] => userStore.users || [])
 
 // Table headers with sorting capability
-const headers = [
+const headers: TableHeader[] = [
   { text: 'LTO Client ID', value: 'ltoClientId', sortable: true },
   { text: 'Name', value: 'name', sortable: true },
   { text: 'Email', value: 'email', sortable: true },
@@ -29,7 +46,7 @@ const headers = [
 ]
 
 // Status filters
-const statusFilters = ref([
+const statusFilters = ref<FilterOption[]>([
   { value: 'all', label: 'All Status', active: true },
   { value: 'active', label: 'Active', active: false },
   { value: 'pending', label: 'Pending', active: false },
@@ -37,25 +54,25 @@ const statusFilters = ref([
 ])
 
 // Role filters
-const roleFilters = ref([
+const roleFilters = ref<FilterOption[]>([
   { value: 'all', label: 'All Roles', active: true },
   { value: 'admin', label: 'Admin', active: false },
   { value: 'user', label: 'User', active: false },
 ])
 
 // Active filters
-const activeStatusFilter = computed(() => {
+const activeStatusFilter = computed((): string => {
   const filter = statusFilters.value.find((f) => f.active === true)
   return filter ? filter.value : 'all'
 })
 
-const activeRoleFilter = computed(() => {
+const activeRoleFilter = computed((): string => {
   const filter = roleFilters.value.find((f) => f.active === true)
   return filter ? filter.value : 'all'
 })
 
 // Apply status filter
-const setStatusFilter = (value) => {
+const setStatusFilter = (value: string): void => {
   statusFilters.value = statusFilters.value.map((filter) => ({
     ...filter,
     active: filter.value === value,
@@ -63,7 +80,7 @@ const setStatusFilter = (value) => {
 }
 
 // Apply role filter
-const setRoleFilter = (value) => {
+const setRoleFilter = (value: string): void => {
   roleFilters.value = roleFilters.value.map((filter) => ({
     ...filter,
     active: filter.value === value,
@@ -71,7 +88,7 @@ const setRoleFilter = (value) => {
 }
 
 // Format and filter users
-const filteredUsers = computed(() => {
+const filteredUsers = computed((): ExtendedUser[] => {
   return users.value
     .map((user) => ({
       ...user,
@@ -102,15 +119,17 @@ const filteredUsers = computed(() => {
 })
 
 // Pagination
-const totalPages = computed(() => Math.ceil(filteredUsers.value.length / itemsPerPage.value))
-const paginatedUsers = computed(() => {
+const totalPages = computed((): number =>
+  Math.ceil(filteredUsers.value.length / itemsPerPage.value),
+)
+const paginatedUsers = computed((): ExtendedUser[] => {
   const start = (currentPage.value - 1) * itemsPerPage.value
   const end = start + itemsPerPage.value
   return filteredUsers.value.slice(start, end)
 })
 
 // Status badge color
-const getStatusColor = (status) => {
+const getStatusColor = (status: string): string => {
   switch (status.toLowerCase()) {
     case 'active':
       return 'bg-green-100 text-green-800'
@@ -123,7 +142,7 @@ const getStatusColor = (status) => {
   }
 }
 
-const getRoleColor = (role) => {
+const getRoleColor = (role: string): string => {
   switch (role.toLowerCase()) {
     case 'admin':
       return 'bg-purple-100 text-purple-800'
@@ -135,22 +154,22 @@ const getRoleColor = (role) => {
 }
 
 // Modal state
-const showUserModal = ref(false)
-const selectedUser = ref(null)
+const showUserModal = ref<boolean>(false)
+const selectedUser = ref<ExtendedUser | null>(null)
 
 // Modal handlers
-const openUserModal = (user) => {
+const openUserModal = (user: ExtendedUser): void => {
   selectedUser.value = user
   showUserModal.value = true
 }
 
-const closeUserModal = () => {
+const closeUserModal = (): void => {
   showUserModal.value = false
   selectedUser.value = null
 }
 
 // Sorting handlers
-const sort = (header) => {
+const sort = (header: TableHeader): void => {
   if (!header.sortable) return
   if (sortBy.value === header.value) {
     sortDesc.value = !sortDesc.value

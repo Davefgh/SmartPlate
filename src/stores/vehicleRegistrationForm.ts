@@ -1,7 +1,12 @@
 import { defineStore } from 'pinia'
+import type {
+  VehicleRegistrationForm,
+  VehicleRegistrationState,
+  VehicleDocuments,
+} from '@/types/vehicleRegistration'
 
 // Mock data for vehicle registration forms
-const mockRegistrationForms = [
+const mockRegistrationForms: VehicleRegistrationForm[] = [
   {
     id: 'REG-2024-001',
     userId: 'LTO-2023-78945',
@@ -92,11 +97,8 @@ const mockRegistrationForms = [
 ]
 
 export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationForm', {
-  persist: {
-    storage: sessionStorage,
-    paths: ['formData', 'currentStep'],
-  },
-  state: () => ({
+  persist: true,
+  state: (): VehicleRegistrationState => ({
     hasUnsavedChanges: false,
     forms: [...mockRegistrationForms],
     formData: {
@@ -151,43 +153,45 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
   }),
 
   getters: {
-    requiredDocuments: (state) => {
+    requiredDocuments: (state): Array<keyof VehicleDocuments> => {
       if (state.formData.isNewVehicle) {
         return ['csr', 'salesInvoice', 'insurance']
       } else {
         return ['orCr', 'deedOfSale', 'pnpHpgClearance']
       }
     },
-    isFormComplete: (state) => {
+    isFormComplete: (state): boolean => {
       return (
-        state.formData.vehicleType &&
-        state.formData.make &&
-        state.formData.model &&
-        state.formData.year &&
-        state.formData.engineNumber &&
-        state.formData.chassisNumber &&
-        state.formData.color
+        state.formData.vehicleType !== '' &&
+        state.formData.make !== '' &&
+        state.formData.model !== '' &&
+        state.formData.year !== '' &&
+        state.formData.engineNumber !== '' &&
+        state.formData.chassisNumber !== '' &&
+        state.formData.color !== ''
       )
     },
-    hasValidationErrors: (state) => {
+    hasValidationErrors: (state): boolean => {
       return Object.values(state.errors).some((error) => error !== '')
     },
-    pendingForms: (state) => {
+    pendingForms: (state): VehicleRegistrationForm[] => {
       return state.forms.filter((form) => form.inspectionStatus === 'pending')
     },
-    approvedForms: (state) => {
+    approvedForms: (state): VehicleRegistrationForm[] => {
       return state.forms.filter((form) => form.inspectionStatus === 'approved')
     },
-    rejectedForms: (state) => {
+    rejectedForms: (state): VehicleRegistrationForm[] => {
       return state.forms.filter((form) => form.inspectionStatus === 'rejected')
     },
-    getFormsByUserId: (state) => (userId) => {
-      return state.forms.filter((form) => form.userId === userId)
-    },
+    getFormsByUserId:
+      (state) =>
+      (userId: string): VehicleRegistrationForm[] => {
+        return state.forms.filter((form) => form.userId === userId)
+      },
   },
 
   actions: {
-    validateVehicleInfo() {
+    validateVehicleInfo(): boolean {
       let isValid = true
 
       // Reset errors
@@ -225,14 +229,11 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
 
       // Year validation
       const currentYear = new Date().getFullYear()
+      const yearValue = Number(this.formData.year)
       if (!this.formData.year) {
         this.errors.year = 'Vehicle year is required'
         isValid = false
-      } else if (
-        isNaN(this.formData.year) ||
-        this.formData.year < 1900 ||
-        this.formData.year > currentYear + 1
-      ) {
+      } else if (isNaN(yearValue) || yearValue < 1900 || yearValue > currentYear + 1) {
         this.errors.year = `Year must be between 1900 and ${currentYear + 1}`
         isValid = false
       }
@@ -261,16 +262,11 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
       return isValid
     },
 
-    // Form actions
-    setUnsavedChanges(value) {
+    setUnsavedChanges(value: boolean): void {
       this.hasUnsavedChanges = value
     },
 
-    async submitRegistration() {
-      if (!this.validateVehicleInfo()) {
-        return false
-      }
-
+    async submitRegistration(): Promise<boolean> {
       try {
         this.isSubmitting = true
         // TODO: Implement API call to submit registration
@@ -284,8 +280,8 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
       }
     },
 
-    resetForm() {
-      this.setUnsavedChanges(false)
+    resetForm(): void {
+      this.hasUnsavedChanges = false
       this.formData = {
         isNewVehicle: true,
         vehicleType: '',
@@ -306,13 +302,13 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
         appointmentDate: null,
         appointmentTime: null,
         referenceCode: '',
-        inspectionStatus: 'pending',
+        inspectionStatus: 'pending' as const,
         referenceSlip: null,
-        paymentStatus: 'pending',
-        verificationStatus: 'pending',
+        paymentStatus: 'pending' as const,
+        verificationStatus: 'pending' as const,
         privacyConsent: false,
         declarationConsent: false,
-      }
+      } as VehicleRegistrationForm
       this.errors = {
         vehicleType: '',
         make: '',
@@ -337,18 +333,19 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
       this.isSubmitting = false
     },
 
-    validateDocuments() {
+    validateDocuments(): boolean {
       let isValid = true
 
       // Reset document errors
       Object.keys(this.formData.documents).forEach((doc) => {
-        this.errors.documents[doc] = ''
+        this.errors.documents[doc as keyof typeof this.errors.documents] = ''
       })
 
       // Check required documents
       this.requiredDocuments.forEach((docType) => {
-        if (!this.formData.documents[docType]) {
-          this.errors.documents[docType] = 'This document is required'
+        if (!this.formData.documents[docType as keyof typeof this.formData.documents]) {
+          this.errors.documents[docType as keyof typeof this.errors.documents] =
+            'This document is required'
           isValid = false
         }
       })
@@ -356,7 +353,7 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
       return isValid
     },
 
-    validateAppointment() {
+    validateAppointment(): boolean {
       let isValid = true
 
       if (!this.formData.appointmentDate || !this.formData.appointmentTime) {
@@ -367,7 +364,7 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
       return isValid
     },
 
-    validatePayment() {
+    validatePayment(): boolean {
       let isValid = true
 
       if (!this.formData.referenceSlip) {
@@ -385,7 +382,7 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
         isValid = false
       }
 
-      this.setUnsavedChanges(true)
+      this.hasUnsavedChanges = true
       return isValid
     },
   },

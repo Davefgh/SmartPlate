@@ -1,7 +1,31 @@
-<script setup>
+<script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
 import { useUserStore } from '@/stores/user'
+import type { Vehicle, Registration } from '@/types/vehicle'
+
+interface VehicleTypeData {
+  label: string
+  value: number
+}
+
+interface VehicleMakeData {
+  label: string
+  value: number
+}
+
+interface RegistrationTrendData {
+  month: string
+  new: number
+  renewal: number
+}
+
+interface PreviodPeriodStats {
+  users: number
+  vehicles: number
+  registrations: number
+  revenue: number
+}
 
 const RevenueTrendsChart = defineAsyncComponent(
   () => import('@/components/charts/RevenueTrendsChart.vue'),
@@ -23,9 +47,7 @@ const vehicleStore = useVehicleRegistrationStore()
 const userStore = useUserStore()
 
 // Get data for statistics
-const totalUsers = computed(
-  () => userStore.mockUsers.filter((user) => user.role !== 'admin').length,
-)
+const totalUsers = computed(() => userStore.users.filter((user) => user.role !== 'admin').length)
 const totalVehicles = computed(() => vehicleStore.vehicles.length)
 const totalRegistrations = computed(() => vehicleStore.registrations.length)
 const pendingRegistrations = computed(() => vehicleStore.pendingRegistrations.length)
@@ -34,9 +56,9 @@ const approvedRegistrations = computed(
 )
 
 // Vehicle types distribution for pie chart
-const vehicleTypes = computed(() => {
-  const types = {}
-  vehicleStore.vehicles.forEach((vehicle) => {
+const vehicleTypes = computed<VehicleTypeData[]>(() => {
+  const types: Record<string, number> = {}
+  vehicleStore.vehicles.forEach((vehicle: Vehicle) => {
     const type = vehicle.vehicleType || 'Unknown'
     types[type] = (types[type] || 0) + 1
   })
@@ -44,9 +66,9 @@ const vehicleTypes = computed(() => {
 })
 
 // Vehicle makes distribution for bar chart
-const vehicleMakes = computed(() => {
-  const makes = {}
-  vehicleStore.vehicles.forEach((vehicle) => {
+const vehicleMakes = computed<VehicleMakeData[]>(() => {
+  const makes: Record<string, number> = {}
+  vehicleStore.vehicles.forEach((vehicle: Vehicle) => {
     const make = vehicle.vehicleMake || 'Unknown'
     makes[make] = (makes[make] || 0) + 1
   })
@@ -57,8 +79,8 @@ const vehicleMakes = computed(() => {
 })
 
 // Registration trends by month (last 6 months)
-const registrationTrends = computed(() => {
-  const trends = {}
+const registrationTrends = computed<RegistrationTrendData[]>(() => {
+  const trends: Record<string, { new: number; renewal: number }> = {}
   const now = new Date()
 
   // Initialize last 6 months
@@ -69,7 +91,7 @@ const registrationTrends = computed(() => {
   }
 
   // Fill with data
-  vehicleStore.registrations.forEach((reg) => {
+  vehicleStore.registrations.forEach((reg: Registration) => {
     const date = new Date(reg.submissionDate)
     const monthLabel = date.toLocaleString('default', { month: 'short' })
 
@@ -98,7 +120,7 @@ const totalRevenue = computed(() => {
 })
 
 // Format currency
-const formatCurrency = (value) => {
+const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat('en-PH', {
     style: 'currency',
     currency: 'PHP',
@@ -106,13 +128,13 @@ const formatCurrency = (value) => {
 }
 
 // Calculate percentage change
-const getPercentageChange = (current, previous) => {
+const getPercentageChange = (current: number, previous: number): number => {
   if (previous === 0) return 100
   return Math.round(((current - previous) / previous) * 100)
 }
 
 // Mock previous period data for comparison
-const previousPeriodStats = {
+const previousPeriodStats: PreviodPeriodStats = {
   users: totalUsers.value - 2,
   vehicles: totalVehicles.value - 5,
   registrations: totalRegistrations.value - 8,

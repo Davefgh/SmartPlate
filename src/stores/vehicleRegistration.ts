@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { useUserStore } from './user'
+import type { Vehicle, Plate, Registration, VehicleRegistrationState } from '@/types/vehicle'
 
 // Mock data for vehicles, plates, and registrations
 const mockVehiclesData = [
@@ -285,11 +286,14 @@ const mockRegistrationsData = [
   },
 ]
 
+export interface VehicleRegistrationStoreState extends VehicleRegistrationState {
+  registrations: Registration[]
+}
+
 export const useVehicleRegistrationStore = defineStore('vehicleRegistration', {
-  // State
-  state: () => ({
-    vehicles: [...mockVehiclesData],
-    plates: [...mockPlatesData],
+  state: (): VehicleRegistrationStoreState => ({
+    vehicles: [...mockVehiclesData] as Vehicle[],
+    plates: [...mockPlatesData] as Plate[],
     registrations: [...mockRegistrationsData],
     loading: false,
     error: null,
@@ -298,51 +302,63 @@ export const useVehicleRegistrationStore = defineStore('vehicleRegistration', {
   // Getters
   getters: {
     // Get vehicles for the current user
-    userVehicles: (state) => {
+    userVehicles: (state): Vehicle[] => {
       const userStore = useUserStore()
-      if (!userStore.user) return []
+      if (!userStore.currentUser) return []
 
-      return state.vehicles.filter((vehicle) => vehicle.ownerId === userStore.user.ltoClientId)
+      return state.vehicles.filter(
+        (vehicle) => vehicle.ownerId === userStore.currentUser?.ltoClientId,
+      )
     },
 
     // Get plates for the current user's vehicles
-    userPlates: (state) => {
-      const userVehicleIds = state.userVehicles.map((vehicle) => vehicle.id)
+    userPlates(state): Plate[] {
+      const userVehicleIds = this.userVehicles.map((vehicle) => vehicle.id)
       return state.plates.filter((plate) => userVehicleIds.includes(plate.vehicleId))
     },
 
     // Get registrations for the current user's vehicles
-    userRegistrations: (state) => {
-      const userVehicleIds = state.userVehicles.map((vehicle) => vehicle.id)
+    userRegistrations(state): Registration[] {
+      const userVehicleIds = this.userVehicles.map((vehicle) => vehicle.id)
       return state.registrations.filter((registration) =>
         userVehicleIds.includes(registration.vehicleId),
       )
     },
 
-    getVehicleById: (state) => (id) => {
-      return state.vehicles.find((vehicle) => vehicle.id === id)
-    },
+    getVehicleById:
+      (state) =>
+      (id: number): Vehicle | undefined => {
+        return state.vehicles.find((vehicle) => vehicle.id === id)
+      },
 
-    getPlateById: (state) => (id) => {
-      return state.plates.find((plate) => plate.id === id)
-    },
+    getPlateById:
+      (state) =>
+      (id: number): Plate | undefined => {
+        return state.plates.find((plate) => plate.plateId === id)
+      },
 
-    getRegistrationById: (state) => (id) => {
-      return state.registrations.find((registration) => registration.id === id)
-    },
+    getRegistrationById:
+      (state) =>
+      (id: number): Registration | undefined => {
+        return state.registrations.find((registration) => registration.id === id)
+      },
 
-    getPlateByVehicleId: (state) => (vehicleId) => {
-      return state.plates.find((plate) => plate.vehicleId === vehicleId)
-    },
+    getPlateByVehicleId:
+      (state) =>
+      (vehicleId: number): Plate | undefined => {
+        return state.plates.find((plate) => plate.vehicleId === vehicleId)
+      },
 
-    getRegistrationByVehicleId: (state) => (vehicleId) => {
-      return state.registrations.find((registration) => registration.vehicleId === vehicleId)
-    },
+    getRegistrationByVehicleId:
+      (state) =>
+      (vehicleId: number): Registration | undefined => {
+        return state.registrations.find((registration) => registration.vehicleId === vehicleId)
+      },
 
-    vehiclesWithOwnerInfo: (state) => {
+    vehiclesWithOwnerInfo(state): (Vehicle & { owner: string; plateDetails: Plate | null })[] {
       const userStore = useUserStore()
       return state.vehicles.map((vehicle) => {
-        const owner = userStore.mockUsers.find((user) => user.ltoClientId === vehicle.ownerId)
+        const owner = userStore.users.find((user) => user.ltoClientId === vehicle.ownerId)
 
         // Get the plate for this vehicle
         const plate = state.plates.find((p) => p.vehicleId === vehicle.id)
@@ -352,11 +368,19 @@ export const useVehicleRegistrationStore = defineStore('vehicleRegistration', {
           owner: owner ? `${owner.firstName} ${owner.lastName}` : 'Unknown',
           plateDetails: plate || null,
         }
-      })
+      }) as (Vehicle & { owner: string; plateDetails: Plate | null })[]
     },
 
     // Get plates with vehicle information
-    platesWithVehicleInfo: (state) => {
+    platesWithVehicleInfo: (
+      state,
+    ): (Plate & {
+      vehicle: string
+      vehicleMake: string
+      vehicleModel: string
+      vehicleYear: number | string
+      vehicleColor: string
+    })[] => {
       return state.plates.map((plate) => {
         const vehicle = state.vehicles.find((v) => v.id === plate.vehicleId)
         return {
@@ -369,11 +393,19 @@ export const useVehicleRegistrationStore = defineStore('vehicleRegistration', {
           vehicleYear: vehicle?.yearModel || '',
           vehicleColor: vehicle?.color || '',
         }
-      })
+      }) as (Plate & {
+        vehicle: string
+        vehicleMake: string
+        vehicleModel: string
+        vehicleYear: number | string
+        vehicleColor: string
+      })[]
     },
 
     // Get registrations with vehicle and plate information
-    registrationsWithDetails: (state) => {
+    registrationsWithDetails: (
+      state,
+    ): (Registration & { vehicleInfo: string; plateNumber: string })[] => {
       return state.registrations.map((registration) => {
         const vehicle = state.vehicles.find((v) => v.id === registration.vehicleId)
         const plate = state.plates.find((p) => p.vehicleId === registration.vehicleId)
@@ -385,21 +417,21 @@ export const useVehicleRegistrationStore = defineStore('vehicleRegistration', {
             : 'No vehicle information',
           plateNumber: plate?.plate_number || 'No plate assigned',
         }
-      })
+      }) as (Registration & { vehicleInfo: string; plateNumber: string })[]
     },
 
     // Get active registrations
-    activeRegistrations: (state) => {
+    activeRegistrations: (state): Registration[] => {
       return state.registrations.filter((reg) => reg.status === 'Approved')
     },
 
     // Get pending registrations
-    pendingRegistrations: (state) => {
+    pendingRegistrations: (state): Registration[] => {
       return state.registrations.filter((reg) => reg.status === 'Pending')
     },
 
     // Get expired registrations (where expiryDate is before today)
-    expiredRegistrations: (state) => {
+    expiredRegistrations: (state): Registration[] => {
       const today = new Date()
       return state.registrations.filter((reg) => {
         const expiryDate = new Date(reg.expiryDate)
@@ -408,7 +440,7 @@ export const useVehicleRegistrationStore = defineStore('vehicleRegistration', {
     },
 
     // Get soon to expire registrations (within 30 days)
-    soonToExpireRegistrations: (state) => {
+    soonToExpireRegistrations: (state): Registration[] => {
       const today = new Date()
       const thirtyDaysFromNow = new Date()
       thirtyDaysFromNow.setDate(today.getDate() + 30)
@@ -423,16 +455,16 @@ export const useVehicleRegistrationStore = defineStore('vehicleRegistration', {
   // Actions
   actions: {
     // Calculate days remaining until expiry for a registration or plate
-    getDaysRemaining(expiryDateStr) {
+    getDaysRemaining(expiryDateStr: string): number {
       const today = new Date()
       const expiryDate = new Date(expiryDateStr)
-      const diffTime = expiryDate - today
+      const diffTime: number = expiryDate.getTime() - today.getTime()
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
       return diffDays
     },
 
     // Get expiry status (Expired, Expiring Soon, Valid)
-    getExpiryStatus(expiryDateStr) {
+    getExpiryStatus(expiryDateStr: string): 'Expired' | 'Expiring Soon' | 'Valid' {
       const daysRemaining = this.getDaysRemaining(expiryDateStr)
 
       if (daysRemaining < 0) return 'Expired'
