@@ -1,14 +1,15 @@
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
+import { createApp, type App } from 'vue'
+import { createPinia, type Pinia } from 'pinia'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
-import App from './App.vue'
+import AppComponent from './App.vue'
 import router from './router'
 import './assets/main.css'
 
 // Font Awesome
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 import {
   faEnvelope,
   faLock,
@@ -77,7 +78,7 @@ import {
 import { faGoogle } from '@fortawesome/free-brands-svg-icons'
 
 // Add icons to the library
-library.add(
+const icons: IconDefinition[] = [
   faEnvelope,
   faLock,
   faEye,
@@ -142,10 +143,11 @@ library.add(
   faCalendarCheck,
   faCalendarTimes,
   faTachometerAlt,
-)
+]
+library.add(...icons)
 
-const app = createApp(App)
-const pinia = createPinia()
+const app: App = createApp(AppComponent)
+const pinia: Pinia = createPinia()
 pinia.use(piniaPluginPersistedstate)
 
 app.use(pinia)
