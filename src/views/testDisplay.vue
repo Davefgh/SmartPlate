@@ -17,6 +17,55 @@ const tableHeaders = [
   'Created',
   'Updated',
 ]
+const formatAddress = (address) => {
+  if (!address) return 'N/A'
+  const parts = []
+  if (address.house_no) parts.push(address.house_no)
+  if (address.street) parts.push(address.street)
+  if (address.barangay) parts.push(address.barangay)
+  if (address.city_municipality) parts.push(address.city_municipality)
+  if (address.province) parts.push(address.province)
+  if (address.zip_code) parts.push(`ZIP: ${address.zip_code}`)
+  return parts.join(', ') || 'N/A'
+}
+
+const formatMedicalInfo = (medical) => {
+  if (!medical) return 'N/A'
+  const info = []
+  if (medical.blood_type) info.push(`Blood: ${medical.blood_type}`)
+  if (medical.height) info.push(`H: ${medical.height}cm`)
+  if (medical.weight) info.push(`W: ${medical.weight}kg`)
+  if (medical.gender) info.push(`Gender: ${medical.gender}`)
+  return info.join(' · ') || 'N/A'
+}
+
+const formatPersonalInfo = (personal) => {
+  if (!personal) return 'N/A'
+  const info = []
+  if (personal.nationality) info.push(personal.nationality)
+  if (personal.civil_status) info.push(personal.civil_status)
+  if (personal.date_of_birth) info.push(`DOB: ${formatDate(personal.date_of_birth)}`)
+  if (personal.tin) info.push(`TIN: ${personal.tin}`)
+  return info.join(' · ') || 'N/A'
+}
+
+const formatFamilyInfo = (people) => {
+  if (!people) return 'N/A'
+  const info = []
+  if (people.employer_name) info.push(`Employer: ${people.employer_name}`)
+  if (people.employer_address) info.push(`Addr: ${people.employer_address}`)
+  if (people.father_first_name || people.father_middle_name || people.father_last_name) {
+    info.push(
+      `Father: ${people.father_first_name} ${people.father_middle_name} ${people.father_last_name}`.trim(),
+    )
+  }
+  if (people.mother_first_name || people.mother_middle_name || people.mother_maiden_name) {
+    info.push(
+      `Mother: ${people.mother_first_name} ${people.mother_middle_name} ${people.mother_maiden_name}`.trim(),
+    )
+  }
+  return info.join(' | ') || 'N/A'
+}
 
 // Animate loading dots
 let interval = null
@@ -109,6 +158,10 @@ onMounted(() => {
               <th>Email</th>
               <th>Role</th>
               <th>Status</th>
+              <th>Address</th>
+              <th>Health Info</th>
+              <th>Personal Details</th>
+              <th>Employer/Family</th>
               <th>Contact Info</th>
               <th>Emergency Contact</th>
               <th>Created</th>
@@ -127,6 +180,10 @@ onMounted(() => {
               <td class="status-cell">
                 <span :class="user.status.toLowerCase()">{{ user.status }}</span>
               </td>
+              <td>{{ formatAddress(user.address) }}</td>
+              <td>{{ formatMedicalInfo(user.medical_information) }}</td>
+              <td>{{ formatPersonalInfo(user.personal_information) }}</td>
+              <td>{{ formatFamilyInfo(user.people) }}</td>
               <td>
                 <div v-if="user.contact">
                   <div>📞 {{ user.contact.mobile_number || 'N/A' }}</div>
@@ -150,9 +207,48 @@ onMounted(() => {
       </div>
     </div>
   </div>
+  <div></div>
 </template>
 
 <style scoped>
+.table-container {
+  overflow-x: auto;
+}
+
+.user-table {
+  min-width: 1200px;
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.user-table th,
+.user-table td {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  white-space: nowrap;
+}
+
+.user-table th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+}
+
+.status-cell span {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.status-cell .active {
+  background-color: #e6f4ea;
+  color: #137333;
+}
+.status-cell .inactive {
+  background-color: #fce8e6;
+  color: #c5221f;
+}
+
 .container {
   padding: 1rem;
   max-width: 1200px;
