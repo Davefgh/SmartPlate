@@ -36,8 +36,10 @@ export interface VehicleRegistrationErrors {
 }
 
 export interface VehicleRegistrationForm {
-  id?: string
-  userId?: string
+  id: string
+  userId: string
+  vehicleId?: string
+  plateId?: string
   isNewVehicle: boolean
   vehicleType: string
   make: string
@@ -52,10 +54,18 @@ export interface VehicleRegistrationForm {
   referenceCode: string
   inspectionStatus: 'pending' | 'approved' | 'rejected'
   referenceSlip: VehicleDocument | null
-  paymentStatus: 'pending' | 'paid'
-  verificationStatus: 'pending' | 'verified'
+  paymentStatus: 'pending' | 'approved' | 'rejected'
+  verificationStatus: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'approved' | 'rejected'
+  submissionDate: string
+  expiryDate?: string
+  plateNumber?: string
+  registrationType: 'New Vehicle' | 'Renewal'
   privacyConsent: boolean
   declarationConsent: boolean
+  applicantName?: string
+  applicantEmail?: string
+  applicantPhone?: string
 }
 
 export interface VehicleRegistrationState {

@@ -1,17 +1,41 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
+import type { Vehicle, Plate } from '@/types/vehicle'
 
 const VehicleDetailsModal = defineAsyncComponent(
   () => import('@/components/modals/VehicleDetailsModal.vue'),
 )
 
+interface VehicleDisplay {
+  id: number
+  make: string
+  model: string
+  year: number
+  plateNumber: string
+  color: string
+  status: string
+  owner: string
+}
+
+interface StatusFilter {
+  value: string
+  label: string
+  active: boolean
+}
+
+interface TableHeader {
+  text: string
+  value: keyof VehicleDisplay | 'actions'
+  sortable: boolean
+}
+
 const vehicleStore = useVehicleRegistrationStore()
 
 // Get all vehicles with owner information
-const vehicles = computed(() => {
-  return vehicleStore.vehicles.map((vehicle) => {
-    const plate = vehicleStore.platesWithVehicleInfo.find((p) => p.vehicleId === vehicle.id)
+const vehicles = computed<VehicleDisplay[]>(() => {
+  return vehicleStore.vehicles.map((vehicle: Vehicle) => {
+    const plate = vehicleStore.platesWithVehicleInfo.find((p: Plate) => p.vehicleId === vehicle.id)
     return {
       id: vehicle.id,
       make: vehicle.vehicleMake,
@@ -26,7 +50,7 @@ const vehicles = computed(() => {
 })
 
 // Status filters
-const statusFilters = ref([
+const statusFilters = ref<StatusFilter[]>([
   { value: 'all', label: 'All Status', active: true },
   { value: 'Active', label: 'Active', active: false },
   { value: 'Pending', label: 'Pending', active: false },
@@ -34,20 +58,20 @@ const statusFilters = ref([
 ])
 
 // Search and filter state
-const searchQuery = ref('')
-const sortBy = ref('make')
-const sortDesc = ref(false)
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
+const searchQuery = ref<string>('')
+const sortBy = ref<keyof VehicleDisplay>('make')
+const sortDesc = ref<boolean>(false)
+const currentPage = ref<number>(1)
+const itemsPerPage = ref<number>(10)
 
 // Active filters
-const activeStatusFilter = computed(() => {
+const activeStatusFilter = computed<string>(() => {
   const filter = statusFilters.value.find((f) => f.active === true)
   return filter ? filter.value : 'all'
 })
 
 // Apply status filter
-const setStatusFilter = (value) => {
+const setStatusFilter = (value: string): void => {
   statusFilters.value = statusFilters.value.map((filter) => ({
     ...filter,
     active: filter.value === value,
@@ -55,7 +79,7 @@ const setStatusFilter = (value) => {
 }
 
 // Filtered vehicles based on active filters and search query
-const filteredVehicles = computed(() => {
+const filteredVehicles = computed<VehicleDisplay[]>(() => {
   let result = vehicles.value
 
   // Apply status filter
@@ -76,50 +100,65 @@ const filteredVehicles = computed(() => {
   }
 
   // Apply sorting
-  return result.sort((a, b) => {
-    const modifier = sortDesc.value ? -1 : 1
-    if (a[sortBy.value] < b[sortBy.value]) return -1 * modifier
-    if (a[sortBy.value] > b[sortBy.value]) return 1 * modifier
-    return 0
+  return [...result].sort((a, b) => {
+    const aValue = a[sortBy.value]
+    const bValue = b[sortBy.value]
+
+    // Handle null/undefined values
+    if (aValue === null || aValue === undefined) return sortDesc.value ? -1 : 1
+    if (bValue === null || bValue === undefined) return sortDesc.value ? 1 : -1
+    if (aValue === bValue) return 0
+
+    // Handle numeric values
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return sortDesc.value ? bValue - aValue : aValue - bValue
+    }
+
+    // Handle string values
+    const aString = String(aValue).toLowerCase()
+    const bString = String(bValue).toLowerCase()
+    return sortDesc.value ? bString.localeCompare(aString) : aString.localeCompare(bString)
   })
 })
 
 // Pagination
-const totalPages = computed(() => Math.ceil(filteredVehicles.value.length / itemsPerPage.value))
-const paginatedVehicles = computed(() => {
+const totalPages = computed<number>(() =>
+  Math.ceil(filteredVehicles.value.length / itemsPerPage.value),
+)
+const paginatedVehicles = computed<VehicleDisplay[]>(() => {
   const start = (currentPage.value - 1) * itemsPerPage.value
   const end = start + itemsPerPage.value
   return filteredVehicles.value.slice(start, end)
 })
 
 // Sort handler
-const sort = (header) => {
+const sort = (header: TableHeader): void => {
   if (!header.sortable) return
   if (sortBy.value === header.value) {
     sortDesc.value = !sortDesc.value
   } else {
-    sortBy.value = header.value
+    sortBy.value = header.value as keyof VehicleDisplay
     sortDesc.value = false
   }
 }
 
 // Modal state
-const showModal = ref(false)
-const selectedVehicle = ref(null)
+const showModal = ref<boolean>(false)
+const selectedVehicle = ref<Vehicle | null>(null)
 
-const openVehicleDetails = (vehicle) => {
+const openVehicleDetails = (vehicle: VehicleDisplay): void => {
   // Get the complete vehicle details from the store
-  selectedVehicle.value = vehicleStore.vehicles.find((v) => v.id === vehicle.id)
+  selectedVehicle.value = vehicleStore.vehicles.find((v) => v.id === vehicle.id) || null
   showModal.value = true
 }
 
-const closeModal = () => {
+const closeModal = (): void => {
   showModal.value = false
   selectedVehicle.value = null
 }
 
 // Table headers
-const headers = [
+const headers: TableHeader[] = [
   { text: 'Make', value: 'make', sortable: true },
   { text: 'Model', value: 'model', sortable: true },
   { text: 'Year', value: 'year', sortable: true },
@@ -204,7 +243,17 @@ const headers = [
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-if="paginatedVehicles.length === 0" class="hover:bg-gray-50">
+              <td colspan="8" class="px-6 py-8 whitespace-nowrap text-sm text-gray-500 text-center">
+                <div class="flex flex-col items-center justify-center gap-2">
+                  <font-awesome-icon :icon="['fas', 'inbox']" class="text-gray-400 text-3xl mb-2" />
+                  <p>No vehicles found</p>
+                  <p class="text-xs text-gray-400">Try adjusting your search or filter criteria</p>
+                </div>
+              </td>
+            </tr>
             <tr
+              v-else
               v-for="vehicle in paginatedVehicles"
               :key="vehicle.id"
               class="hover:bg-gray-50 transition-colors"
@@ -273,22 +322,25 @@ const headers = [
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
         <div class="flex items-center justify-between">
           <div class="text-sm text-gray-700">
-            Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
+            Showing {{ filteredVehicles.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0 }} to
             {{ Math.min(currentPage * itemsPerPage, filteredVehicles.length) }} of
             {{ filteredVehicles.length }} entries
           </div>
           <div class="flex items-center gap-2">
             <button
               @click="currentPage--"
-              :disabled="currentPage === 1"
+              :disabled="currentPage === 1 || filteredVehicles.length === 0"
               class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
             >
               <font-awesome-icon :icon="['fas', 'chevron-left']" />
             </button>
-            <span class="text-sm text-gray-700">Page {{ currentPage }} of {{ totalPages }}</span>
+            <span class="text-sm text-gray-700"
+              >Page {{ filteredVehicles.length > 0 ? currentPage : 0 }} of
+              {{ totalPages || 0 }}</span
+            >
             <button
               @click="currentPage++"
-              :disabled="currentPage === totalPages"
+              :disabled="currentPage === totalPages || filteredVehicles.length === 0"
               class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
             >
               <font-awesome-icon :icon="['fas', 'chevron-right']" />

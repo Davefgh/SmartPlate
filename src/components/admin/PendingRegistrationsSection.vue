@@ -2,7 +2,6 @@
 import { ref, computed, defineAsyncComponent } from 'vue'
 import { useVehicleRegistrationFormStore } from '@/stores/vehicleRegistrationForm'
 import { useUserStore } from '@/stores/user'
-import type { VehicleRegistrationForm } from '@/types/vehicleRegistration'
 
 interface Registration {
   id: string
@@ -12,7 +11,7 @@ interface Registration {
   applicantPhone: string
   vehicleType: string
   plateNumber: string
-  status: string
+  status: 'pending' | 'approved' | 'rejected'
   make: string
   model: string
   year: string
@@ -37,7 +36,7 @@ const RegistrationDetailsModal = defineAsyncComponent(
 const selectedRegistration = ref<Registration | null>(null)
 const showDetailsModal = ref<boolean>(false)
 
-const openDetailsModal = (registration: Registration) => {
+const openDetailsModal = (registration: Registration): void => {
   // Ensure all required properties are present in the registration object
   selectedRegistration.value = {
     ...registration,
@@ -65,7 +64,7 @@ const openDetailsModal = (registration: Registration) => {
   showDetailsModal.value = true
 }
 
-const closeDetailsModal = () => {
+const closeDetailsModal = (): void => {
   showDetailsModal.value = false
   selectedRegistration.value = null
 }
@@ -74,7 +73,7 @@ const vehicleRegistrationFormStore = useVehicleRegistrationFormStore()
 const userStore = useUserStore()
 
 // Get registrations from store
-const registrations = computed((): Registration[] => {
+const registrations = computed(() => {
   const forms = vehicleRegistrationFormStore.forms
   return forms.map((form) => ({
     id: form.id,
@@ -87,7 +86,7 @@ const registrations = computed((): Registration[] => {
     applicantEmail:
       userStore.users.find((user) => user.ltoClientId === form.userId)?.email || 'No email',
     applicantPhone:
-      userStore.users.find((user) => user.ltoClientId === form.userId)?.mobileNumber ||
+      userStore.users.find((user) => user.ltoClientId === form.userId)?.telephoneNumber ||
       'Not provided',
     vehicleType: form.vehicleType || 'car',
     plateNumber: 'Pending',
@@ -110,15 +109,15 @@ const registrations = computed((): Registration[] => {
 })
 
 // Filter registrations by status
-const pendingRegistrations = computed((): Registration[] =>
+const pendingRegistrations = computed(() =>
   registrations.value.filter((reg) => reg.status === 'pending'),
 )
 
-const approvedRegistrations = computed((): Registration[] =>
+const approvedRegistrations = computed(() =>
   registrations.value.filter((reg) => reg.status === 'approved'),
 )
 
-const archivedRegistrations = computed((): Registration[] =>
+const archivedRegistrations = computed(() =>
   registrations.value.filter((reg) => reg.status === 'rejected'),
 )
 
@@ -126,17 +125,29 @@ const archivedRegistrations = computed((): Registration[] =>
 const searchQuery = ref<string>('')
 const activeTab = ref<'pending' | 'approved' | 'archived'>('pending')
 
-const filteredRegistrations = computed((): Registration[] => {
-  let filtered
+const filteredRegistrations = computed<Registration[]>(() => {
+  let filtered: Registration[]
   switch (activeTab.value) {
     case 'pending':
-      filtered = pendingRegistrations.value
+      filtered = pendingRegistrations.value.map((registration) => ({
+        ...registration,
+        appointmentDate: registration.appointmentDate || 'Not scheduled',
+        appointmentTime: registration.appointmentTime || 'Not scheduled',
+      })) as Registration[]
       break
     case 'approved':
-      filtered = approvedRegistrations.value
+      filtered = approvedRegistrations.value.map((registration) => ({
+        ...registration,
+        appointmentDate: registration.appointmentDate || 'Not scheduled',
+        appointmentTime: registration.appointmentTime || 'Not scheduled',
+      }))
       break
     case 'archived':
-      filtered = archivedRegistrations.value
+      filtered = archivedRegistrations.value.map((registration) => ({
+        ...registration,
+        appointmentDate: registration.appointmentDate || 'Not scheduled',
+        appointmentTime: registration.appointmentTime || 'Not scheduled',
+      }))
       break
     default:
       filtered = []
@@ -154,17 +165,17 @@ const filteredRegistrations = computed((): Registration[] => {
 })
 
 // Registration actions
-const approveRegistration = (id: string) => {
+const approveRegistration = (id: string): void => {
   const registration = registrations.value.find((reg) => reg.id === id)
   if (registration) {
     registration.status = 'approved'
   }
 }
 
-const rejectRegistration = (id: string) => {
+const rejectRegistration = (id: string): void => {
   const registration = registrations.value.find((reg) => reg.id === id)
   if (registration) {
-    registration.status = 'archived'
+    registration.status = 'rejected'
   }
 }
 </script>
