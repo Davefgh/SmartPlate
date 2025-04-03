@@ -75,7 +75,6 @@ import {
   faCalendarCheck,
   faCalendarTimes,
   faTachometerAlt,
-  faInbox,
 } from '@fortawesome/free-solid-svg-icons'
 import { faGoogle } from '@fortawesome/free-brands-svg-icons'
 
