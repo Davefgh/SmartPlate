@@ -1,64 +1,81 @@
-<script setup>
+<script setup lang="ts">
 import { useUserStore } from '@/stores/user'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import type { Vehicle, Plate, Registration } from '@/types/vehicle'
+
+interface User {
+  name: string
+  email: string
+  avatar: string
+}
+
+interface Activity {
+  type: 'vehicle' | 'plate' | 'renewal'
+  title: string
+  date: Date
+  description: string
+  daysAgo: number
+}
 
 const router = useRouter()
 const userStore = useUserStore()
 const vehicleStore = useVehicleRegistrationStore()
 
-const user = computed(() => ({
-  name: userStore.fullName,
-  email: userStore.user?.email || '',
-  avatar: userStore.user?.avatar || '/Land_Transportation_Office.webp',
-}))
+const user = computed<User>(
+  (): User => ({
+    name: userStore.fullName,
+    email: userStore.currentUser?.email || '',
+    avatar: userStore.currentUser?.avatar || '/Land_Transportation_Office.webp',
+  }),
+)
 
 const totalVehicles = computed(() => vehicleStore.userVehicles.length)
 const newVehiclesThisMonth = computed(() => {
   const today = new Date()
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-  return vehicleStore.userVehicles.filter((vehicle) => {
-    const lastUpdated = new Date(vehicle.lastUpdated)
+  return vehicleStore.userVehicles.filter((vehicle: Vehicle) => {
+    const lastUpdated = new Date(vehicle.lastRenewalDate)
     return lastUpdated >= firstDayOfMonth
   }).length
 })
 
 const activePlates = computed(
-  () => vehicleStore.userPlates.filter((plate) => plate.status === 'Active').length,
+  () => vehicleStore.userPlates.filter((plate: Plate) => plate.status === 'Active').length,
 )
 const allPlatesUpToDate = computed(() => {
   const today = new Date()
-  return vehicleStore.userPlates.every((plate) => {
-    const expiryDate = new Date(plate.expiryDate)
+  return vehicleStore.userPlates.every((plate: Plate) => {
+    const expiryDate = new Date(plate.plate_expiration_date)
     return expiryDate > today
   })
 })
 
 const pendingRenewals = computed(() => vehicleStore.soonToExpireRegistrations.length)
 
-const recentActivity = computed(() => {
-  const activities = []
+const recentActivity = computed((): Activity[] => {
+  const activities: Activity[] = []
 
   // Add new vehicles (last 30 days)
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-  vehicleStore.userVehicles.forEach((vehicle) => {
-    const lastUpdated = new Date(vehicle.lastUpdated)
+  vehicleStore.userVehicles.forEach((vehicle: Vehicle) => {
+    const lastUpdated = new Date(vehicle.lastRenewalDate)
     if (lastUpdated >= thirtyDaysAgo) {
       activities.push({
         type: 'vehicle',
         title: 'New Vehicle Added',
         date: lastUpdated,
-        description: `${vehicle.make} ${vehicle.model} with plate number ${vehicle.plateNumber}`,
-        daysAgo: Math.floor((new Date() - lastUpdated) / (1000 * 60 * 60 * 24)),
+        description: `${vehicle.vehicleMake} ${vehicle.vehicleSeries} with plate number ${vehicleStore.getPlateByVehicleId(vehicle.id)?.plate_number || 'N/A'}`,
+        daysAgo: Math.floor((new Date().getTime() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24)),
       })
     }
   })
 
   // Add plate renewals (last 30 days)
-  vehicleStore.userRegistrations.forEach((registration) => {
+  vehicleStore.userRegistrations.forEach((registration: Registration) => {
     if (registration.registrationType === 'Renewal' && registration.status === 'Approved') {
       const submissionDate = new Date(registration.submissionDate)
       if (submissionDate >= thirtyDaysAgo) {
@@ -69,8 +86,10 @@ const recentActivity = computed(() => {
             type: 'plate',
             title: 'Plate Registration Renewed',
             date: submissionDate,
-            description: `${vehicle.make} ${vehicle.model} with plate number ${plate.plateNumber}`,
-            daysAgo: Math.floor((new Date() - submissionDate) / (1000 * 60 * 60 * 24)),
+            description: `${vehicle.vehicleMake} ${vehicle.vehicleSeries} with plate number ${plate.plate_number}`,
+            daysAgo: Math.floor(
+              (new Date().getTime() - submissionDate.getTime()) / (1000 * 60 * 60 * 24),
+            ),
           })
         }
       }
@@ -85,14 +104,14 @@ const recentActivity = computed(() => {
         type: 'renewal',
         title: 'Renewal Notification',
         date: new Date(),
-        description: `${vehicle.make} ${vehicle.model} plate expires in ${vehicleStore.getDaysRemaining(registration.expiryDate)} days`,
+        description: `${vehicle.vehicleMake} ${vehicle.vehicleSeries} plate expires in ${vehicleStore.getDaysRemaining(registration.expiryDate)} days`,
         daysAgo: 3, // Placeholder for notification
       })
     }
   })
 
   // Sort by date (newest first) and take the first 3
-  return activities.sort((a, b) => b.date - a.date).slice(0, 3)
+  return activities.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 3)
 })
 
 // Navigation functions
@@ -187,7 +206,7 @@ const navigateToVehicleRegistrationForm = () => {
 
         <!-- Stats Card 3 - Registration -->
         <div
-          @click="navigateToRegistration"
+          @click="emit('navigate', 'Registration')"
           class="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl shadow-md p-8 transform transition-all duration-300 hover:shadow-xl hover:-translate-y-2 border-t-4 border-amber-600 cursor-pointer"
         >
           <div class="flex items-center justify-between mb-6">
@@ -307,7 +326,7 @@ const navigateToVehicleRegistrationForm = () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-.895-3-2-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-.895-3-2-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-.895-3-2-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-.895-3-2-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23bfdbfe' fill-opacity='0.2' fill-rule='evenodd'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-.895-3-2-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-.895-3-2-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-.895-3-2-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-.895-3-2-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23bfdbfe' fill-opacity='0.2' fill-rule='evenodd'/%3E%3C/svg%3E");
   opacity: 0.5;
   z-index: -1;
 }
