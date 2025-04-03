@@ -51,6 +51,7 @@ import {
   faArrowLeft,
   faInfoCircle,
   faHeartbeat,
+  faInbox,
   faUsers,
   faBuilding,
   faTrash,
@@ -74,6 +75,7 @@ import {
   faCalendarCheck,
   faCalendarTimes,
   faTachometerAlt,
+  faInbox,
 } from '@fortawesome/free-solid-svg-icons'
 import { faGoogle } from '@fortawesome/free-brands-svg-icons'
 
@@ -98,6 +100,7 @@ const icons: IconDefinition[] = [
   faArrowLeft,
   faInfoCircle,
   faHeartbeat,
+  faInbox,
   faUsers,
   faBuilding,
   faMapMarkerAlt,

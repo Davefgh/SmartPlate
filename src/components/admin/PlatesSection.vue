@@ -119,7 +119,7 @@ const plates = computed((): PlateWithVehicle[] => {
 
 // Filtered and sorted plates
 const filteredPlates = computed((): PlateWithVehicle[] => {
-  let result = plates.value
+  let result = [...plates.value]
 
   // Apply status filter
   if (activeStatusFilter.value !== 'all') {
@@ -128,7 +128,7 @@ const filteredPlates = computed((): PlateWithVehicle[] => {
 
   // Apply type filter
   if (activeTypeFilter.value !== 'all') {
-    result = result.filter((plate) => plate.type === activeTypeFilter.value)
+    result = result.filter((plate) => plate.plateType === activeTypeFilter.value)
   }
 
   // Apply search filter
@@ -143,33 +143,32 @@ const filteredPlates = computed((): PlateWithVehicle[] => {
 
   // Apply sorting
   return result.sort((a, b) => {
-    const modifier = sortDesc.value ? -1 : 1
-    const sortField = sortBy.value as keyof PlateWithVehicle
-    const aValue = a[sortField]
-    const bValue = b[sortField]
+    const aValue = a[sortBy.value]
+    const bValue = b[sortBy.value]
 
-    // Handle undefined or null values
-    if (aValue === undefined || aValue === null) return 1 * modifier
-    if (bValue === undefined || bValue === null) return -1 * modifier
+    // Handle null/undefined values
+    if (!aValue && aValue !== 0) return sortDesc.value ? 1 : -1
+    if (!bValue && bValue !== 0) return sortDesc.value ? -1 : 1
+    if (aValue === bValue) return 0
 
-    // Handle date fields specially
-    if (sortField === 'registrationDate' || sortField === 'expiryDate') {
+    // Handle date fields
+    if (sortBy.value === 'registrationDate' || sortBy.value === 'expiryDate') {
       const aDate = new Date(String(aValue)).getTime()
       const bDate = new Date(String(bValue)).getTime()
-      return isNaN(aDate) || isNaN(bDate) ? 0 : (aDate - bDate) * modifier
+      return sortDesc.value ? bDate - aDate : aDate - bDate
     }
 
     // Handle numeric fields
     const aNum = Number(aValue)
     const bNum = Number(bValue)
     if (!isNaN(aNum) && !isNaN(bNum)) {
-      return (aNum - bNum) * modifier
+      return sortDesc.value ? bNum - aNum : aNum - bNum
     }
 
-    // Default string comparison
-    const aStr = String(aValue).toLowerCase()
-    const bStr = String(bValue).toLowerCase()
-    return aStr.localeCompare(bStr) * modifier
+    // Handle string values
+    const aString = String(aValue).toLowerCase()
+    const bString = String(bValue).toLowerCase()
+    return sortDesc.value ? bString.localeCompare(aString) : aString.localeCompare(bString)
   })
 })
 
@@ -206,7 +205,6 @@ const sort = (header: TableHeader) => {
   }
 }
 
-// Table headers
 // Modal state
 const selectedPlate = ref<PlateWithVehicle | null>(null)
 const showPlateModal = ref<boolean>(false)
@@ -317,7 +315,17 @@ const headers: TableHeader[] = [
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-if="paginatedPlates.length === 0" class="hover:bg-gray-50">
+              <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                <div class="flex flex-col items-center justify-center space-y-2">
+                  <font-awesome-icon :icon="['fas', 'inbox']" class="text-4xl text-gray-400" />
+                  <p class="text-lg font-medium">No plates found</p>
+                  <p class="text-sm">Try adjusting your search or filter criteria</p>
+                </div>
+              </td>
+            </tr>
             <tr
+              v-else
               v-for="plate in paginatedPlates"
               :key="plate.id"
               class="hover:bg-gray-50 transition-colors"
@@ -381,22 +389,24 @@ const headers: TableHeader[] = [
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
         <div class="flex items-center justify-between">
           <div class="text-sm text-gray-700">
-            Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
+            Showing {{ filteredPlates.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0 }} to
             {{ Math.min(currentPage * itemsPerPage, filteredPlates.length) }} of
             {{ filteredPlates.length }} entries
           </div>
           <div class="flex items-center gap-2">
             <button
               @click="currentPage--"
-              :disabled="currentPage === 1"
+              :disabled="currentPage === 1 || filteredPlates.length === 0"
               class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
             >
               <font-awesome-icon :icon="['fas', 'chevron-left']" />
             </button>
-            <span class="text-sm text-gray-700">Page {{ currentPage }} of {{ totalPages }}</span>
+            <span class="text-sm text-gray-700"
+              >Page {{ filteredPlates.length > 0 ? currentPage : 0 }} of {{ totalPages || 0 }}</span
+            >
             <button
               @click="currentPage++"
-              :disabled="currentPage === totalPages"
+              :disabled="currentPage === totalPages || filteredPlates.length === 0"
               class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
             >
               <font-awesome-icon :icon="['fas', 'chevron-right']" />

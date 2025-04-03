@@ -1,6 +1,48 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
+
+interface Registration {
+  id: string
+  vehicleInfo: string
+  plateNumber: string
+  registrationType: string
+  submissionDate: string
+  expiryDate: string
+  status: string
+  applicantName?: string
+  applicantEmail?: string
+  applicantPhone?: string
+  make?: string
+  model?: string
+  year?: string
+  color?: string
+  engineNumber?: string
+  chassisNumber?: string
+  vehicleType?: string
+  referenceCode?: string
+  inspectionStatus?: string
+  paymentStatus?: string
+  verificationStatus?: string
+}
+
+interface StatusFilter {
+  value: string
+  label: string
+  active: boolean
+}
+
+interface TypeFilter {
+  value: string
+  label: string
+  active: boolean
+}
+
+interface TableHeader {
+  text: string
+  value: keyof Registration | 'actions'
+  sortable: boolean
+}
 
 const RegistrationDetailsModal = defineAsyncComponent(
   () => import('@/components/modals/RegistrationDetailsModal.vue'),
@@ -9,10 +51,10 @@ const RegistrationDetailsModal = defineAsyncComponent(
 const vehicleStore = useVehicleRegistrationStore()
 
 // Modal state
-const selectedRegistration = ref(null)
-const showDetailsModal = ref(false)
+const selectedRegistration = ref<Registration | null>(null)
+const showDetailsModal = ref<boolean>(false)
 
-const openDetailsModal = (registration) => {
+const openDetailsModal = (registration: Registration): void => {
   selectedRegistration.value = {
     ...registration,
     applicantName: registration.applicantName || 'Unknown',
@@ -38,16 +80,21 @@ const openDetailsModal = (registration) => {
   showDetailsModal.value = true
 }
 
-const closeDetailsModal = () => {
+const closeDetailsModal = (): void => {
   showDetailsModal.value = false
   selectedRegistration.value = null
 }
 
 // Get all registrations with details
-const registrations = computed(() => vehicleStore.registrationsWithDetails)
+const registrations = computed<Registration[]>(() => {
+  return vehicleStore.registrationsWithDetails.map((registration) => ({
+    ...registration,
+    id: String(registration.id),
+  }))
+})
 
 // Status filters
-const statusFilters = ref([
+const statusFilters = ref<StatusFilter[]>([
   { value: 'all', label: 'All Registrations', active: true },
   { value: 'Approved', label: 'Approved', active: false },
   { value: 'Pending', label: 'Pending', active: false },
@@ -55,32 +102,32 @@ const statusFilters = ref([
 ])
 
 // Type filters
-const typeFilters = ref([
+const typeFilters = ref<TypeFilter[]>([
   { value: 'all', label: 'All Types', active: true },
   { value: 'New Registration', label: 'New Registration', active: false },
   { value: 'Renewal', label: 'Renewal', active: false },
 ])
 
 // Search and filter state
-const searchQuery = ref('')
-const sortBy = ref('submissionDate')
-const sortDesc = ref(false)
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
+const searchQuery = ref<string>('')
+const sortBy = ref<keyof Registration>('submissionDate')
+const sortDesc = ref<boolean>(false)
+const currentPage = ref<number>(1)
+const itemsPerPage = ref<number>(10)
 
 // Active filters
-const activeStatusFilter = computed(() => {
+const activeStatusFilter = computed<string>(() => {
   const filter = statusFilters.value.find((f) => f.active === true)
   return filter ? filter.value : 'all'
 })
 
-const activeTypeFilter = computed(() => {
+const activeTypeFilter = computed<string>(() => {
   const filter = typeFilters.value.find((f) => f.active === true)
   return filter ? filter.value : 'all'
 })
 
 // Apply status filter
-const setStatusFilter = (value) => {
+const setStatusFilter = (value: string): void => {
   statusFilters.value = statusFilters.value.map((filter) => ({
     ...filter,
     active: filter.value === value,
@@ -88,7 +135,7 @@ const setStatusFilter = (value) => {
 }
 
 // Apply type filter
-const setTypeFilter = (value) => {
+const setTypeFilter = (value: string): void => {
   typeFilters.value = typeFilters.value.map((filter) => ({
     ...filter,
     active: filter.value === value,
@@ -102,20 +149,27 @@ const filteredRegistrations = computed(() => {
   // Apply status filter
   if (activeStatusFilter.value !== 'all') {
     if (activeStatusFilter.value === 'expired') {
-      // Filter for expired registrations
       result = result.filter((reg) => {
-        const expiryDate = new Date(reg.expiryDate)
-        return expiryDate < new Date()
+        if (!reg.expiryDate) return false
+        try {
+          const expiryDate = new Date(reg.expiryDate)
+          return !isNaN(expiryDate.getTime()) && expiryDate < new Date()
+        } catch {
+          return false
+        }
       })
     } else {
-      // Filter by status
-      result = result.filter((reg) => reg.status === activeStatusFilter.value)
+      result = result.filter(
+        (reg) => reg.status?.toLowerCase() === activeStatusFilter.value.toLowerCase(),
+      )
     }
   }
 
   // Apply type filter
   if (activeTypeFilter.value !== 'all') {
-    result = result.filter((reg) => reg.registrationType === activeTypeFilter.value)
+    result = result.filter(
+      (reg) => reg.registrationType?.toLowerCase() === activeTypeFilter.value.toLowerCase(),
+    )
   }
 
   // Apply search query
@@ -123,22 +177,41 @@ const filteredRegistrations = computed(() => {
     const query = searchQuery.value.toLowerCase()
     result = result.filter(
       (reg) =>
-        reg.vehicleInfo.toLowerCase().includes(query) ||
-        reg.plateNumber.toLowerCase().includes(query),
+        (reg.vehicleInfo?.toLowerCase() || '').includes(query) ||
+        (reg.plateNumber?.toLowerCase() || '').includes(query),
     )
   }
 
-  // Apply sorting
+  // Apply sorting with proper type handling
   return result.sort((a, b) => {
     const modifier = sortDesc.value ? -1 : 1
-    if (a[sortBy.value] < b[sortBy.value]) return -1 * modifier
-    if (a[sortBy.value] > b[sortBy.value]) return 1 * modifier
-    return 0
+    const aValue = a[sortBy.value]
+    const bValue = b[sortBy.value]
+
+    // Handle null/undefined values
+    if (!aValue && !bValue) return 0
+    if (!aValue) return 1 * modifier
+    if (!bValue) return -1 * modifier
+
+    // Handle date fields
+    if (sortBy.value === 'submissionDate' || sortBy.value === 'expiryDate') {
+      const aDate = new Date(aValue).getTime()
+      const bDate = new Date(bValue).getTime()
+      return isNaN(aDate) || isNaN(bDate) ? 0 : (aDate - bDate) * modifier
+    }
+
+    // Handle string fields
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return aValue.localeCompare(bValue) * modifier
+    }
+
+    // Handle numeric fields
+    return String(aValue).localeCompare(String(bValue)) * modifier
   })
 })
 
 // Table headers
-const headers = [
+const headers: TableHeader[] = [
   { text: 'Vehicle', value: 'vehicleInfo', sortable: true },
   { text: 'Plate Number', value: 'plateNumber', sortable: true },
   { text: 'Registration Type', value: 'registrationType', sortable: true },
@@ -159,7 +232,7 @@ const paginatedRegistrations = computed(() => {
 })
 
 // Status badge color
-const getStatusColor = (status) => {
+const getStatusColor = (status: string): string => {
   switch (status.toLowerCase()) {
     case 'approved':
       return 'bg-green-100 text-green-800'
@@ -173,14 +246,22 @@ const getStatusColor = (status) => {
 }
 
 // Sort handler
-const sort = (header) => {
+const sort = (header: TableHeader): void => {
   if (!header.sortable) return
+
+  // Update sort direction if clicking the same column
   if (sortBy.value === header.value) {
     sortDesc.value = !sortDesc.value
   } else {
-    sortBy.value = header.value
-    sortDesc.value = false
+    // Set new sort column and reset direction to ascending
+    if (header.value !== 'actions') {
+      sortBy.value = header.value as keyof Registration
+      sortDesc.value = false
+    }
   }
+
+  // Reset to first page when sorting changes
+  currentPage.value = 1
 }
 </script>
 

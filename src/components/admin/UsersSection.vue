@@ -112,8 +112,10 @@ const filteredUsers = computed((): ExtendedUser[] => {
     })
     .sort((a, b) => {
       const modifier = sortDesc.value ? -1 : 1
-      if (a[sortBy.value] < b[sortBy.value]) return -1 * modifier
-      if (a[sortBy.value] > b[sortBy.value]) return 1 * modifier
+      const aValue = a[sortBy.value as keyof ExtendedUser]
+      const bValue = b[sortBy.value as keyof ExtendedUser]
+      if (aValue !== undefined && bValue !== undefined && aValue < bValue) return -1 * modifier
+      if (bValue !== undefined && aValue !== undefined && aValue > bValue) return 1 * modifier
       return 0
     })
 })
@@ -264,7 +266,17 @@ const sort = (header: TableHeader): void => {
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-if="paginatedUsers.length === 0" class="hover:bg-gray-50">
+              <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                <div class="flex flex-col items-center justify-center space-y-2">
+                  <font-awesome-icon :icon="['fas', 'users']" class="text-4xl text-gray-400" />
+                  <p class="text-lg font-medium">No users found</p>
+                  <p class="text-sm">Try adjusting your search or filter criteria</p>
+                </div>
+              </td>
+            </tr>
             <tr
+              v-else
               v-for="user in paginatedUsers"
               :key="user.ltoClientId"
               class="hover:bg-gray-50 transition-colors"
@@ -329,22 +341,24 @@ const sort = (header: TableHeader): void => {
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
         <div class="flex items-center justify-between">
           <div class="text-sm text-gray-700">
-            Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
+            Showing {{ filteredUsers.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0 }} to
             {{ Math.min(currentPage * itemsPerPage, filteredUsers.length) }} of
             {{ filteredUsers.length }} entries
           </div>
           <div class="flex items-center gap-2">
             <button
               @click="currentPage--"
-              :disabled="currentPage === 1"
+              :disabled="currentPage === 1 || filteredUsers.length === 0"
               class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
             >
               <font-awesome-icon :icon="['fas', 'chevron-left']" />
             </button>
-            <span class="text-sm text-gray-700">Page {{ currentPage }} of {{ totalPages }}</span>
+            <span class="text-sm text-gray-700"
+              >Page {{ filteredUsers.length > 0 ? currentPage : 0 }} of {{ totalPages }}</span
+            >
             <button
               @click="currentPage++"
-              :disabled="currentPage === totalPages"
+              :disabled="currentPage === totalPages || filteredUsers.length === 0"
               class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
             >
               <font-awesome-icon :icon="['fas', 'chevron-right']" />
