@@ -19,7 +19,8 @@ type User struct {
 	Contact        Contact   `json:"contact" db:"contact"`
 	Address        Address   `json:"address" db:"address"`
 	MedicalInformation MedicalInformation `json:"medical_information" db:"medical_information"`
-	
+    People People `json:"people" db:"people"`
+    PersonalInformation PersonalInformation `json:"personal_information" db:"personal_information"`	
 }
 
 type Contact struct {
@@ -58,27 +59,27 @@ type MedicalInformation struct {
 }
 
 type People struct {
-	PEOPLE_ID          int    `json:"people_id" db:"people_id"`
-	EMPLOYER_NAME      string `json:"employer_name" db:"employer_name"`
-	EMPLOYER_ADDRESS   string `json:"employer_address" db:"employer_address"`
-	MOTHER_FIRST_NAME  string `json:"mother_first_name" db:"mother_first_name"`
-	MOTHER_MAIDEN_NAME string `json:"mother_maden_name" db:"mother_maden_name"`
-	MOTHER_MIDDLE_NAME string `json:"mother_middle_name" db:"mother_middle_name"`
-	FATHER_FIRST_NAME  string `json:"father_first_name" db:"father_first_name"`
-	FATHER_MIDDLE_NAME string `json:"father_middle_name" db:"father_middle_name"`
-	FATHER_LAST_NAME   string `json:"father_last_name" db:"father_last_name"`
-	ADDRESS            string `json:"address" db:"address"`
-	LTO_CLIENT_ID      string `json:"lto_client_id" db:"lto_client_id"`
+    PEOPLE_ID          *int    `json:"people_id" db:"people_id"`
+    EMPLOYER_NAME      *string `json:"employer_name" db:"employer_name"`
+    EMPLOYER_ADDRESS   *string `json:"employer_address" db:"employer_address"`
+    MOTHER_FIRST_NAME  *string `json:"mother_first_name" db:"mother_first_name"`
+    MOTHER_MAIDEN_NAME *string `json:"mother_maiden_name" db:"mother_maiden_name"`
+    MOTHER_MIDDLE_NAME *string `json:"mother_middle_name" db:"mother_middle_name"`
+    FATHER_FIRST_NAME  *string `json:"father_first_name" db:"father_first_name"`
+    FATHER_MIDDLE_NAME *string `json:"father_middle_name" db:"father_middle_name"`
+    FATHER_LAST_NAME   *string `json:"father_last_name" db:"father_last_name"`
+    ADDRESS            *string `json:"address" db:"address"`
+    LTO_CLIENT_ID      *string `json:"lto_client_id" db:"lto_client_id"`
 }
 
 type PersonalInformation struct {
-	PERSONAL_ID            int    `json:"personal_id" db:"personal_id"`
-	NATIONALITY            string `json:"nationality" db:"nationality"`
-	CIVIL_STATUS           string `json:"civil_status" db:"civil_status"`
-	DATE_OF_BIRTH          string `json:"date_of_birth" db:"date_of_birth"`
-	PLACE_OF_BIRTH         string `json:"place_of_birth" db:"place_of_birth"`
-	EDUCATIONAL_ATTAINMENT string `json:"educational_attainment" db:"educational_attainment"`
-	TIN                    string `json:"tin" db:"tin"`
-	LTO_CLIENT_ID          string `json:"lto_client_id" db:"lto_client_id"`
+	PERSONAL_ID            *int    `json:"personal_id" db:"personal_id"`
+	NATIONALITY            *string `json:"nationality" db:"nationality"`
+	CIVIL_STATUS           *string `json:"civil_status" db:"civil_status"`
+	DATE_OF_BIRTH          *string `json:"date_of_birth" db:"date_of_birth"`
+	PLACE_OF_BIRTH         *string `json:"place_of_birth" db:"place_of_birth"`
+	EDUCATIONAL_ATTAINMENT *string `json:"educational_attainment" db:"educational_attainment"`
+	TIN                    *string `json:"tin" db:"tin"`
+	LTO_CLIENT_ID          *string `json:"lto_client_id" db:"lto_client_id"`
 }
 
