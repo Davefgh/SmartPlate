@@ -1,7 +1,7 @@
 <script setup>
-import { defineEmits } from 'vue'
+import { defineProps, defineEmits } from 'vue'
 
-const { plate, isOpen } = defineProps({
+const props = defineProps({
   plate: {
     type: Object,
     required: true,
@@ -47,7 +47,7 @@ const getExpiryStatusColor = (expiryDateStr) => {
 </script>
 
 <template>
-  <div v-if="isOpen" class="fixed inset-0 z-50 overflow-y-auto">
+  <div v-if="props.isOpen" class="fixed inset-0 z-50 overflow-y-auto">
     <div
       class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0"
     >
@@ -90,7 +90,7 @@ const getExpiryStatusColor = (expiryDateStr) => {
               <div
                 class="bg-white border-4 border-gray-800 rounded-lg p-4 mb-6 shadow-lg w-48 text-center"
               >
-                <div class="text-2xl font-bold tracking-wider">{{ plate.plateNumber }}</div>
+                <div class="text-2xl font-bold tracking-wider">{{ props.plate.plateNumber }}</div>
                 <div class="text-xs text-gray-500 mt-1">Vehicle License Plate</div>
               </div>
 
@@ -101,7 +101,7 @@ const getExpiryStatusColor = (expiryDateStr) => {
               />
 
               <div class="mt-4 text-sm font-medium text-gray-700">
-                {{ plate.vehicleMake }} {{ plate.vehicleModel }}
+                {{ props.plate.vehicleMake }} {{ props.plate.vehicleModel }}
               </div>
             </div>
 
@@ -110,12 +110,12 @@ const getExpiryStatusColor = (expiryDateStr) => {
               <span
                 :class="[
                   'px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full shadow-sm',
-                  plate.status === 'Active'
+                  props.plate.status === 'Active'
                     ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800'
                     : 'bg-gradient-to-r from-yellow-100 to-amber-200 text-amber-800',
                 ]"
               >
-                {{ plate.status }}
+                {{ props.plate.status }}
               </span>
             </div>
           </div>
@@ -123,8 +123,10 @@ const getExpiryStatusColor = (expiryDateStr) => {
           <!-- Plate Information - Right Side -->
           <div class="md:w-2/3 px-6 py-5 overflow-y-auto max-h-[70vh]">
             <div class="mb-6">
-              <h2 class="text-2xl font-bold text-gray-900 mb-1">Plate {{ plate.plateNumber }}</h2>
-              <p class="text-sm text-gray-500">Owner: {{ plate.owner }}</p>
+              <h2 class="text-2xl font-bold text-gray-900 mb-1">
+                Plate {{ props.plate.plateNumber }}
+              </h2>
+              <p class="text-sm text-gray-500">Owner: {{ props.plate.owner }}</p>
             </div>
 
             <!-- Details Grid -->
@@ -135,7 +137,7 @@ const getExpiryStatusColor = (expiryDateStr) => {
                 <div class="flex items-center">
                   <font-awesome-icon :icon="['fas', 'car']" class="text-dark-blue mr-2" />
                   <span class="text-base font-medium"
-                    >{{ plate.vehicleMake }} {{ plate.vehicleModel }}</span
+                    >{{ props.plate.vehicleMake }} {{ props.plate.vehicleModel }}</span
                   >
                 </div>
               </div>
@@ -145,7 +147,7 @@ const getExpiryStatusColor = (expiryDateStr) => {
                 <div class="text-xs text-gray-500 mb-1">Type</div>
                 <div class="flex items-center">
                   <font-awesome-icon :icon="['fas', 'tag']" class="text-dark-blue mr-2" />
-                  <span class="text-base font-medium">{{ plate.type }}</span>
+                  <span class="text-base font-medium">{{ props.plate.type }}</span>
                 </div>
               </div>
 
@@ -157,12 +159,12 @@ const getExpiryStatusColor = (expiryDateStr) => {
                   <span
                     class="text-base font-medium px-2 py-0.5 rounded-full text-xs"
                     :class="{
-                      'bg-blue-100 text-blue-800': plate.plateType === 'Regular',
-                      'bg-purple-100 text-purple-800': plate.plateType === 'Temporary',
-                      'bg-orange-100 text-orange-800': plate.plateType === 'Improvised',
+                      'bg-blue-100 text-blue-800': props.plate.plateType === 'Regular',
+                      'bg-purple-100 text-purple-800': props.plate.plateType === 'Temporary',
+                      'bg-orange-100 text-orange-800': props.plate.plateType === 'Improvised',
                     }"
                   >
-                    {{ plate.plateType }}
+                    {{ props.plate.plateType }}
                   </span>
                 </div>
               </div>
@@ -172,7 +174,7 @@ const getExpiryStatusColor = (expiryDateStr) => {
                 <div class="text-xs text-gray-500 mb-1">MV File Number</div>
                 <div class="flex items-center">
                   <font-awesome-icon :icon="['fas', 'file-alt']" class="text-dark-blue mr-2" />
-                  <span class="text-base font-medium">{{ plate.mvFileNumber }}</span>
+                  <span class="text-base font-medium">{{ props.plate.mvFileNumber }}</span>
                 </div>
               </div>
 
@@ -184,7 +186,7 @@ const getExpiryStatusColor = (expiryDateStr) => {
                     :icon="['fas', 'calendar-check']"
                     class="text-dark-blue mr-2"
                   />
-                  <span class="text-base font-medium">{{ plate.registrationDate }}</span>
+                  <span class="text-base font-medium">{{ props.plate.registrationDate }}</span>
                 </div>
               </div>
 
@@ -196,7 +198,7 @@ const getExpiryStatusColor = (expiryDateStr) => {
                     :icon="['fas', 'calendar-times']"
                     class="text-dark-blue mr-2"
                   />
-                  <span class="text-base font-medium">{{ plate.expiryDate }}</span>
+                  <span class="text-base font-medium">{{ props.plate.expiryDate }}</span>
                 </div>
               </div>
             </div>

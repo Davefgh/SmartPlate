@@ -81,6 +81,17 @@ const mockUsersData: User[] = [
     avatar: '/Land_Transportation_Office.webp',
   },
   {
+    ltoClientId: 'LTO-OFFICER-001',
+    lastName: 'OFFICER',
+    firstName: 'TESTER',
+    middleName: '',
+    role: 'LTO Officer',
+    email: 'adminofficer@smartplate.com',
+    password: 'officer123',
+    status: 'active',
+    avatar: '/Land_Transportation_Office.webp',
+  },
+  {
     ltoClientId: 'LTO-2023-12345',
     lastName: 'Santos',
     firstName: 'Maria',
@@ -137,10 +148,14 @@ export const useUserStore = defineStore('user', {
         const foundUser = this.users.find((user) => {
           // For admin login, only match admin users
           if (isAdminLogin) {
-            return user.role === 'admin' && user.email === email && user.password === password
+            return (
+              (user.role === 'admin' || user.role === 'LTO Officer') &&
+              user.email === email &&
+              user.password === password
+            )
           }
           // For regular login, only match non-admin users
-          return user.role !== 'admin' && user.email === email && user.password === password
+          return user.role === 'user' && user.email === email && user.password === password
         })
 
         if (foundUser) {
@@ -151,7 +166,7 @@ export const useUserStore = defineStore('user', {
           this.isAuthenticated = true
 
           // Generate token and store it
-          const tokenPrefix = foundUser.role === 'admin' ? 'admin_' : 'user_'
+          const tokenPrefix = foundUser.role === 'user' ? 'user_' : 'admin_'
           const fakeToken = tokenPrefix + Math.random().toString(36).substring(2)
           this.token = fakeToken
           localStorage.setItem('token', fakeToken)

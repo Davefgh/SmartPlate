@@ -51,8 +51,10 @@ const handleAdminLogin = async () => {
 
     if (userStore.isAdmin) {
       router.push('/admin')
+    } else if (userStore.currentUser?.role === 'LTO Officer') {
+      router.push('/lto-portal')
     } else {
-      errors.value.form = 'Invalid admin credentials'
+      errors.value.form = 'Invalid credentials'
     }
   } catch (error) {
     errors.value.form = error.message || 'Login failed. Please try again.'

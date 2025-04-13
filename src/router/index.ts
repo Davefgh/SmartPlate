@@ -11,7 +11,7 @@ interface RouteMeta {
   requiresAuth: boolean
   redirectIfAuth?: boolean
   requiresRegistering?: boolean
-  requiredRole?: 'admin'
+  requiredRole?: 'admin' | 'LTO Officer'
 }
 
 const routes: Array<RouteRecordRaw & { meta: RouteMeta }> = [
@@ -80,6 +80,12 @@ const routes: Array<RouteRecordRaw & { meta: RouteMeta }> = [
     name: 'admin',
     component: () => import('../views/AdminView.vue'),
     meta: { requiresAuth: true, requiredRole: 'admin' },
+  },
+  {
+    path: '/lto-portal',
+    name: 'lto',
+    component: () => import('../views/LTOView.vue'),
+    meta: { requiresAuth: true, requiredRole: 'LTO Officer' },
   },
   {
     path: '/:pathMatch(.*)*',

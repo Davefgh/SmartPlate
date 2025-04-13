@@ -3,7 +3,7 @@ export interface User {
   lastName: string
   firstName: string
   middleName: string
-  role: 'user' | 'admin'
+  role: 'user' | 'admin' | 'LTO Officer'
   password?: string
   status: 'active' | 'inactive'
   email: string
