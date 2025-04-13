@@ -1,14 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
-	"vehicle-api/internal/database"
-	"vehicle-api/internal/handlers"
-	"vehicle-api/internal/repository"
+	"os"
+	"smartplate-api/internal/database"
+	"smartplate-api/internal/handlers"
+	"smartplate-api/internal/repository"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/rs/zerolog"
 )
 
 func main() {
@@ -22,6 +25,9 @@ func main() {
 	// Initialize repositories and handlers
 	userRepo := repository.NewUserRepository(db)
 	userHandler := handlers.NewUserHandler(userRepo)
+
+	vehicleRepo := repository.NewVehicleRepository(db)
+	vehicleHandler := handlers.NewVehicleHandler(vehicleRepo)
 
 
 	// Middleware
@@ -37,13 +43,21 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           3600,
 	}))
+	//security suggestion??
+	e.Use(middleware.SecureWithConfig(middleware.SecureConfig{
+		XSSProtection:         "1; mode=block",
+		ContentTypeNosniff:    "nosniff",
+		XFrameOptions:         "DENY",
+		HSTSMaxAge:            31536000,
+		ContentSecurityPolicy: "default-src 'self'",
+	}))
 	// Vehicle routes
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Server is running")
 	})
-	e.POST("/users", userHandler.CreateUser)
-	e.GET("/users", userHandler.GetAllUsers)
-	e.GET("/users/:id", userHandler.GetUserByID)
+	e.POST("/users", userHandler.CreateUser)//working
+	e.GET("/users", userHandler.GetAllUsers)//working
+	e.GET("/users/:id", userHandler.GetUserByID)//working
 	e.GET("/users/email/:email", userHandler.GetUserByEmail)
 	e.PUT("/users/:id", userHandler.UpdateUser)	
 
@@ -54,8 +68,34 @@ func main() {
 	//for generating lto client id
 	e.GET("/generate-lto-id", userHandler.GenerateLTOID)  
 
+	//for Vehicle routes
+	e.POST("/api/vehicles", vehicleHandler.CreateVehicle)
+	e.GET("/api/vehicles/:id", vehicleHandler.GetVehicle)
+	e.PUT("/api/vehicles/:id", vehicleHandler.UpdateVehicle)
+	e.DELETE("/api/vehicles/:id", vehicleHandler.DeleteVehicle)
+
 
 
 	// Start server
-	e.Logger.Fatal(e.Start(":8081"))
+	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+    LogStatus: true,
+    LogURI:    true,
+    LogMethod: true,
+    LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+        logger.Info().
+            Str("URI", v.URI).
+            Str("method", v.Method).
+            Int("status", v.Status).
+            Msg("request")
+        return nil
+    },
+}))
+fmt.Println("Registered routes:")
+for _, route := range e.Routes() {
+    fmt.Printf("%-6s %s\n", route.Method, route.Path)
 }
+// Then start the server
+e.Logger.Fatal(e.Start(":8081"))
+}
+

@@ -5,10 +5,10 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"smartplate-api/internal/models"
+	"smartplate-api/internal/repository"
 	"strconv"
 	"time"
-	"vehicle-api/internal/models"
-	"vehicle-api/internal/repository"
 
 	"github.com/labstack/echo/v4"
 )
@@ -17,7 +17,7 @@ type UserHandler struct {
 	repo *repository.UserRepository
 }
 func NewUserHandler(repo *repository.UserRepository) *UserHandler {
-	rand.Seed(time.Now().UnixNano()) // Initialize random seed
+	rand.Seed(time.Now().UnixNano())
 	return &UserHandler{repo: repo}
 }
 

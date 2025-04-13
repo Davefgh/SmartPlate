@@ -1,104 +1,103 @@
+// internal/handlers/vehicle_handler.go
 package handlers
 
 import (
-	"log"
+	"encoding/json"
 	"net/http"
+	"smartplate-api/internal/models"
+	"smartplate-api/internal/repository"
 	"strconv"
-	"vehicle-api/internal/models"
-	"vehicle-api/internal/repository"
 
 	"github.com/labstack/echo/v4"
 )
 
 type VehicleHandler struct {
-	repo *repository.VehicleRepository
+	repo repository.VehicleRepository // Changed from models to repository
 }
 
-func NewVehicleHandler(repo *repository.VehicleRepository) *VehicleHandler {
+func NewVehicleHandler(repo repository.VehicleRepository) *VehicleHandler { // Fixed here
 	return &VehicleHandler{repo: repo}
 }
 
-// CreateVehicle handles POST /vehicles
 func (h *VehicleHandler) CreateVehicle(c echo.Context) error {
 	var vehicle models.Vehicle
-	if err := c.Bind(&vehicle); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+	 // Use a strict decoder
+	 decoder := json.NewDecoder(c.Request().Body)
+	 decoder.DisallowUnknownFields()
+	 
+	 if err := decoder.Decode(&vehicle); err != nil {
+		 return c.JSON(http.StatusBadRequest, map[string]string{
+			 "error": "Invalid request payload: " + err.Error(),
+		 })
+	 }
+	 
+	 // Validate required fields
+	 if vehicle.VEHICLE_CATEGORY == "" || vehicle.MV_FILE_NUMBER == "" {
+		 return c.JSON(http.StatusBadRequest, map[string]string{
+			 "error": "Missing required fields",
+		 })
+	 }
+
+	createdVehicle, err := h.repo.CreateVehicle(c.Request().Context(), &vehicle)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	if vehicle.Make == "" || vehicle.Model == "" || vehicle.Plate == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Make, model, and plate are required"})
-	}
-
-	if err := h.repo.Create(&vehicle); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create vehicle"})
-	}
-
-	return c.JSON(http.StatusCreated, vehicle)
+	return c.JSON(http.StatusCreated, createdVehicle)
 }
 
-// GetAllVehicles handles GET /vehicles
-// Change this in your VehicleHandler
-func (h *VehicleHandler) GetAllVehicles(c echo.Context) error {
-    vehicles, err := h.repo.GetAll()
-    if err != nil {
-        return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-    }
-    log.Printf("Returning %d vehicles", len(vehicles)) // Add this
-    // Return direct array instead of wrapping in "items"
-    return c.JSON(http.StatusOK, vehicles)
-}
-
-// GetVehicle handles GET /vehicles/:id
 func (h *VehicleHandler) GetVehicle(c echo.Context) error {
-	id, err := strconv.Atoi(c.Param("id"))
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid vehicle ID"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid vehicle ID"})
 	}
 
-	vehicle, err := h.repo.GetByID(id)
+	vehicle, err := h.repo.GetVehicle(c.Request().Context(), id)
 	if err != nil {
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "Vehicle not found"})
+		if err.Error() == "vehicle not found" {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "vehicle not found"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, vehicle)
 }
 
-// UpdateVehicle handles PUT /vehicles/:id
 func (h *VehicleHandler) UpdateVehicle(c echo.Context) error {
-	id, err := strconv.Atoi(c.Param("id"))
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid vehicle ID"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid vehicle ID"})
 	}
 
 	var vehicle models.Vehicle
 	if err := c.Bind(&vehicle); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request payload"})
 	}
 
-	vehicle.ID = id
-	if err := h.repo.Update(&vehicle); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update vehicle"})
+	if err := h.repo.UpdateVehicle(c.Request().Context(), id, &vehicle); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	// Fetch the updated vehicle to return it with updated timestamp
-	updatedVehicle, err := h.repo.GetByID(id)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch updated vehicle"})
-	}
-
-	return c.JSON(http.StatusOK, updatedVehicle)
+	return c.JSON(http.StatusOK, vehicle)
 }
 
-// DeleteVehicle handles DELETE /vehicles/:id
 func (h *VehicleHandler) DeleteVehicle(c echo.Context) error {
-	id, err := strconv.Atoi(c.Param("id"))
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid vehicle ID"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid vehicle ID"})
 	}
 
-	if err := h.repo.Delete(id); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to delete vehicle"})
+	if err := h.repo.DeleteVehicle(c.Request().Context(), id); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
 	return c.NoContent(http.StatusNoContent)
+
+	
 }
+
+
+

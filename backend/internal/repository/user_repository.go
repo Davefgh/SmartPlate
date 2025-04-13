@@ -2,7 +2,7 @@ package repository
 
 import (
 	"fmt"
-	"vehicle-api/internal/models"
+	"smartplate-api/internal/models"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -204,8 +204,7 @@ func (r *UserRepository) GetAll() ([]models.User, error) {
     return users, err
 }
 
-// GetByID with contact
-// repository/user_repository.go
+// GetByID
 func (r *UserRepository) GetByID(user_id int) (models.User, error) {
     var user models.User
     query := `
@@ -236,7 +235,7 @@ func (r *UserRepository) GetByID(user_id int) (models.User, error) {
         m.hair_color AS "medical_information.hair_color",
         m.weight AS "medical_information.weight",
         m.height AS "medical_information.height",
-        m.organ_donor AS "medical_information.organ_donor", -- Comma added here
+        m.organ_donor AS "medical_information.organ_donor",
         p.people_id AS "people.people_id",
         p.employer_name AS "people.employer_name",
         p.employer_address AS "people.employer_address",
@@ -247,8 +246,8 @@ func (r *UserRepository) GetByID(user_id int) (models.User, error) {
         p.father_middle_name AS "people.father_middle_name",
         p.father_last_name AS "people.father_last_name",
         p.address AS "people.address",
-        p.lto_client_id AS "people.lto_client_id"
-         pi.personal_id AS "personal_information.personal_id",
+        p.lto_client_id AS "people.lto_client_id",  -- Comma added here
+        pi.personal_id AS "personal_information.personal_id",
         pi.nationality AS "personal_information.nationality",
         pi.civil_status AS "personal_information.civil_status",
         pi.date_of_birth AS "personal_information.date_of_birth",
@@ -261,8 +260,9 @@ func (r *UserRepository) GetByID(user_id int) (models.User, error) {
     LEFT JOIN addresses a ON u.lto_client_id = a.lto_client_id
     LEFT JOIN medical_information m ON u.lto_client_id = m.lto_client_id
     LEFT JOIN people p ON u.lto_client_id = p.lto_client_id
-     LEFT JOIN personal_information pi ON u.lto_client_id = pi.lto_client_id
+    LEFT JOIN personal_information pi ON u.lto_client_id = pi.lto_client_id
     WHERE u.user_id = $1
+    
 `
     err := r.db.Get(&user, query, user_id)
     return user, err
@@ -270,12 +270,36 @@ func (r *UserRepository) GetByID(user_id int) (models.User, error) {
 
 func (r *UserRepository) GetByLTOClientID(ltoClientID string) (models.User, error) {
     var user models.User
+    fmt.Printf("Executing query with LTO ID: %s\n", ltoClientID)
     query := `
         SELECT 
             u.*,
-            c.*,
-            a.*,
-            m.*
+            c.contact_id AS "contact.contact_id",
+            c.lto_client_id AS "contact.lto_client_id",
+            c.telephone_number AS "contact.telephone_number",
+            c.int_area_code AS "contact.int_area_code",
+            c.mobile_number AS "contact.mobile_number",
+            c.emergency_contact_number AS "contact.emergency_contact_number",
+            c.emergency_contact_name AS "contact.emergency_contact_name",
+            c.emergency_contact_relationship AS "contact.emergency_contact_relationship",
+            c.emergency_contact_address AS "contact.emergency_contact_address",
+            a.address_id AS "address.address_id",
+            a.house_no AS "address.house_no",
+            a.street AS "address.street",
+            a.province AS "address.province",
+            a.city_municipality AS "address.city_municipality",
+            a.barangay AS "address.barangay",
+            a.zip_code AS "address.zip_code",
+            a.lto_client_id AS "address.lto_client_id",
+            m.medical_id AS "medical_information.medical_id",
+            m.gender AS "medical_information.gender",
+            m.blood_type AS "medical_information.blood_type",
+            m.complexion AS "medical_information.complexion",
+            m.eye_color AS "medical_information.eye_color",
+            m.hair_color AS "medical_information.hair_color",
+            m.weight AS "medical_information.weight",
+            m.height AS "medical_information.height",
+            m.organ_donor AS "medical_information.organ_donor"
         FROM users u
         LEFT JOIN contacts c ON u.lto_client_id = c.lto_client_id
         LEFT JOIN addresses a ON u.lto_client_id = a.lto_client_id
@@ -301,38 +325,37 @@ func (r *UserRepository) Delete(user_id int) error {
 
     // Get LTO ID first
     var ltoID string
-    if err := tx.Get(&ltoID, "SELECT lto_client_id FROM users WHERE user_id = $1", user_id); err != nil {
+
+   // Delete dependent records first
+    if _, err := tx.Exec("DELETE FROM personal_information WHERE lto_client_id = $1", ltoID); err != nil {
         tx.Rollback()
-        return fmt.Errorf("failed to get LTO ID: %w", err)
+        return fmt.Errorf("failed to delete personal info: %w", err)
     }
 
-    // Delete contact
-    if _, err := tx.Exec("DELETE FROM contacts WHERE lto_client_id = $1", ltoID); err != nil {
+    if _, err := tx.Exec("DELETE FROM people WHERE lto_client_id = $1", ltoID); err != nil {
         tx.Rollback()
-        return fmt.Errorf("failed to delete contact: %w", err)
+        return fmt.Errorf("failed to delete people: %w", err)
     }
 
-    // Delete user
-    if _, err := tx.Exec("DELETE FROM users WHERE user_id = $1", user_id); err != nil {
+    if _, err := tx.Exec("DELETE FROM medical_information WHERE lto_client_id = $1", ltoID); err != nil {
         tx.Rollback()
-        return fmt.Errorf("failed to delete user: %w", err)
+        return fmt.Errorf("failed to delete medical info: %w", err)
     }
 
     if _, err := tx.Exec("DELETE FROM addresses WHERE lto_client_id = $1", ltoID); err != nil {
         tx.Rollback()
         return fmt.Errorf("failed to delete address: %w", err)
     }
-    if _, err := tx.Exec("DELETE FROM medical_information WHERE lto_client_id = $1", ltoID); err != nil {
+
+    if _, err := tx.Exec("DELETE FROM contacts WHERE lto_client_id = $1", ltoID); err != nil {
         tx.Rollback()
-        return fmt.Errorf("failed to delete medical info: %w", err)
+        return fmt.Errorf("failed to delete contact: %w", err)
     }
-    if _, err := tx.Exec("DELETE FROM people WHERE lto_client_id = $1", ltoID); err != nil {
+
+    // Finally, delete the user
+    if _, err := tx.Exec("DELETE FROM users WHERE user_id = $1", user_id); err != nil {
         tx.Rollback()
-        return fmt.Errorf("failed to delete people: %w", err)
-    }
-    if _, err := tx.Exec("DELETE FROM personal_information WHERE lto_client_id = $1", ltoID); err != nil {
-        tx.Rollback()
-        return fmt.Errorf("failed to delete personal info: %w", err)
+        return fmt.Errorf("failed to delete user: %w", err)
     }
 
     return tx.Commit()
@@ -425,37 +448,44 @@ func (r *UserRepository) Update(user *models.User) error {
         return fmt.Errorf("address upsert failed: %w", err)
     }
     // In Update function
-medicalQuery := `
-INSERT INTO medical_information (
-    lto_client_id, gender, blood_type, complexion, 
-    eye_color, hair_color, weight, height, organ_donor
-) VALUES (
-    :medical_information.lto_client_id, 
-    :medical_information.gender, 
-    :medical_information.blood_type,
-    :medical_information.complexion,
-    :medical_information.eye_color,
-    :medical_information.hair_color,
-    :medical_information.weight,
-    :medical_information.height,
-    :medical_information.organ_donor
-)
-ON CONFLICT (lto_client_id) DO UPDATE SET
-    gender = EXCLUDED.gender,
-    blood_type = EXCLUDED.blood_type,
-    complexion = EXCLUDED.complexion,
-    eye_color = EXCLUDED.eye_color,
-    hair_color = EXCLUDED.hair_color,
-    weight = EXCLUDED.weight,
-    height = EXCLUDED.height,
-    organ_donor = EXCLUDED.organ_donor
-`
+    medicalQuery := `
+    INSERT INTO medical_information (
+        lto_client_id, gender, blood_type, complexion, 
+        eye_color, hair_color, weight, height, organ_donor
+    ) VALUES (
+        :lto_client_id, :gender, :blood_type, :complexion,
+        :eye_color, :hair_color, :weight, :height, :organ_donor
+    )
+    ON CONFLICT (lto_client_id) DO UPDATE SET
+        gender = EXCLUDED.gender,
+        blood_type = EXCLUDED.blood_type,
+        complexion = EXCLUDED.complexion,
+        eye_color = EXCLUDED.eye_color,
+        hair_color = EXCLUDED.hair_color,
+        weight = EXCLUDED.weight,
+        height = EXCLUDED.height,
+        organ_donor = EXCLUDED.organ_donor
+    `
 
-_, err = tx.NamedExec(medicalQuery, user)
-if err != nil {
-tx.Rollback()
-return fmt.Errorf("medical info upsert failed: %w", err)
-}
+    // Prepare data for medical information
+    medicalData := map[string]interface{}{
+        "lto_client_id": user.LTO_CLIENT_ID,
+        "gender":        toNullString(user.MedicalInformation.GENDER),
+        "blood_type":    toNullString(user.MedicalInformation.BLOOD_TYPE),
+        "complexion":    toNullString(user.MedicalInformation.COMPLEXION),
+        "eye_color":     toNullString(user.MedicalInformation.EYE_COLOR),
+        "hair_color":    toNullString(user.MedicalInformation.HAIR_COLOR),
+        "weight":        user.MedicalInformation.WEIGHT,
+        "height":        user.MedicalInformation.HEIGHT,
+        "organ_donor":   user.MedicalInformation.ORGAN_DONOR,
+    }
+
+    // Execute the query
+    _, err = tx.NamedExec(medicalQuery, medicalData)
+    if err != nil {
+        tx.Rollback()
+        return fmt.Errorf("medical info upsert failed: %w", err)
+    }
  // Upsert People
  peopleQuery := `
  INSERT INTO people (
@@ -549,16 +579,3 @@ if err != nil {
 
     return tx.Commit()
 }
-// func toNullInt(i *int) interface{} {
-//     if i == nil {
-//         return nil
-//     }
-//     return *i
-// }
-
-// func toNullBool(b *bool) interface{} {
-//     if b == nil {
-//         return nil
-//     }
-//     return *b
-// }
