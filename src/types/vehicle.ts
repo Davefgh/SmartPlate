@@ -29,7 +29,7 @@ export interface Vehicle {
   orDate: string
 }
 
-export interface Plate {
+export interface Plate extends Vehicle {
   plateId: number
   vehicleId: number
   plate_number: string

@@ -1,7 +1,8 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
 import { useUserStore } from '@/stores/user'
+import type { Vehicle } from '@/types/vehicle'
 
 const PlateModal = defineAsyncComponent(() => import('@/components/modals/PlateModal.vue'))
 
@@ -9,23 +10,41 @@ const PlateModal = defineAsyncComponent(() => import('@/components/modals/PlateM
 const vehicleRegistrationStore = useVehicleRegistrationStore()
 const userStore = useUserStore()
 
+interface PlateDisplay {
+  id: number
+  plateNumber: string
+  plateType: string
+  registrationDate: string
+  expiryDate: string
+  type: string
+  status: string
+  vehicleMake: string
+  vehicleModel: string
+  vehicleYear: number | string
+  owner: string
+  vehicleId: number
+}
+
 // Get plates with relevant information
-const plates = computed(() => {
+const plates = computed<PlateDisplay[]>(() => {
   if (userStore.isAdmin) {
-    return vehicleRegistrationStore.platesWithVehicleInfo.map((plate) => ({
-      id: plate.plateId,
-      plateNumber: plate.plate_number,
-      plateType: plate.plate_type,
-      registrationDate: plate.plate_issue_date,
-      expiryDate: plate.plate_expiration_date,
-      type: 'Standard',
-      status: plate.status,
-      vehicleMake: plate.vehicleMake,
-      vehicleModel: plate.vehicleModel,
-      vehicleYear: plate.vehicleYear,
-      owner: 'Admin View',
-      vehicleId: plate.vehicleId,
-    }))
+    return vehicleRegistrationStore.platesWithVehicleInfo.map((plate) => {
+      const vehicle = vehicleRegistrationStore.getVehicleById(plate.vehicleId)
+      return {
+        id: plate.plateId,
+        plateNumber: plate.plate_number,
+        plateType: plate.plate_type,
+        registrationDate: plate.plate_issue_date,
+        expiryDate: plate.plate_expiration_date,
+        type: 'Standard',
+        status: plate.status,
+        vehicleMake: vehicle?.vehicleMake || '',
+        vehicleModel: vehicle?.vehicleSeries || '',
+        vehicleYear: vehicle?.yearModel || '',
+        owner: 'Admin View',
+        vehicleId: plate.vehicleId,
+      }
+    })
   } else {
     return vehicleRegistrationStore.userPlates.map((plate) => {
       const vehicle = vehicleRegistrationStore.getVehicleById(plate.vehicleId)
@@ -62,12 +81,15 @@ const filteredPlates = computed(() => {
 })
 
 // Calculate days remaining until expiry
-const getDaysRemaining = (expiryDateStr) => {
-  return vehicleRegistrationStore.getDaysRemaining(expiryDateStr)
+const getDaysRemaining = (expiryDateStr: string): number => {
+  const today = new Date()
+  const expiryDate = new Date(expiryDateStr)
+  const diffTime = expiryDate.getTime() - today.getTime()
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 }
 
 // Get status color based on days remaining
-const getExpiryStatusColor = (expiryDateStr) => {
+const getExpiryStatusColor = (expiryDateStr: string): string => {
   const daysRemaining = getDaysRemaining(expiryDateStr)
 
   if (daysRemaining < 0) return 'bg-red-100 text-red-800' // Expired
@@ -76,7 +98,7 @@ const getExpiryStatusColor = (expiryDateStr) => {
 }
 
 // Get expiry status text
-const getExpiryStatusText = (expiryDateStr) => {
+const getExpiryStatusText = (expiryDateStr: string): string => {
   const daysRemaining = getDaysRemaining(expiryDateStr)
 
   if (daysRemaining < 0) return 'Expired'
@@ -86,15 +108,42 @@ const getExpiryStatusText = (expiryDateStr) => {
 
 // Plate details modal
 const isPlateModalOpen = ref(false)
-const selectedPlate = ref(null)
+interface PlateDetails extends Omit<Vehicle, 'id'> {
+  plateId: number
+  vehicleId: number
+  plate_number: string
+  plate_type: string
+  plate_issue_date: string
+  plate_expiration_date: string
+  status: string
+  owner: string
+  type: string
+}
 
-const openPlateModal = (plate) => {
-  selectedPlate.value = plate
+const selectedPlate = ref<PlateDetails | null>(null)
+
+const openPlateModal = (plate: PlateDisplay) => {
+  const vehicle = vehicleRegistrationStore.getVehicleById(plate.vehicleId)
+  if (!vehicle) return
+
+  selectedPlate.value = {
+    ...vehicle,
+    plateId: plate.id,
+    vehicleId: plate.vehicleId,
+    plate_number: plate.plateNumber,
+    plate_type: plate.plateType,
+    plate_issue_date: plate.registrationDate,
+    plate_expiration_date: plate.expiryDate,
+    status: plate.status,
+    owner: plate.owner || (userStore.isAdmin ? 'Admin View' : userStore.fullName),
+    type: plate.type || 'Standard',
+  }
   isPlateModalOpen.value = true
 }
 
 const closePlateModal = () => {
   isPlateModalOpen.value = false
+  selectedPlate.value = null
 }
 </script>
 
@@ -216,7 +265,7 @@ const closePlateModal = () => {
           <div class="flex justify-between items-center mt-4">
             <span class="text-sm text-gray-500">{{ plate.owner }}</span>
             <button
-              @click.prevent="openPlateModal(plate)"
+              @click="openPlateModal(plate)"
               class="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 font-medium rounded-md hover:bg-blue-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300"
             >
               View Details
