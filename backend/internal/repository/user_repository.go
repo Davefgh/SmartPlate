@@ -62,6 +62,10 @@ func (r *UserRepository) Create(user *models.User) error {
             "emergency_contact_relationship": toNullString(user.Contact.EMERGENCY_CONTACT_RELATIONSHIP),
             "emergency_contact_address":     toNullString(user.Contact.EMERGENCY_CONTACT_ADDRESS),
         })
+        if err != nil {
+            tx.Rollback()
+            return fmt.Errorf("contacts insertion failed: %w", err)
+        }
      // address
      _, err = tx.NamedExec(`
      INSERT INTO addresses (
@@ -80,6 +84,10 @@ func (r *UserRepository) Create(user *models.User) error {
          "barangay":          toNullString(user.Address.BARANGAY),
          "zip_code":          toNullString(user.Address.ZIP_CODE),
      })
+     if err != nil {
+        tx.Rollback()
+        return fmt.Errorf("address insertion failed: %w", err)
+    }
      //medical informatio
     _, err = tx.NamedExec(`
     INSERT INTO medical_information(
@@ -129,6 +137,28 @@ func (r *UserRepository) Create(user *models.User) error {
         tx.Rollback()
         return fmt.Errorf("people insertion failed: %w", err)
     }
+    //personal information
+    _, err = tx.NamedExec(
+        `INSERT INTO personal_information (
+        nationality, civil_status, date_of_birth, place_of_birth, educational_attainment,
+        tin, lto_client_id
+        )VALUES (
+        :nationality, :civil_status, :date_of_birth, :place_of_birth, :educational_attainment,
+        :tin, :lto_client_id
+        )`,
+        map[string] interface{}{
+            "nationality": user.PersonalInformation.NATIONALITY,
+            "civil_status": user.PersonalInformation.CIVIL_STATUS,
+            "date_of_birth": user.PersonalInformation.DATE_OF_BIRTH,
+            "place_of_birth": user.PersonalInformation.PLACE_OF_BIRTH,
+            "educational_attainment": user.PersonalInformation.EDUCATIONAL_ATTAINMENT,
+            "tin": user.PersonalInformation.TIN,
+            "lto_client_id": user.LTO_CLIENT_ID,
+        })
+        if err != nil{
+            tx.Rollback()
+            return fmt.Errorf("personal information insertion failed: %w", err)
+        }
 
     return tx.Commit()
 }
@@ -164,6 +194,7 @@ func (r *UserRepository) GetAll() ([]models.User, error) {
         a.zip_code AS "address.zip_code",
         a.lto_client_id AS "address.lto_client_id",
         m.medical_id AS "medical_information.medical_id",
+        m.lto_client_id AS "medical_information.lto_client_id",
         m.gender AS "medical_information.gender",
         m.blood_type AS "medical_information.blood_type",
         m.complexion AS "medical_information.complexion",
@@ -299,11 +330,32 @@ func (r *UserRepository) GetByLTOClientID(ltoClientID string) (models.User, erro
             m.hair_color AS "medical_information.hair_color",
             m.weight AS "medical_information.weight",
             m.height AS "medical_information.height",
-            m.organ_donor AS "medical_information.organ_donor"
+            m.organ_donor AS "medical_information.organ_donor",
+            p.people_id AS "people.people_id",
+            p.employer_name AS "people.employer_name",
+        p.employer_address AS "people.employer_address",
+        p.mother_first_name AS "people.mother_first_name",
+        p.mother_maiden_name AS "people.mother_maiden_name",
+        p.mother_middle_name AS "people.mother_middle_name",
+        p.father_first_name AS "people.father_first_name",
+        p.father_middle_name AS "people.father_middle_name",
+        p.father_last_name AS "people.father_last_name",
+        p.address AS "people.address",
+        p.lto_client_id AS "people.lto_client_id",
+        pi.personal_id AS "personal_information.personal_id",
+        pi.nationality AS "personal_information.nationality",
+        pi.civil_status AS "personal_information.civil_status",
+        pi.date_of_birth AS "personal_information.date_of_birth",
+        pi.place_of_birth AS "personal_information.place_of_birth",
+        pi.educational_attainment AS "personal_information.educational_attainment",
+        pi.tin AS "personal_information.tin",
+        pi.lto_client_id AS "personal_information.lto_client_id"
         FROM users u
         LEFT JOIN contacts c ON u.lto_client_id = c.lto_client_id
         LEFT JOIN addresses a ON u.lto_client_id = a.lto_client_id
         LEFT JOIN medical_information m ON u.lto_client_id = m.lto_client_id
+        LEFT JOIN people p ON u.lto_client_id = p.lto_client_id
+        LEFT JOIN personal_information pi ON u.lto_client_id = pi.lto_client_id
         WHERE u.lto_client_id = $1
     `
     err := r.db.Get(&user, query, ltoClientID)
@@ -525,7 +577,7 @@ if err != nil {
  return fmt.Errorf("people upsert failed: %w", err)
 
 }
-// After people upsert
+
 personalQuery := `
     INSERT INTO personal_information (
         lto_client_id, nationality, civil_status, date_of_birth, 
@@ -554,27 +606,6 @@ _, err = tx.NamedExec(personalQuery, map[string]interface{}{
 if err != nil {
     tx.Rollback()
     return fmt.Errorf("personal info upsert failed: %w", err)
-}
-_, err = tx.NamedExec(`
-    INSERT INTO personal_information (
-        nationality, civil_status, date_of_birth, 
-        place_of_birth, educational_attainment, tin, lto_client_id
-    ) VALUES (
-        :nationality, :civil_status, :date_of_birth, 
-        :place_of_birth, :educational_attainment, :tin, :lto_client_id
-    )`,
-    map[string]interface{}{
-        "nationality":             user.PersonalInformation.NATIONALITY,
-        "civil_status":            user.PersonalInformation.CIVIL_STATUS,
-        "date_of_birth":           user.PersonalInformation.DATE_OF_BIRTH,
-        "place_of_birth":          user.PersonalInformation.PLACE_OF_BIRTH,
-        "educational_attainment":  user.PersonalInformation.EDUCATIONAL_ATTAINMENT,
-        "tin":                     user.PersonalInformation.TIN,
-        "lto_client_id":           user.LTO_CLIENT_ID,
-    })
-if err != nil {
-    tx.Rollback()
-    return fmt.Errorf("personal info insertion failed: %w", err)
 }
 
     return tx.Commit()

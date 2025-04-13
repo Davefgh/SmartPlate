@@ -62,7 +62,7 @@ func main() {
 	e.PUT("/users/:id", userHandler.UpdateUser)	
 
 	//for getting user by lto client id
-	e.GET("/users/lto/:lto_client_id", userHandler.GetUserByLTOID)
+	e.GET("/users/lto/:lto_client_id", userHandler.GetUserByLTOID)//working
 	e.PUT("/users/by-lto/:lto_client_id", userHandler.UpdateUserByLTO)
 	e.DELETE("/users/by-lto/:lto_client_id", userHandler.DeleteUserByLTO)
 	//for generating lto client id
