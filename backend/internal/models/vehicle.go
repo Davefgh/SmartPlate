@@ -38,8 +38,6 @@ type Vehicle struct {
 	CR_NUMBER                string           `json:"cr_number" db:"cr_number"`
 	LTO_CLIENT_ID            string           `json:"lto_client_id,omitempty" db:"lto_client_id"`
 	PLATE                    Plate            `json:"plate" db:"plate"`
-	REGISTRATION_FORM        RegistrationForm `json:"registration_form" db:"registration_form"`
-	INSPECTION               Inspection       `json:"inspection" db:"inspection"`
 }
 
 type Plate struct {
@@ -95,17 +93,19 @@ func (rf *RegistrationForm) UnmarshalJSON(data []byte) error {
     }{
         Alias: (*Alias)(rf),
     }
-    
+
     if err := json.Unmarshal(data, &aux); err != nil {
         return err
     }
-    
-    var err error
-    rf.SUBMITTED_DATE, err = time.Parse(dateLayout, aux.SubmittedDate)
-    if err != nil {
-        return fmt.Errorf("invalid submitted_date format: %w", err)
+
+    if aux.SubmittedDate != "" {
+        t, err := time.Parse(dateLayout, aux.SubmittedDate)
+        if err != nil {
+            return fmt.Errorf("invalid submitted_date format: %w", err)
+        }
+        rf.SUBMITTED_DATE = t
     }
-    
+    // if empty, leave rf.SUBMITTED_DATE as the zero time
     return nil
 }
 
@@ -135,6 +135,39 @@ func (i *Inspection) UnmarshalJSON(data []byte) error {
     i.INSPECTION_DATE, err = time.Parse(dateLayout, aux.InspectionDate)
     if err != nil {
         return fmt.Errorf("invalid inspection_date format: %w", err)
+    }
+    
+    return nil
+}
+
+type Payment struct {
+    PAYMENT_ID      string    `json:"payment_id" db:"payment_id"`
+    VEHICLE_ID      int       `json:"vehicle_id" db:"vehicle_id"`
+    AMOUNT          string    `json:"amount" db:"amount"`
+    PAYMENT_DATE    time.Time `json:"payment_date" db:"payment_date"`
+    PAYMENT_METHOD  string    `json:"payment_method" db:"payment_method"`
+    STATUS          string    `json:"status" db:"status"`
+    RECEIPT_NUMBER  string    `json:"receipt_number" db:"receipt_number"`
+    LTO_CLIENT_ID   string    `json:"lto_client_id,omitempty" db:"lto_client_id"`
+}
+
+func (p *Payment) UnmarshalJSON(data []byte) error {
+    type Alias Payment
+    aux := &struct {
+        PaymentDate string `json:"payment_date"`
+        *Alias
+    }{
+        Alias: (*Alias)(p),
+    }
+    
+    if err := json.Unmarshal(data, &aux); err != nil {
+        return err
+    }
+    
+    var err error
+    p.PAYMENT_DATE, err = time.Parse(dateLayout, aux.PaymentDate)
+    if err != nil {
+        return fmt.Errorf("invalid payment_date format: %w", err)
     }
     
     return nil

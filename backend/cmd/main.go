@@ -70,10 +70,12 @@ func main() {
 	e.GET("/generate-lto-id", userHandler.GenerateLTOID)  
 
 	//for Vehicle routes
-	e.POST("/api/vehicles", vehicleHandler.CreateVehicle)
-	e.GET("/api/vehicles/:id", vehicleHandler.GetVehicle)
+	e.POST("/api/vehicles", vehicleHandler.CreateVehicle)//working
+	e.GET("/api/vehicles", vehicleHandler.GetAllVehicles)//working
+	e.GET("/api/vehicles/:id", vehicleHandler.GetVehicle)//working
+	e.PUT("/api/vehicles/:id/plate", vehicleHandler.UpdatePlate)
 	e.PUT("/api/vehicles/:id", vehicleHandler.UpdateVehicle)
-	e.DELETE("/api/vehicles/:id", vehicleHandler.DeleteVehicle)
+	e.DELETE("/api/vehicles/:id", vehicleHandler.DeleteVehicle)//working
 
 
 

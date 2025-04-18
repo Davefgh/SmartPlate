@@ -21,7 +21,6 @@ type User struct {
 	MedicalInformation  MedicalInformation  `json:"medical_information" db:"medical_information"`
 	People              People              `json:"people" db:"people"`
 	PersonalInformation PersonalInformation `json:"personal_information" db:"personal_information"`
-	Vehicle             Vehicle             `json:"vehicle" db:"vehicle"`
 }
 
 type Contact struct {

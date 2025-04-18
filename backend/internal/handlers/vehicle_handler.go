@@ -2,7 +2,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 	"smartplate-api/internal/models"
 	"smartplate-api/internal/repository"
@@ -12,92 +11,94 @@ import (
 )
 
 type VehicleHandler struct {
-	repo repository.VehicleRepository // Changed from models to repository
+	repo repository.VehicleRepository
 }
 
-func NewVehicleHandler(repo repository.VehicleRepository) *VehicleHandler { // Fixed here
+// NewVehicleHandler creates a new VehicleHandler
+func NewVehicleHandler(repo repository.VehicleRepository) *VehicleHandler {
 	return &VehicleHandler{repo: repo}
 }
 
+func (h *VehicleHandler) GetAllVehicles(c echo.Context) error {
+	vehicles, err := h.repo.GetAllVehicles(c.Request().Context())
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, vehicles)
+}
+
+// CreateVehicle handles POST /api/vehicles
 func (h *VehicleHandler) CreateVehicle(c echo.Context) error {
 	var vehicle models.Vehicle
-	 // Use a strict decoder
-	 decoder := json.NewDecoder(c.Request().Body)
-	 decoder.DisallowUnknownFields()
-	 
-	 if err := decoder.Decode(&vehicle); err != nil {
-		 return c.JSON(http.StatusBadRequest, map[string]string{
-			 "error": "Invalid request payload: " + err.Error(),
-		 })
-	 }
-	 
-	 // Validate required fields
-	 if vehicle.VEHICLE_CATEGORY == "" || vehicle.MV_FILE_NUMBER == "" {
-		 return c.JSON(http.StatusBadRequest, map[string]string{
-			 "error": "Missing required fields",
-		 })
-	 }
-
-	createdVehicle, err := h.repo.CreateVehicle(c.Request().Context(), &vehicle)
+	if err := c.Bind(&vehicle); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	created, err := h.repo.CreateVehicle(c.Request().Context(), &vehicle)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
-
-	return c.JSON(http.StatusCreated, createdVehicle)
+	return c.JSON(http.StatusCreated, created)
 }
 
+// GetVehicle handles GET /api/vehicles/:id
 func (h *VehicleHandler) GetVehicle(c echo.Context) error {
-	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid vehicle ID"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid vehicle id"})
 	}
-
 	vehicle, err := h.repo.GetVehicle(c.Request().Context(), id)
 	if err != nil {
-		if err.Error() == "vehicle not found" {
-			return c.JSON(http.StatusNotFound, map[string]string{"error": "vehicle not found"})
-		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 	}
-
 	return c.JSON(http.StatusOK, vehicle)
 }
 
+// UpdateVehicle handles PUT /api/vehicles/:id
 func (h *VehicleHandler) UpdateVehicle(c echo.Context) error {
-	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid vehicle ID"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid vehicle id"})
 	}
-
 	var vehicle models.Vehicle
 	if err := c.Bind(&vehicle); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request payload"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
-
-	if err := h.repo.UpdateVehicle(c.Request().Context(), id, &vehicle); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-	}
-
-	return c.JSON(http.StatusOK, vehicle)
-}
-
-func (h *VehicleHandler) DeleteVehicle(c echo.Context) error {
-	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
+	err = h.repo.UpdateVehicle(c.Request().Context(), id, &vehicle)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid vehicle ID"})
-	}
-
-	if err := h.repo.DeleteVehicle(c.Request().Context(), id); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
-
 	return c.NoContent(http.StatusNoContent)
-
-	
 }
 
+// DeleteVehicle handles DELETE /api/vehicles/:id
+func (h *VehicleHandler) DeleteVehicle(c echo.Context) error {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid vehicle id"})
+	}
+	err = h.repo.DeleteVehicle(c.Request().Context(), id)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.NoContent(http.StatusNoContent)
+}
 
+func (h *VehicleHandler) UpdatePlate(c echo.Context) error {
+    // parse vehicle_id from URL
+    id, err := strconv.Atoi(c.Param("id"))
+    if err != nil {
+        return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid vehicle id"})
+    }
 
+    // bind into models.Plate
+    var plate models.Plate
+    if err := c.Bind(&plate); err != nil {
+        return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+    }
+    plate.VEHICLE_ID = id // ensure it matches URL
+
+    if err := h.repo.UpdatePlate(c.Request().Context(), &plate); err != nil {
+        return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+    }
+    return c.NoContent(http.StatusNoContent)
+}
