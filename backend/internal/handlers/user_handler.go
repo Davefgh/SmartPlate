@@ -374,15 +374,13 @@ func (h *UserHandler) UpdateUserByLTO(c echo.Context) error {
 // DeleteUserByLTO handles DELETE /users/by-lto/:lto_client_id
 func (h *UserHandler) DeleteUserByLTO(c echo.Context) error {
     ltoID := c.Param("lto_client_id")
-    user, err := h.repo.GetByLTOClientID(ltoID)
-    if err != nil {
-        return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
+    if err := h.repo.DeleteByLTOClientID(ltoID); err != nil {
+        log.Printf("DeleteUserByLTO error: %v", err)
+        return c.JSON(http.StatusInternalServerError, map[string]string{
+            "error": "Failed to delete user",
+            "details": err.Error(),
+        })
     }
-    
-    if err := h.repo.Delete(user.USER_ID); err != nil {
-        return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to delete user"})
-    }
-    
     return c.NoContent(http.StatusNoContent)
 }
 //get user by lto client id

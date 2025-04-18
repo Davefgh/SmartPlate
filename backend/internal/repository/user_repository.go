@@ -412,6 +412,43 @@ func (r *UserRepository) Delete(user_id int) error {
 
     return tx.Commit()
 }
+//delete user by lto_client_id
+func (r *UserRepository) DeleteByLTOClientID(ltoID string) error {
+    tx, err := r.db.Beginx()
+    if err != nil {
+        return err
+    }
+
+    // Delete all dependents
+    for _, tbl := range []string{
+        "personal_information",
+        "people",
+        "medical_information",
+        "addresses",
+        "contacts",
+    } {
+        if _, err := tx.Exec(
+            fmt.Sprintf("DELETE FROM %s WHERE lto_client_id = $1", tbl),
+            ltoID,
+        ); err != nil {
+            tx.Rollback()
+            return fmt.Errorf("failed to delete %s: %w", tbl, err)
+        }
+    }
+
+    // Now delete the user by LTO rather than user_id
+    if _, err := tx.Exec(
+        "DELETE FROM users WHERE lto_client_id = $1",
+        ltoID,
+    ); err != nil {
+        tx.Rollback()
+        return fmt.Errorf("failed to delete user: %w", err)
+    }
+
+    return tx.Commit()
+}
+
+
 //update user
 func (r *UserRepository) Update(user *models.User) error {
     tx, err := r.db.Beginx()
