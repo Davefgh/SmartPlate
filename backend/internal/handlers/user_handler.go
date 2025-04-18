@@ -155,6 +155,27 @@ func mergeUserUpdates(existing *models.User, update models.User) *models.User {
     update.LTO_CLIENT_ID = existing.LTO_CLIENT_ID
     update.EMAIL = existing.EMAIL
 
+	if update.PASSWORD == "" {
+        // client didn’t supply a new one → keep the old hash
+        update.PASSWORD = existing.PASSWORD
+    } else {
+        // hash the new password
+        hashed, err := bcrypt.GenerateFromPassword([]byte(update.PASSWORD), bcrypt.DefaultCost)
+        if err != nil {
+            // you might want to bubble this up instead of panic
+            log.Printf("mergeUserUpdates bcrypt error: %v", err)
+        } else {
+            update.PASSWORD = string(hashed)
+        }
+    }
+	// — ROLE & STATUS — defaults if empty
+	if update.ROLE == "" {
+		update.ROLE = existing.ROLE
+	}
+	if update.STATUS == "" {
+		update.STATUS = existing.STATUS
+	}
+	
     // Preserve first name if not provided
     if update.FIRST_NAME == "" {
         update.FIRST_NAME = existing.FIRST_NAME
