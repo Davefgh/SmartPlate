@@ -49,6 +49,7 @@ import {
   faTimes,
   faCamera,
   faArrowLeft,
+  faArrowRight,
   faInfoCircle,
   faHeartbeat,
   faInbox,
@@ -75,6 +76,10 @@ import {
   faCalendarCheck,
   faCalendarTimes,
   faTachometerAlt,
+  faExclamationTriangle,
+  faClipboard,
+  faUpload,
+  faQrcode,
 } from '@fortawesome/free-solid-svg-icons'
 import { faGoogle } from '@fortawesome/free-brands-svg-icons'
 
@@ -97,6 +102,7 @@ const icons: IconDefinition[] = [
   faTimes,
   faCamera,
   faArrowLeft,
+  faArrowRight,
   faInfoCircle,
   faHeartbeat,
   faInbox,
@@ -145,6 +151,10 @@ const icons: IconDefinition[] = [
   faCalendarCheck,
   faCalendarTimes,
   faTachometerAlt,
+  faExclamationTriangle,
+  faClipboard,
+  faUpload,
+  faQrcode,
 ]
 library.add(...icons)
 

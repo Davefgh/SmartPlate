@@ -33,7 +33,8 @@ const mockRegistrationForms: VehicleRegistrationForm[] = [
     appointmentTime: '10:00',
     referenceCode: 'SP-24-001',
     inspectionStatus: 'approved',
-    referenceSlip: { name: 'payment.pdf', size: 1024 },
+    inspectionCode: 'INS-2024-001',
+    paymentCode: 'PAY-2024-001',
     paymentStatus: 'approved',
     verificationStatus: 'approved',
     privacyConsent: true,
@@ -65,8 +66,9 @@ const mockRegistrationForms: VehicleRegistrationForm[] = [
     appointmentTime: '14:30',
     referenceCode: 'SP-24-002',
     inspectionStatus: 'pending',
-    referenceSlip: { name: 'payment.pdf', size: 1024 },
+    inspectionCode: 'INS-2024-002',
     paymentStatus: 'pending',
+    paymentCode: 'PAY-2024-002',
     verificationStatus: 'pending',
     privacyConsent: true,
     declarationConsent: true,
@@ -97,7 +99,8 @@ const mockRegistrationForms: VehicleRegistrationForm[] = [
     appointmentTime: null,
     referenceCode: '',
     inspectionStatus: 'rejected',
-    referenceSlip: null,
+    inspectionCode: 'INS-2024-003',
+    paymentCode: 'PAY-2024-003',
     paymentStatus: 'pending',
     verificationStatus: 'pending',
     privacyConsent: true,
@@ -136,7 +139,8 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
       appointmentTime: null,
       referenceCode: '',
       inspectionStatus: 'pending',
-      referenceSlip: null,
+      inspectionCode: '',
+      paymentCode: '',
       paymentStatus: 'pending',
       verificationStatus: 'pending',
       privacyConsent: false,
@@ -317,8 +321,9 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
         appointmentTime: null,
         referenceCode: '',
         inspectionStatus: 'pending' as const,
-        referenceSlip: null,
+        inspectionCode: '',
         paymentStatus: 'pending' as const,
+        paymentCode: '',
         verificationStatus: 'pending' as const,
         privacyConsent: false,
         declarationConsent: false,
@@ -380,11 +385,6 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
 
     validatePayment(): boolean {
       let isValid = true
-
-      if (!this.formData.referenceSlip) {
-        this.errors.referenceSlip = 'Please upload your payment reference slip'
-        isValid = false
-      }
 
       if (!this.formData.privacyConsent) {
         this.errors.privacyConsent = 'Please consent to data privacy'

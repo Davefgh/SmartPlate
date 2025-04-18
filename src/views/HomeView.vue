@@ -1,6 +1,30 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, defineAsyncComponent } from 'vue'
 import { useUserStore } from '@/stores/user'
+
+import type { User as UserType } from '@/types/user'
+
+interface User extends Pick<UserType, 'email' | 'avatar' | 'firstName' | 'lastName'> {
+  name: string
+}
+
+interface NotificationItem {
+  id: number
+  title: string
+  message: string
+  time: string
+  read: boolean
+}
+
+interface MenuItem {
+  name: string
+  icon: string
+  active: boolean
+}
+
+type ComponentMap = {
+  [key: string]: ReturnType<typeof defineAsyncComponent>
+}
 
 const LogoutModal = defineAsyncComponent(() => import('@/components/modals/LogoutModal.vue'))
 const DashboardContent = defineAsyncComponent(() => import('@/components/ui/DashboardContent.vue'))
@@ -21,26 +45,34 @@ const toggleSidebar = () => {
 }
 
 // User profile data from store
-const user = computed(
-  () =>
-    userStore.user || {
-      name: 'Guest User',
-      email: 'guest@example.com',
-      avatar: '/Land_Transportation_Office.webp',
-    },
-)
+const user = computed<User>(() => {
+  const currentUser = userStore.currentUser
+  return currentUser
+    ? {
+        name: `${currentUser.firstName} ${currentUser.lastName}`,
+        email: currentUser.email,
+        avatar: currentUser.avatar || '/Land_Transportation_Office.webp',
+        firstName: currentUser.firstName,
+        lastName: currentUser.lastName,
+      }
+    : {
+        name: 'Guest User',
+        email: 'guest@example.com',
+        avatar: '/Land_Transportation_Office.webp',
+        firstName: 'Guest',
+        lastName: 'User',
+      }
+})
 
 // Format user's full name
 const userName = computed(() => {
-  if (userStore.user) {
-    return `${userStore.user.firstName} ${userStore.user.lastName}`
-  }
-  return 'Guest User'
+  const currentUser = userStore.currentUser
+  return currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Guest User'
 })
 
 // Notifications (mock data)
-const notifications = ref(3)
-const notificationItems = ref([
+const notifications = ref<number>(3)
+const notificationItems = ref<NotificationItem[]>([
   {
     id: 1,
     title: 'New plate available',
@@ -77,7 +109,7 @@ const showLogoutModal = ref(false)
 const activeMenuItem = ref('Dashboard')
 
 // Sidebar menu items
-const menuItems = ref([
+const menuItems = ref<MenuItem[]>([
   { name: 'Dashboard', icon: 'home', active: true },
   { name: 'Vehicles', icon: 'car', active: false },
   { name: 'Plates', icon: 'id-card', active: false },
@@ -85,7 +117,7 @@ const menuItems = ref([
 ])
 
 // Set active menu item
-const setActiveMenuItem = (itemName) => {
+const setActiveMenuItem = (itemName: string) => {
   menuItems.value.forEach((item) => {
     item.active = item.name === itemName
   })
@@ -97,7 +129,7 @@ const setActiveMenuItem = (itemName) => {
 }
 
 // Component mapping
-const componentMap = {
+const componentMap: ComponentMap = {
   Dashboard: DashboardContent,
   Vehicles: VehicleInformation,
   Plates: PlateInformation,
@@ -108,7 +140,7 @@ const componentMap = {
 const activeComponent = computed(() => componentMap[activeMenuItem.value] || DashboardContent)
 
 // Set active menu item directly (no warning needed since we're using router for form)
-const handleNavigation = (itemName) => {
+const handleNavigation = (itemName: string) => {
   setActiveMenuItem(itemName)
 }
 
@@ -128,7 +160,7 @@ const cancelLogout = () => {
 }
 
 // Close sidebar on escape key
-const handleEscKey = (event) => {
+const handleEscKey = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
     if (isSidebarOpen.value) {
       isSidebarOpen.value = false
@@ -146,21 +178,18 @@ const handleEscKey = (event) => {
 }
 
 // Close sidebar and dropdown on outside click
-const handleOutsideClick = (event) => {
+const handleOutsideClick = (event: MouseEvent) => {
+  const target = event.target as HTMLElement
   // Handle sidebar outside click
-  if (
-    isSidebarOpen.value &&
-    !event.target.closest('#sidebar') &&
-    !event.target.closest('#sidebar-toggle')
-  ) {
+  if (isSidebarOpen.value && !target.closest('#sidebar') && !target.closest('#sidebar-toggle')) {
     isSidebarOpen.value = false
   }
 
   // Handle profile dropdown outside click
   if (
     isProfileDropdownOpen.value &&
-    !event.target.closest('#profile-dropdown') &&
-    !event.target.closest('#profile-toggle')
+    !target.closest('#profile-dropdown') &&
+    !target.closest('#profile-toggle')
   ) {
     isProfileDropdownOpen.value = false
   }
@@ -168,8 +197,8 @@ const handleOutsideClick = (event) => {
   // Handle notification dropdown outside click
   if (
     isNotificationDropdownOpen.value &&
-    !event.target.closest('#notification-dropdown') &&
-    !event.target.closest('#notification-toggle')
+    !target.closest('#notification-dropdown') &&
+    !target.closest('#notification-toggle')
   ) {
     isNotificationDropdownOpen.value = false
   }

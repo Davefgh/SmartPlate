@@ -1,10 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { onBeforeUnmount, onMounted } from 'vue'
 import { useVehicleRegistrationFormStore } from '@/stores/vehicleRegistrationForm'
 
 const store = useVehicleRegistrationFormStore()
 
-const handleBeforeUnload = (e) => {
+const handleBeforeUnload = (e: BeforeUnloadEvent): void => {
   if (store.hasUnsavedChanges) {
     e.preventDefault()
     e.returnValue = ''

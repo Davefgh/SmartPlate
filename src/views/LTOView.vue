@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
-const Dashboard = defineAsyncComponent(() => import('@/components/lto/Dashboard.vue'))
-const Registrations = defineAsyncComponent(() => import('@/components/lto/Registrations.vue'))
-const Plates = defineAsyncComponent(() => import('@/components/lto/Plates.vue'))
-const Violations = defineAsyncComponent(() => import('@/components/lto/Violations.vue'))
+const Dashboard = defineAsyncComponent(() => import('@/components/lto/LTODashboard.vue'))
+const Registrations = defineAsyncComponent(() => import('@/components/lto/LTORegistrations.vue'))
+const Plates = defineAsyncComponent(() => import('@/components/lto/LTOPlates.vue'))
+const Violations = defineAsyncComponent(() => import('@/components/lto/LTOViolations.vue'))
 
 const userStore = useUserStore()
 const activeSection = ref('dashboard')
@@ -50,14 +51,7 @@ const navigateTo = (section: string) => {
             'focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50',
           ]"
         >
-          <svg class="h-5 w-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-            />
-          </svg>
+          <font-awesome-icon icon="home" class="h-5 w-5 mr-3" />
           <span>Dashboard</span>
         </button>
         <button
@@ -68,14 +62,7 @@ const navigateTo = (section: string) => {
             'focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50',
           ]"
         >
-          <svg class="h-5 w-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-            />
-          </svg>
+          <font-awesome-icon icon="clipboard" class="h-5 w-5 mr-3" />
           <span>Vehicle Registrations</span>
         </button>
         <button
@@ -86,14 +73,7 @@ const navigateTo = (section: string) => {
             'focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50',
           ]"
         >
-          <svg class="h-5 w-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
-            />
-          </svg>
+          <font-awesome-icon icon="car" class="h-5 w-5 mr-3" />
           <span>Plate Issuance</span>
         </button>
         <button
@@ -104,14 +84,7 @@ const navigateTo = (section: string) => {
             'focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50',
           ]"
         >
-          <svg class="h-5 w-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
+          <font-awesome-icon icon="exclamation-triangle" class="h-5 w-5 mr-3" />
           <span>Violations</span>
         </button>
       </nav>
@@ -140,14 +113,7 @@ const navigateTo = (section: string) => {
               class="bg-blue-900 text-white px-4 py-2 rounded-md hover:bg-blue-800 transition duration-200 flex items-center space-x-2"
               @click="userStore.logout()"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                />
-              </svg>
+              <font-awesome-icon icon="sign-out-alt" class="h-4 w-4" />
               <span>Logout</span>
             </button>
           </div>

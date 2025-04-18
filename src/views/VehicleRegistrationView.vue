@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import FormNavigationGuard from '../components/navigation/FormNavigationGuard.vue'
 import { useRouter } from 'vue-router'
@@ -6,13 +6,15 @@ import { useVehicleRegistrationFormStore } from '../stores/vehicleRegistrationFo
 import { storeToRefs } from 'pinia'
 import ConfirmNavigationModal from '../components/modals/ConfirmNavigationModal.vue'
 
+import type { VehicleDocuments } from '@/types/vehicleRegistration'
+
 const router = useRouter()
 const store = useVehicleRegistrationFormStore()
-const showNavigationModal = ref(false)
+const showNavigationModal = ref<boolean>(false)
 const totalSteps = 4
 
 // Use store's state and computed properties
-const { formData, errors, currentStep } = storeToRefs(store)
+const { formData, errors, currentStep, isSubmitting } = storeToRefs(store)
 
 // Use store's actions
 const {
@@ -23,7 +25,7 @@ const {
   submitRegistration,
 } = store
 
-const nextStep = () => {
+const nextStep = (): void => {
   let isValid = false
 
   if (currentStep.value === 1) {
@@ -31,6 +33,7 @@ const nextStep = () => {
   } else if (currentStep.value === 2) {
     isValid = validateDocuments()
   } else if (currentStep.value === 3) {
+    generateAppointment()
     isValid = validateAppointment()
   } else if (currentStep.value === 4) {
     isValid = validatePayment()
@@ -63,48 +66,59 @@ const handleNavigationCancel = () => {
 
 // Generate appointment details
 const generateAppointment = () => {
-  // Generate tomorrow's date
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
-  formData.appointmentDate = tomorrow.toISOString().split('T')[0]
+  formData.value.appointmentDate = tomorrow.toISOString().split('T')[0]
 
-  // Generate random time between 9am and 4pm
+  // Generate time between 9am and 4pm
   const hour = Math.floor(Math.random() * 8) + 9
-  formData.appointmentTime = `${hour}:00 ${hour >= 12 ? 'PM' : 'AM'}`
+  formData.value.appointmentTime = `${hour}:00 ${hour >= 12 ? 'PM' : 'AM'}`
 
-  // Generate reference code
-  formData.referenceCode = 'LTO-' + Math.random().toString(36).substring(2, 10).toUpperCase()
+  // Generate unique verification codes
+  formData.value.inspectionCode = 'INS-' + Math.random().toString(36).substring(2, 10).toUpperCase()
+  formData.value.paymentCode = 'PAY-' + Math.random().toString(36).substring(2, 10).toUpperCase()
 }
 
 // Handle file uploads with validation
-const handleFileUpload = (event, documentType) => {
-  const file = event.target.files[0]
+const handleFileUpload = (event: Event, documentType: keyof VehicleDocuments): void => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
   if (file) {
     // Check file type
     const validTypes = ['application/pdf', 'image/jpeg', 'image/png']
     if (!validTypes.includes(file.type)) {
-      errors.documents[documentType] = 'Only PDF, JPEG, and PNG files are allowed'
+      errors.value.documents[documentType] = 'Only PDF, JPEG, and PNG files are allowed'
       return
     }
 
     // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      errors.documents[documentType] = 'File size must be less than 5MB'
+      errors.value.documents[documentType] = 'File size must be less than 5MB'
       return
     }
 
     // Clear error and set file
-    errors.documents[documentType] = ''
-    formData.documents[documentType] = file
+    errors.value.documents[documentType] = ''
+    formData.value.documents[documentType] = {
+      name: file.name,
+      size: file.size,
+    }
   }
 }
 
 // Submit the registration
-const validateFinalStep = async () => {
+const validateFinalStep = async (): Promise<void> => {
   if (validatePayment()) {
-    const success = await submitRegistration()
-    if (success) {
-      router.push('/home')
+    try {
+      isSubmitting.value = true
+      const success = await submitRegistration()
+      if (success) {
+        router.push('/home')
+      }
+    } catch (error) {
+      console.error('Registration submission failed:', error)
+    } finally {
+      isSubmitting.value = false
     }
   }
 }
@@ -364,7 +378,15 @@ const validateFinalStep = async () => {
                 <label class="block text-gray-700 font-medium mb-2 required-field"
                   >Certificate of Stock Report (CSR)</label
                 >
-                <div class="flex items-center">
+                <div
+                  class="border-2 border-dashed rounded-lg p-6 transition-all duration-300"
+                  :class="{
+                    'border-red-500 bg-red-50': errors.documents.csr,
+                    'border-gray-300 hover:border-dark-blue hover:bg-blue-50':
+                      !errors.documents.csr,
+                    'border-dark-blue bg-blue-50': formData.documents.csr,
+                  }"
+                >
                   <input
                     type="file"
                     @change="(e) => handleFileUpload(e, 'csr')"
@@ -374,22 +396,53 @@ const validateFinalStep = async () => {
                   />
                   <label
                     for="csr-upload"
-                    class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors flex items-center"
-                    :class="{ 'border-red-500 border': errors.documents.csr }"
+                    class="flex flex-col items-center justify-center cursor-pointer space-y-3"
                   >
-                    <font-awesome-icon :icon="['fas', 'upload']" class="mr-2" />
-                    {{ formData.documents.csr ? formData.documents.csr.name : 'Choose file' }}
+                    <div
+                      class="w-12 h-12 rounded-full flex items-center justify-center"
+                      :class="{
+                        'bg-red-100 text-red-500': errors.documents.csr,
+                        'bg-gray-100 text-gray-500':
+                          !formData.documents.csr && !errors.documents.csr,
+                        'bg-blue-100 text-dark-blue': formData.documents.csr,
+                      }"
+                    >
+                      <font-awesome-icon
+                        :icon="['fas', formData.documents.csr ? 'check' : 'upload']"
+                        class="text-xl"
+                      />
+                    </div>
+                    <div class="text-center">
+                      <p class="text-sm font-medium">
+                        {{
+                          formData.documents.csr
+                            ? formData.documents.csr.name
+                            : 'Drop your file here or click to browse'
+                        }}
+                      </p>
+                      <p class="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG (max. 5MB)</p>
+                    </div>
                   </label>
                 </div>
-                <p v-if="errors.documents.csr" class="error-message">{{ errors.documents.csr }}</p>
-                <p v-else class="mt-1 text-xs text-gray-500">PDF, JPEG, or PNG (max. 5MB)</p>
+                <p v-if="errors.documents.csr" class="mt-2 text-sm text-red-600 flex items-center">
+                  <font-awesome-icon :icon="['fas', 'exclamation-circle']" class="mr-2" />
+                  {{ errors.documents.csr }}
+                </p>
               </div>
 
               <div class="mb-4">
                 <label class="block text-gray-700 font-medium mb-2 required-field"
                   >Sales Invoice</label
                 >
-                <div class="flex items-center">
+                <div
+                  class="border-2 border-dashed rounded-lg p-6 transition-all duration-300"
+                  :class="{
+                    'border-red-500 bg-red-50': errors.documents.salesInvoice,
+                    'border-gray-300 hover:border-dark-blue hover:bg-blue-50':
+                      !errors.documents.salesInvoice,
+                    'border-dark-blue bg-blue-50': formData.documents.salesInvoice,
+                  }"
+                >
                   <input
                     type="file"
                     @change="(e) => handleFileUpload(e, 'salesInvoice')"
@@ -399,28 +452,56 @@ const validateFinalStep = async () => {
                   />
                   <label
                     for="sales-invoice-upload"
-                    class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors flex items-center"
-                    :class="{ 'border-red-500 border': errors.documents.salesInvoice }"
+                    class="flex flex-col items-center justify-center cursor-pointer space-y-3"
                   >
-                    <font-awesome-icon :icon="['fas', 'upload']" class="mr-2" />
-                    {{
-                      formData.documents.salesInvoice
-                        ? formData.documents.salesInvoice.name
-                        : 'Choose file'
-                    }}
+                    <div
+                      class="w-12 h-12 rounded-full flex items-center justify-center"
+                      :class="{
+                        'bg-red-100 text-red-500': errors.documents.salesInvoice,
+                        'bg-gray-100 text-gray-500':
+                          !formData.documents.salesInvoice && !errors.documents.salesInvoice,
+                        'bg-blue-100 text-dark-blue': formData.documents.salesInvoice,
+                      }"
+                    >
+                      <font-awesome-icon
+                        :icon="['fas', formData.documents.salesInvoice ? 'check' : 'upload']"
+                        class="text-xl"
+                      />
+                    </div>
+                    <div class="text-center">
+                      <p class="text-sm font-medium">
+                        {{
+                          formData.documents.salesInvoice
+                            ? formData.documents.salesInvoice.name
+                            : 'Drop your file here or click to browse'
+                        }}
+                      </p>
+                      <p class="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG (max. 5MB)</p>
+                    </div>
                   </label>
                 </div>
-                <p v-if="errors.documents.salesInvoice" class="error-message">
+                <p
+                  v-if="errors.documents.salesInvoice"
+                  class="mt-2 text-sm text-red-600 flex items-center"
+                >
+                  <font-awesome-icon :icon="['fas', 'exclamation-circle']" class="mr-2" />
                   {{ errors.documents.salesInvoice }}
                 </p>
-                <p v-else class="mt-1 text-xs text-gray-500">PDF, JPEG, or PNG (max. 5MB)</p>
               </div>
 
               <div class="mb-4">
                 <label class="block text-gray-700 font-medium mb-2 required-field"
                   >Insurance Certificate</label
                 >
-                <div class="flex items-center">
+                <div
+                  class="border-2 border-dashed rounded-lg p-6 transition-all duration-300"
+                  :class="{
+                    'border-red-500 bg-red-50': errors.documents.insurance,
+                    'border-gray-300 hover:border-dark-blue hover:bg-blue-50':
+                      !errors.documents.insurance,
+                    'border-dark-blue bg-blue-50': formData.documents.insurance,
+                  }"
+                >
                   <input
                     type="file"
                     @change="(e) => handleFileUpload(e, 'insurance')"
@@ -430,21 +511,41 @@ const validateFinalStep = async () => {
                   />
                   <label
                     for="insurance-upload"
-                    class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors flex items-center"
-                    :class="{ 'border-red-500 border': errors.documents.insurance }"
+                    class="flex flex-col items-center justify-center cursor-pointer space-y-3"
                   >
-                    <font-awesome-icon :icon="['fas', 'upload']" class="mr-2" />
-                    {{
-                      formData.documents.insurance
-                        ? formData.documents.insurance.name
-                        : 'Choose file'
-                    }}
+                    <div
+                      class="w-12 h-12 rounded-full flex items-center justify-center"
+                      :class="{
+                        'bg-red-100 text-red-500': errors.documents.insurance,
+                        'bg-gray-100 text-gray-500':
+                          !formData.documents.insurance && !errors.documents.insurance,
+                        'bg-blue-100 text-dark-blue': formData.documents.insurance,
+                      }"
+                    >
+                      <font-awesome-icon
+                        :icon="['fas', formData.documents.insurance ? 'check' : 'upload']"
+                        class="text-xl"
+                      />
+                    </div>
+                    <div class="text-center">
+                      <p class="text-sm font-medium">
+                        {{
+                          formData.documents.insurance
+                            ? formData.documents.insurance.name
+                            : 'Drop your file here or click to browse'
+                        }}
+                      </p>
+                      <p class="text-xs text-gray-500 mt-1">PDF, JPEG, or PNG (max. 5MB)</p>
+                    </div>
                   </label>
                 </div>
-                <p v-if="errors.documents.insurance" class="error-message">
+                <p
+                  v-if="errors.documents.insurance"
+                  class="mt-2 text-sm text-red-600 flex items-center"
+                >
+                  <font-awesome-icon :icon="['fas', 'exclamation-circle']" class="mr-2" />
                   {{ errors.documents.insurance }}
                 </p>
-                <p v-else class="mt-1 text-xs text-gray-500">PDF, JPEG, or PNG (max. 5MB)</p>
               </div>
             </div>
 
@@ -553,51 +654,39 @@ const validateFinalStep = async () => {
             Inspection & Verification
           </h2>
 
-          <div class="bg-blue-50 p-6 rounded-lg mb-6">
-            <h3 class="text-lg font-medium text-gray-800 mb-4">Schedule Inspection</h3>
-            <p class="text-gray-600 mb-6">
-              Your vehicle needs to be physically inspected by an LTO officer. Please schedule an
-              appointment for the inspection.
-            </p>
-
-            <div class="mb-6">
-              <button
-                @click="generateAppointment"
-                class="px-6 py-3 bg-dark-blue text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md flex items-center justify-center"
-              >
-                <font-awesome-icon :icon="['fas', 'calendar-alt']" class="mr-2" />
-                Generate Appointment Schedule
-              </button>
-            </div>
-
-            <div
-              v-if="formData.appointmentDate && formData.appointmentTime"
-              class="border border-green-200 bg-green-50 p-4 rounded-lg"
-            >
-              <h4 class="text-lg font-medium text-gray-800 mb-2 flex items-center">
-                <font-awesome-icon :icon="['fas', 'check-circle']" class="text-green-500 mr-2" />
-                Appointment Scheduled
-              </h4>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-green-50 p-6 rounded-lg mb-6 border border-green-200">
+            <h3 class="text-lg font-semibold text-green-800 mb-4">Your Inspection Schedule</h3>
+            <div class="space-y-4">
+              <div class="flex items-center">
+                <font-awesome-icon :icon="['fa', 'calendar']" class="text-green-600 w-5 h-5 mr-3" />
                 <div>
-                  <p class="text-sm text-gray-500">Date</p>
-                  <p class="text-gray-800 font-medium">{{ formData.appointmentDate }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Time</p>
-                  <p class="text-gray-800 font-medium">{{ formData.appointmentTime }}</p>
-                </div>
-                <div class="md:col-span-2">
-                  <p class="text-sm text-gray-500">Reference Code</p>
-                  <p class="text-gray-800 font-medium">{{ formData.referenceCode }}</p>
+                  <p class="text-green-600">Date</p>
+                  <p class="font-medium text-green-800">{{ formData.appointmentDate }}</p>
                 </div>
               </div>
-              <div class="mt-4 text-sm text-gray-600">
-                <p>
-                  Please bring your vehicle and all original documents to the LTO office at the
-                  scheduled time.
-                </p>
-                <p class="mt-2">Address: LTO Central Office, East Avenue, Quezon City</p>
+              <div class="flex items-center">
+                <font-awesome-icon :icon="['fa', 'clock']" class="text-green-600 w-5 h-5 mr-3" />
+                <div>
+                  <p class="text-green-600">Time</p>
+                  <p class="font-medium text-green-800">{{ formData.appointmentTime }}</p>
+                </div>
+              </div>
+              <div class="flex items-center">
+                <font-awesome-icon
+                  :icon="['fas', 'location-dot']"
+                  class="text-green-600 w-5 h-5 mr-3"
+                />
+                <div>
+                  <p class="text-green-600">Location</p>
+                  <p class="font-medium text-green-800">Nearest LTO Office</p>
+                </div>
+              </div>
+              <div class="flex items-center">
+                <font-awesome-icon :icon="['fas', 'qrcode']" class="text-green-600 w-5 h-5 mr-3" />
+                <div>
+                  <p class="text-green-600">Verification Code</p>
+                  <p class="font-medium text-green-800">{{ formData.inspectionCode }}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -625,69 +714,51 @@ const validateFinalStep = async () => {
             >
               4
             </div>
-            Payment & Processing
+            Payment Instructions
           </h2>
 
           <div class="bg-blue-50 p-6 rounded-lg mb-6">
-            <h3 class="text-lg font-medium text-gray-800 mb-4">Payment Details</h3>
-            <p class="text-gray-600 mb-4">
-              Please complete the payment for your vehicle registration using any of the methods
-              below:
-            </p>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div class="border border-gray-200 bg-white p-4 rounded-lg">
-                <h4 class="font-medium text-gray-800 mb-2">Bank Transfer</h4>
-                <p class="text-sm text-gray-600">
-                  Bank: Land Bank of the Philippines<br />
-                  Account Name: Land Transportation Office<br />
-                  Account Number: 1234-5678-90
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Payment Instructions</h3>
+            <div class="space-y-4">
+              <div class="bg-white p-6 rounded-lg border border-gray-200">
+                <div class="flex items-center mb-4">
+                  <font-awesome-icon
+                    :icon="['fas', 'info-circle']"
+                    class="text-dark-blue mr-3 text-xl"
+                  />
+                  <p class="text-gray-800 font-medium">Important Notice</p>
+                </div>
+                <p class="text-gray-600 mb-4">
+                  Please proceed to the LTO Officer Cashier for payment processing. You will need to
+                  present this unique verification code to complete your transaction.
                 </p>
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-sm text-gray-500">Your Verification Code</p>
+                      <p class="font-bold text-xl text-dark-blue">
+                        {{ formData.paymentCode || 'Not generated' }}
+                      </p>
+                    </div>
+                    <font-awesome-icon :icon="['fas', 'qrcode']" class="text-dark-blue text-3xl" />
+                  </div>
+                </div>
               </div>
 
-              <div class="border border-gray-200 bg-white p-4 rounded-lg">
-                <h4 class="font-medium text-gray-800 mb-2">GCash</h4>
-                <p class="text-sm text-gray-600">
-                  Account Name: Land Transportation Office<br />
-                  Mobile Number: 09123456789<br />
-                  Reference: Your Reference Code
-                </p>
+              <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                <h4 class="font-medium text-gray-800 mb-2 flex items-center">
+                  <font-awesome-icon
+                    :icon="['fas', 'exclamation-triangle']"
+                    class="text-yellow-500 mr-2"
+                  />
+                  Reminder
+                </h4>
+                <ul class="list-disc pl-5 text-gray-600 space-y-1">
+                  <li>Payment must be made in person at the LTO office</li>
+                  <li>Keep your verification code safe and confidential</li>
+                  <li>Bring a valid government-issued ID for verification</li>
+                </ul>
               </div>
-
-              <div class="border border-gray-200 bg-white p-4 rounded-lg">
-                <h4 class="font-medium text-gray-800 mb-2">Payment Centers</h4>
-                <p class="text-sm text-gray-600">
-                  Visit any of the following:<br />
-                  - Bayad Center<br />
-                  - 7-Eleven<br />
-                  - SM Business Centers
-                </p>
-              </div>
-            </div>
-
-            <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2 required-field"
-                >Upload Payment Reference Slip</label
-              >
-              <div class="flex items-center">
-                <input
-                  type="file"
-                  @change="(e) => (formData.referenceSlip = e.target.files[0])"
-                  class="hidden"
-                  id="payment-slip-upload"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                />
-                <label
-                  for="payment-slip-upload"
-                  class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors flex items-center"
-                  :class="{ 'border-red-500 border': errors.referenceSlip }"
-                >
-                  <font-awesome-icon :icon="['fas', 'upload']" class="mr-2" />
-                  {{ formData.referenceSlip ? formData.referenceSlip.name : 'Choose file' }}
-                </label>
-              </div>
-              <p v-if="errors.referenceSlip" class="error-message">{{ errors.referenceSlip }}</p>
-              <p v-else class="mt-1 text-xs text-gray-500">PDF, JPEG, or PNG (max. 5MB)</p>
             </div>
           </div>
 

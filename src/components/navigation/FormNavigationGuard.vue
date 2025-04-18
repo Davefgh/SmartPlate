@@ -1,13 +1,13 @@
-<script setup>
+<script setup lang="ts">
 import { onBeforeUnmount, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, RouteLocationNormalized, NavigationGuardNext } from 'vue-router'
 import { useVehicleRegistrationFormStore } from '@/stores/vehicleRegistrationForm'
 
 const store = useVehicleRegistrationFormStore()
 const router = useRouter()
 
 // Handle browser refresh/navigation
-const handleBeforeUnload = (e) => {
+const handleBeforeUnload = (e: BeforeUnloadEvent): string | undefined => {
   if (store.hasUnsavedChanges) {
     const message = 'You have unsaved changes. Are you sure you want to leave?'
     e.preventDefault()
@@ -17,9 +17,13 @@ const handleBeforeUnload = (e) => {
 }
 
 // Handle Vue Router navigation
-let removeRouterGuard = null
+let removeRouterGuard: (() => void) | null = null
 
-const handleBeforeRouteLeave = (to, from, next) => {
+const handleBeforeRouteLeave = (
+  to: RouteLocationNormalized,
+  from: RouteLocationNormalized,
+  next: NavigationGuardNext,
+): void => {
   if (store.hasUnsavedChanges) {
     const confirmed = window.confirm('You have unsaved changes. Are you sure you want to leave?')
     if (confirmed) {

@@ -116,6 +116,7 @@ const mockUsersData: User[] = [
 ]
 
 export const useUserStore = defineStore('user', {
+  persist: true,
   state: (): UserState => ({
     currentUser: null,
     users: mockUsersData,
@@ -139,6 +140,28 @@ export const useUserStore = defineStore('user', {
   },
 
   actions: {
+    checkAuth(): boolean {
+      const token = localStorage.getItem('token')
+      if (token) {
+        const tokenPrefix = token.startsWith('admin_') ? 'admin_' : 'user_'
+        const user = this.users.find((u) => {
+          if (tokenPrefix === 'admin_') {
+            return u.role === 'admin' || u.role === 'LTO Officer'
+          }
+          return u.role === 'user'
+        })
+
+        if (user) {
+          const userWithoutPassword = { ...user }
+          delete userWithoutPassword.password
+          this.currentUser = userWithoutPassword
+          this.isAuthenticated = true
+          this.token = token
+          return true
+        }
+      }
+      return false
+    },
     async login(email: string, password: string, isAdminLogin: boolean = false): Promise<User> {
       this.loading = true
       this.error = null
@@ -246,37 +269,6 @@ export const useUserStore = defineStore('user', {
       localStorage.removeItem('token')
       router.push('/login')
     },
-
-    checkAuth(): boolean {
-      const storedToken = localStorage.getItem('token')
-
-      if (storedToken) {
-        if (storedToken.startsWith('admin_')) {
-          // Find an admin user
-          const adminUser = this.users.find((user) => user.role === 'admin')
-          if (adminUser) {
-            const userWithoutPassword: User = { ...adminUser }
-            delete userWithoutPassword.password
-            this.currentUser = userWithoutPassword
-          }
-        } else {
-          // Find a regular user (first one)
-          const regularUser = this.users.find((user) => user.role === 'user')
-          if (regularUser) {
-            const userWithoutPassword: User = { ...regularUser }
-            delete userWithoutPassword.password
-            this.currentUser = userWithoutPassword
-          }
-        }
-
-        this.isAuthenticated = true
-        this.token = storedToken
-        return true
-      }
-
-      return false
-    },
-
     async updateUserProfile(updatedData: Partial<User>): Promise<User | null> {
       if (!this.currentUser) return null
 

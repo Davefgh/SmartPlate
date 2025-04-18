@@ -53,8 +53,9 @@ export interface VehicleRegistrationForm {
   appointmentTime: string | null
   referenceCode: string
   inspectionStatus: 'pending' | 'approved' | 'rejected'
-  referenceSlip: VehicleDocument | null
+  inspectionCode: string
   paymentStatus: 'pending' | 'approved' | 'rejected'
+  paymentCode: string
   verificationStatus: 'pending' | 'approved' | 'rejected'
   status: 'pending' | 'approved' | 'rejected'
   submissionDate: string
