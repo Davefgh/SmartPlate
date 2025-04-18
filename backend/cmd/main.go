@@ -58,14 +58,14 @@ func main() {
 	e.POST("/users", userHandler.CreateUser)//working
 	e.GET("/users", userHandler.GetAllUsers)//working
 	e.GET("/users/:id", userHandler.GetUserByID)//working
-	e.GET("/users/email/:email", userHandler.GetUserByEmail)
-	e.PUT("/users/:id", userHandler.UpdateUser)	
-	e.DELETE("/users/:id", userHandler.DeleteUser)
+	e.GET("/users/email/:email", userHandler.GetUserByEmail)//working
+	e.PUT("/users/:id", userHandler.UpdateUser)	//working
+	e.DELETE("/users/:id", userHandler.DeleteUser)//working
 
 	//for getting user by lto client id
 	e.GET("/users/lto/:lto_client_id", userHandler.GetUserByLTOID)//working
-	e.PUT("/users/by-lto/:lto_client_id", userHandler.UpdateUserByLTO)
-	e.DELETE("/users/by-lto/:lto_client_id", userHandler.DeleteUserByLTO)
+	e.PUT("/users/by-lto/:lto_client_id", userHandler.UpdateUserByLTO)//working
+	e.DELETE("/users/by-lto/:lto_client_id", userHandler.DeleteUserByLTO)//working
 	//for generating lto client id
 	e.GET("/generate-lto-id", userHandler.GenerateLTOID)  
 

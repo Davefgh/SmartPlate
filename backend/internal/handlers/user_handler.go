@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserHandler struct {
@@ -30,6 +31,19 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
             "details": err.Error(),
         })
     }
+	hashed, err := bcrypt.GenerateFromPassword([]byte(user.PASSWORD), bcrypt.DefaultCost)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error":"couldn’t hash password"})
+	}
+	user.PASSWORD = string(hashed)
+
+	// 2) Default role/status if empty
+	if user.ROLE == "" {
+		user.ROLE = "user"
+	}
+	if user.STATUS == "" {
+		user.STATUS = "active"
+	}
 
     // Validate required fields
     if user.LAST_NAME == "" || user.FIRST_NAME == "" || user.EMAIL == "" || user.PASSWORD == "" {
@@ -340,38 +354,51 @@ func (h *UserHandler) DeleteUser(c echo.Context) error {
     }
     if err := h.repo.Delete(id); err != nil {
         log.Printf("DeleteUser error: %v", err)
-        return c.JSON(http.StatusInternalServerError, map[string]string{
-            "error":   "failed to delete user",
-            "details": err.Error(),
-        })
+        return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to delete user"})
     }
     return c.NoContent(http.StatusNoContent)
 }
 
 
 
-
-
-// UpdateUserByLTO handles PUT /users/by-lto/:lto_client_id
+// PUT /users/by-lto/:lto_client_id
 func (h *UserHandler) UpdateUserByLTO(c echo.Context) error {
     ltoID := c.Param("lto_client_id")
-    var user models.User
-    if err := c.Bind(&user); err != nil {
-        return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+
+    // 1) bind incoming JSON
+    var payload models.User
+    if err := c.Bind(&payload); err != nil {
+        return c.JSON(http.StatusBadRequest, map[string]string{
+            "error":   "Invalid request body",
+            "details": err.Error(),
+        })
     }
-    
-    existingUser, err := h.repo.GetByLTOClientID(ltoID)
+
+    // 2) fetch existing by LTO
+    existing, err := h.repo.GetByLTOClientID(ltoID)
     if err != nil {
-        return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
+        return c.JSON(http.StatusNotFound, map[string]string{
+            "error": "User not found",
+        })
     }
-    
-    user.USER_ID = existingUser.USER_ID
-    if err := h.repo.Update(&user); err != nil {
-        return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update user"})
+
+    // 3) merge fields (preserves any nil/empty fields)
+    merged := mergeUserUpdates(&existing, payload)
+
+    // 4) perform update
+    if err := h.repo.Update(merged); err != nil {
+        log.Printf("UpdateUserByLTO error: %v", err)
+        return c.JSON(http.StatusInternalServerError, map[string]string{
+            "error":   "Failed to update user",
+            "details": err.Error(),
+        })
     }
-    
-    return c.JSON(http.StatusOK, user)
+
+    // 5) clear sensitive data
+    merged.PASSWORD = ""
+    return c.JSON(http.StatusOK, merged)
 }
+
 
 
 // DeleteUserByLTO handles DELETE /users/by-lto/:lto_client_id
