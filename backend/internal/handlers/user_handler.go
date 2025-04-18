@@ -334,18 +334,20 @@ func mergePersonalInformation(existing, update models.PersonalInformation) model
 
 // DeleteUser handles DELETE /users/:id
 func (h *UserHandler) DeleteUser(c echo.Context) error {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid user ID"})
-	}
-
-	if err := h.repo.Delete(id); err != nil {
-		log.Printf("DeleteUser error: %v", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to delete user"})
-	}
-
-	return c.NoContent(http.StatusNoContent)
+    id, err := strconv.Atoi(c.Param("id"))
+    if err != nil {
+        return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid user ID"})
+    }
+    if err := h.repo.Delete(id); err != nil {
+        log.Printf("DeleteUser error: %v", err)
+        return c.JSON(http.StatusInternalServerError, map[string]string{
+            "error":   "failed to delete user",
+            "details": err.Error(),
+        })
+    }
+    return c.NoContent(http.StatusNoContent)
 }
+
 
 
 
@@ -370,6 +372,7 @@ func (h *UserHandler) UpdateUserByLTO(c echo.Context) error {
     
     return c.JSON(http.StatusOK, user)
 }
+
 
 // DeleteUserByLTO handles DELETE /users/by-lto/:lto_client_id
 func (h *UserHandler) DeleteUserByLTO(c echo.Context) error {

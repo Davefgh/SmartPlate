@@ -60,6 +60,7 @@ func main() {
 	e.GET("/users/:id", userHandler.GetUserByID)//working
 	e.GET("/users/email/:email", userHandler.GetUserByEmail)
 	e.PUT("/users/:id", userHandler.UpdateUser)	
+	e.DELETE("/users/:id", userHandler.DeleteUser)
 
 	//for getting user by lto client id
 	e.GET("/users/lto/:lto_client_id", userHandler.GetUserByLTOID)//working

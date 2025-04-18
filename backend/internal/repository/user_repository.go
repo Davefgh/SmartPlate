@@ -375,43 +375,46 @@ func (r *UserRepository) Delete(user_id int) error {
         return fmt.Errorf("failed to begin transaction: %w", err)
     }
 
-    // Get LTO ID first
+    // 1) Fetch the LTO ID for this user_id
     var ltoID string
-
-   // Delete dependent records first
-    if _, err := tx.Exec("DELETE FROM personal_information WHERE lto_client_id = $1", ltoID); err != nil {
+    if err := tx.Get(
+        &ltoID,
+        `SELECT lto_client_id FROM users WHERE user_id = $1`,
+        user_id,
+    ); err != nil {
         tx.Rollback()
-        return fmt.Errorf("failed to delete personal info: %w", err)
+        return fmt.Errorf("failed to lookup lto_client_id: %w", err)
     }
 
-    if _, err := tx.Exec("DELETE FROM people WHERE lto_client_id = $1", ltoID); err != nil {
-        tx.Rollback()
-        return fmt.Errorf("failed to delete people: %w", err)
+    // 2) Delete all dependent records by lto_client_id
+    for _, tbl := range []string{
+        "personal_information",
+        "people",
+        "medical_information",
+        "addresses",
+        "contacts",
+    } {
+        if _, err := tx.Exec(
+            fmt.Sprintf("DELETE FROM %s WHERE lto_client_id = $1", tbl),
+            ltoID,
+        ); err != nil {
+            tx.Rollback()
+            return fmt.Errorf("failed to delete %s: %w", tbl, err)
+        }
     }
 
-    if _, err := tx.Exec("DELETE FROM medical_information WHERE lto_client_id = $1", ltoID); err != nil {
-        tx.Rollback()
-        return fmt.Errorf("failed to delete medical info: %w", err)
-    }
-
-    if _, err := tx.Exec("DELETE FROM addresses WHERE lto_client_id = $1", ltoID); err != nil {
-        tx.Rollback()
-        return fmt.Errorf("failed to delete address: %w", err)
-    }
-
-    if _, err := tx.Exec("DELETE FROM contacts WHERE lto_client_id = $1", ltoID); err != nil {
-        tx.Rollback()
-        return fmt.Errorf("failed to delete contact: %w", err)
-    }
-
-    // Finally, delete the user
-    if _, err := tx.Exec("DELETE FROM users WHERE user_id = $1", user_id); err != nil {
+    // 3) Now delete the user row itself
+    if _, err := tx.Exec(
+        "DELETE FROM users WHERE user_id = $1",
+        user_id,
+    ); err != nil {
         tx.Rollback()
         return fmt.Errorf("failed to delete user: %w", err)
     }
 
     return tx.Commit()
 }
+
 //delete user by lto_client_id
 func (r *UserRepository) DeleteByLTOClientID(ltoID string) error {
     tx, err := r.db.Beginx()
