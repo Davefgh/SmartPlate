@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useUserStore } from '@/stores/user'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
+import { useVehicleRegistrationFormStore } from '@/stores/vehicleRegistrationForm'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import type { Vehicle, Plate, Registration } from '@/types/vehicle'
+import type { Vehicle, Plate } from '@/types/vehicle'
 
 interface User {
   name: string
@@ -11,17 +12,10 @@ interface User {
   avatar: string
 }
 
-interface Activity {
-  type: 'vehicle' | 'plate' | 'renewal'
-  title: string
-  date: Date
-  description: string
-  daysAgo: number
-}
-
 const router = useRouter()
 const userStore = useUserStore()
 const vehicleStore = useVehicleRegistrationStore()
+const registrationFormStore = useVehicleRegistrationFormStore()
 
 const user = computed<User>(
   (): User => ({
@@ -54,64 +48,27 @@ const allPlatesUpToDate = computed(() => {
 
 const pendingRenewals = computed(() => vehicleStore.soonToExpireRegistrations.length)
 
-const recentActivity = computed((): Activity[] => {
-  const activities: Activity[] = []
+// Get in-progress vehicle registration forms
+const inProgressForms = computed(() => {
+  const userEmail = userStore.currentUser?.email || ''
+  return registrationFormStore.forms.filter(
+    (form) => form.userId === userEmail && form.status === 'pending',
+  )
+})
 
-  // Add new vehicles (last 30 days)
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+// Check if there is an active registration in progress
+const hasActiveRegistration = computed(() => inProgressForms.value.length > 0)
 
-  vehicleStore.userVehicles.forEach((vehicle: Vehicle) => {
-    const lastUpdated = new Date(vehicle.lastRenewalDate)
-    if (lastUpdated >= thirtyDaysAgo) {
-      activities.push({
-        type: 'vehicle',
-        title: 'New Vehicle Added',
-        date: lastUpdated,
-        description: `${vehicle.vehicleMake} ${vehicle.vehicleSeries} with plate number ${vehicleStore.getPlateByVehicleId(vehicle.id)?.plate_number || 'N/A'}`,
-        daysAgo: Math.floor((new Date().getTime() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24)),
-      })
-    }
-  })
+// Get the most recent in-progress form
+const latestInProgressForm = computed(() => {
+  if (inProgressForms.value.length === 0) return null
 
-  // Add plate renewals (last 30 days)
-  vehicleStore.userRegistrations.forEach((registration: Registration) => {
-    if (registration.registrationType === 'Renewal' && registration.status === 'Approved') {
-      const submissionDate = new Date(registration.submissionDate)
-      if (submissionDate >= thirtyDaysAgo) {
-        const vehicle = vehicleStore.getVehicleById(registration.vehicleId)
-        const plate = vehicleStore.getPlateById(registration.plateId)
-        if (vehicle && plate) {
-          activities.push({
-            type: 'plate',
-            title: 'Plate Registration Renewed',
-            date: submissionDate,
-            description: `${vehicle.vehicleMake} ${vehicle.vehicleSeries} with plate number ${plate.plate_number}`,
-            daysAgo: Math.floor(
-              (new Date().getTime() - submissionDate.getTime()) / (1000 * 60 * 60 * 24),
-            ),
-          })
-        }
-      }
-    }
-  })
-
-  // Add renewal notifications
-  vehicleStore.soonToExpireRegistrations.forEach((registration) => {
-    const vehicle = vehicleStore.getVehicleById(registration.vehicleId)
-    if (vehicle) {
-      activities.push({
-        type: 'renewal',
-        title: 'Renewal Notification',
-        date: new Date(),
-        description: `${vehicle.vehicleMake} ${vehicle.vehicleSeries} plate expires in ${vehicleStore.getDaysRemaining(registration.expiryDate)} days`,
-        daysAgo: 3, // Placeholder for notification
-      })
-    }
-  })
-
-  // Sort by date (newest first) and take the first 3
-  return activities.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 3)
+  // Sort by id which contains timestamp (newest first)
+  return inProgressForms.value.sort((a, b) => {
+    const timeA = Number(a.id.substring(4))
+    const timeB = Number(b.id.substring(4))
+    return timeB - timeA
+  })[0]
 })
 
 // Navigation functions
@@ -126,7 +83,28 @@ const navigateToPlates = () => {
 }
 
 const navigateToVehicleRegistrationForm = () => {
+  // If there's an active registration, load the most recent one
+  if (hasActiveRegistration.value && latestInProgressForm.value) {
+    registrationFormStore.loadForm(latestInProgressForm.value.id)
+  }
   router.push('/vehicle-registration')
+}
+
+const continueRegistration = (formId: string) => {
+  registrationFormStore.loadForm(formId)
+  router.push('/vehicle-registration')
+}
+
+// Function to handle the registration button click
+const handleRegistrationButtonClick = () => {
+  if (hasActiveRegistration.value && latestInProgressForm.value) {
+    // If there's a pending registration, load that form
+    registrationFormStore.loadForm(latestInProgressForm.value.id)
+    router.push('/vehicle-registration')
+  } else {
+    // Start a new registration
+    router.push('/vehicle-registration')
+  }
 }
 </script>
 
@@ -144,11 +122,17 @@ const navigateToVehicleRegistrationForm = () => {
           </div>
           <div class="mt-4 md:mt-0">
             <button
-              @click="navigateToVehicleRegistrationForm"
+              @click="handleRegistrationButtonClick"
               class="bg-white text-dark-blue px-6 py-3 rounded-lg font-medium hover:bg-blue-50 transition-colors shadow-md flex items-center"
+              :class="{ 'bg-amber-100 hover:bg-amber-200': hasActiveRegistration }"
             >
-              <font-awesome-icon :icon="['fas', 'car-side']" class="mr-2" />
-              Add Vehicle Registration
+              <font-awesome-icon
+                :icon="['fas', hasActiveRegistration ? 'clipboard-list' : 'car-side']"
+                class="mr-2"
+              />
+              {{
+                hasActiveRegistration ? 'View Registration Progress' : 'Add Vehicle Registration'
+              }}
             </button>
           </div>
         </div>
@@ -233,69 +217,81 @@ const navigateToVehicleRegistrationForm = () => {
         </div>
       </div>
 
-      <!-- Recent Activity Section -->
+      <!-- Pending Registration Process Section (replaces Recent Activity) -->
       <div class="mt-8 bg-white rounded-2xl shadow-md overflow-hidden backdrop-blur-sm bg-white/90">
-        <div class="bg-gradient-to-r from-dark-blue to-blue-700 px-6 py-5 text-white">
+        <div class="bg-gradient-to-r from-amber-600 to-amber-500 px-6 py-5 text-white">
           <h2 class="text-xl font-bold flex items-center">
-            <font-awesome-icon :icon="['fas', 'history']" class="w-5 h-5 mr-3" />
-            Recent Activity
+            <font-awesome-icon :icon="['fas', 'clipboard-list']" class="w-5 h-5 mr-3" />
+            Pending Registration Process
           </h2>
         </div>
 
         <div class="divide-y divide-gray-100">
-          <!-- Dynamic Activity Items -->
+          <!-- In-Progress Registration Items -->
           <div
-            v-for="(activity, index) in recentActivity"
+            v-for="(form, index) in inProgressForms"
             :key="index"
-            class="p-6 transition-colors duration-200"
-            :class="{
-              'hover:bg-blue-50': activity.type === 'vehicle',
-              'hover:bg-green-50': activity.type === 'plate',
-              'hover:bg-amber-50': activity.type === 'renewal',
-            }"
+            class="p-6 transition-colors duration-200 hover:bg-amber-50"
           >
             <div class="flex items-start">
               <div
-                class="w-12 h-12 rounded-full flex items-center justify-center mr-4 shadow-sm"
-                :class="{
-                  'bg-blue-100 text-dark-blue': activity.type === 'vehicle',
-                  'bg-green-100 text-green-600': activity.type === 'plate',
-                  'bg-amber-100 text-amber-600': activity.type === 'renewal',
-                }"
+                class="w-12 h-12 rounded-full flex items-center justify-center mr-4 shadow-sm bg-amber-100 text-amber-600"
               >
-                <font-awesome-icon
-                  :icon="[
-                    'fas',
-                    activity.type === 'vehicle'
-                      ? 'car'
-                      : activity.type === 'plate'
-                        ? 'id-card'
-                        : 'file-contract',
-                  ]"
-                  class="w-6 h-6"
-                />
+                <font-awesome-icon :icon="['fas', 'car']" class="w-6 h-6" />
               </div>
               <div class="flex-1">
                 <div class="flex justify-between items-start">
-                  <h4 class="text-base font-semibold text-dark-blue">{{ activity.title }}</h4>
+                  <h4 class="text-base font-semibold text-dark-blue">
+                    {{ form.make ? form.make + ' ' + form.model : 'Vehicle' }} Registration
+                  </h4>
                   <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                    Started on
                     {{
-                      activity.daysAgo === 0
-                        ? 'Today'
-                        : activity.daysAgo === 1
-                          ? 'Yesterday'
-                          : activity.daysAgo + ' days ago'
+                      new Date(
+                        parseInt(form.id.split('-')[1] || form.id.substring(4)),
+                      ).toLocaleDateString()
                     }}
                   </span>
                 </div>
-                <p class="text-sm text-gray-600 mt-1">{{ activity.description }}</p>
+                <p class="text-sm text-gray-600 mt-1">
+                  {{ form.isNewVehicle ? 'New Vehicle' : 'Used Vehicle' }} |
+                  {{ form.vehicleType || 'Not specified' }} |
+                  <span
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"
+                  >
+                    <font-awesome-icon :icon="['fas', 'clock']" class="mr-1 w-3 h-3" />
+                    {{ form.status === 'pending' ? 'Pending Approval' : form.status }}
+                  </span>
+                </p>
+                <div class="mt-3 flex gap-2">
+                  <button
+                    @click="continueRegistration(form.id)"
+                    class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm flex items-center"
+                  >
+                    <font-awesome-icon :icon="['fas', 'arrow-right']" class="w-3 h-3 mr-2" />
+                    Continue Registration
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Empty state if no activities -->
-          <div v-if="recentActivity.length === 0" class="p-6 text-center text-gray-500">
-            <p>No recent activity to display</p>
+          <!-- Empty state if no pending registrations -->
+          <div v-if="inProgressForms.length === 0" class="p-6 text-center text-gray-500">
+            <div class="flex flex-col items-center justify-center py-8">
+              <font-awesome-icon
+                :icon="['fas', 'clipboard-check']"
+                class="w-12 h-12 text-gray-300 mb-4"
+              />
+              <p>No pending registration processes</p>
+              <button
+                @click="handleRegistrationButtonClick"
+                class="mt-4 px-4 py-2 bg-dark-blue text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center"
+              >
+                <font-awesome-icon :icon="['fas', 'plus']" class="w-3 h-3 mr-2" />
+                Start New Registration
+              </button>
+            </div>
           </div>
         </div>
       </div>

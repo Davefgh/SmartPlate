@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import FormNavigationGuard from '../components/navigation/FormNavigationGuard.vue'
 import { useRouter } from 'vue-router'
 import { useVehicleRegistrationFormStore } from '../stores/vehicleRegistrationForm'
@@ -12,6 +12,7 @@ const router = useRouter()
 const store = useVehicleRegistrationFormStore()
 const showNavigationModal = ref<boolean>(false)
 const totalSteps = 4
+const isCheckingStatus = ref<boolean>(false)
 
 // Use store's state and computed properties
 const { formData, errors, currentStep, isSubmitting } = storeToRefs(store)
@@ -25,6 +26,149 @@ const {
   submitRegistration,
 } = store
 
+// Define helper functions first
+// Generate appointment details
+const generateAppointment = () => {
+  // Generate date for tomorrow
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  formData.value.appointmentDate = tomorrow.toISOString().split('T')[0]
+
+  // Generate time between 9am and 4pm
+  const hour = Math.floor(Math.random() * 8) + 9
+  formData.value.appointmentTime = `${hour}:00 ${hour >= 12 ? 'PM' : 'AM'}`
+
+  // Generate unique verification codes if not set
+  if (!formData.value.inspectionCode) {
+    formData.value.inspectionCode =
+      'INS-' + Math.random().toString(36).substring(2, 10).toUpperCase()
+  }
+
+  if (!formData.value.paymentCode) {
+    formData.value.paymentCode = 'PAY-' + Math.random().toString(36).substring(2, 10).toUpperCase()
+  }
+
+  // Log to verify data is being set
+  console.log('Generated appointment:', {
+    date: formData.value.appointmentDate,
+    time: formData.value.appointmentTime,
+    inspectionCode: formData.value.inspectionCode,
+  })
+}
+
+// Add function to proceed to step 4 after LTO approval
+const goToPaymentStep = () => {
+  if (currentStep.value === 3 && formData.value.status === 'approved') {
+    currentStep.value = 4
+  }
+}
+
+// Function to check if application status has been updated
+const checkApplicationStatus = async () => {
+  if (formData.value.id && formData.value.status === 'pending') {
+    isCheckingStatus.value = true
+    try {
+      // Check if the status has been updated in the store's forms array
+      const updatedForm = store.forms.find((form) => form.id === formData.value.id)
+
+      if (updatedForm && updatedForm.status === 'approved') {
+        // Update the current formData with the approved status
+        formData.value.status = 'approved'
+
+        // Only copy appointment details from officer if they exist and our local ones don't
+        if (updatedForm.appointmentDate && !formData.value.appointmentDate) {
+          formData.value.appointmentDate = updatedForm.appointmentDate
+        }
+
+        if (updatedForm.appointmentTime && !formData.value.appointmentTime) {
+          formData.value.appointmentTime = updatedForm.appointmentTime
+        }
+
+        if (updatedForm.inspectionCode && !formData.value.inspectionCode) {
+          formData.value.inspectionCode = updatedForm.inspectionCode
+        }
+
+        // Make sure we have appointment details
+        if (
+          !formData.value.appointmentDate ||
+          !formData.value.appointmentTime ||
+          !formData.value.inspectionCode
+        ) {
+          generateAppointment()
+        }
+
+        // Save changes
+        store.setUnsavedChanges(true)
+
+        console.log('Application approved by LTO officer!')
+
+        // Immediately proceed to step 4
+        goToPaymentStep()
+      }
+    } finally {
+      // Small delay to prevent flickering if status changes quickly
+      setTimeout(() => {
+        isCheckingStatus.value = false
+      }, 500)
+    }
+  }
+}
+
+// Now define watchers after all functions are defined
+// Add watcher for currentStep to check status when on step 3
+watch(
+  currentStep,
+  (newStep) => {
+    if (newStep === 3) {
+      // Always generate appointment details when entering step 3
+      if (
+        !formData.value.appointmentDate ||
+        !formData.value.appointmentTime ||
+        !formData.value.inspectionCode
+      ) {
+        generateAppointment()
+      }
+      checkApplicationStatus()
+    }
+  },
+  { immediate: true },
+)
+
+// Check status periodically when on step 3
+let statusCheckInterval: number | null = null
+
+watch(currentStep, (newStep) => {
+  // Clear any existing interval
+  if (statusCheckInterval) {
+    clearInterval(statusCheckInterval)
+    statusCheckInterval = null
+  }
+
+  // Set up periodic checking when on step 3
+  if (newStep === 3 && formData.value.status === 'pending') {
+    // Check less frequently (every 10 seconds) to reduce resource usage
+    statusCheckInterval = setInterval(checkApplicationStatus, 10000) as unknown as number
+  }
+})
+
+// Check for approval in the watcher
+watch(
+  () => formData.value.status,
+  (newStatus) => {
+    if (newStatus === 'approved' && currentStep.value === 3) {
+      // Immediately go to payment step when approved
+      goToPaymentStep()
+    }
+  },
+)
+
+// Clear interval on component unmount
+onUnmounted(() => {
+  if (statusCheckInterval) {
+    clearInterval(statusCheckInterval)
+  }
+})
+
 const nextStep = (): void => {
   let isValid = false
 
@@ -32,15 +176,39 @@ const nextStep = (): void => {
     isValid = validateVehicleInfo()
   } else if (currentStep.value === 2) {
     isValid = validateDocuments()
+
+    // Pre-generate appointment details when moving from step 2 to 3
+    if (isValid) {
+      generateAppointment()
+    }
   } else if (currentStep.value === 3) {
-    generateAppointment()
+    // Always ensure we have appointment details for step 3
+    if (
+      !formData.value.appointmentDate ||
+      !formData.value.appointmentTime ||
+      !formData.value.inspectionCode
+    ) {
+      generateAppointment()
+    }
     isValid = validateAppointment()
+    if (isValid) {
+      formData.value.status = 'approved'
+      store.setUnsavedChanges(true)
+    }
   } else if (currentStep.value === 4) {
     isValid = validatePayment()
   }
 
   if (isValid && currentStep.value < totalSteps) {
-    currentStep.value++
+    // Check if trying to move from step 3 to 4
+    if (currentStep.value === 3) {
+      // Only allow proceeding if status is approved
+      if (formData.value.status === 'approved') {
+        currentStep.value++
+      }
+    } else {
+      currentStep.value++
+    }
   }
 }
 
@@ -52,31 +220,42 @@ const prevStep = () => {
 
 // Back to dashboard
 const backToDashboard = () => {
+  // Mark form as having unsaved changes to ensure it gets saved
+  store.setUnsavedChanges(true)
+
+  // Generate a unique ID if not already set
+  if (!formData.value.id) {
+    formData.value.id = 'REG-' + new Date().getTime()
+  }
+
   showNavigationModal.value = true
 }
 
 const handleNavigationConfirm = () => {
   showNavigationModal.value = false
+
+  // Manually save the current form progress to the store's forms array
+  if (formData.value.id) {
+    // Check if the form already exists in the forms array
+    const existingFormIndex = store.forms.findIndex((form) => form.id === formData.value.id)
+
+    if (existingFormIndex === -1) {
+      // Add to forms array if not found
+      store.forms.push({ ...formData.value })
+    } else {
+      // Update existing form
+      store.forms[existingFormIndex] = { ...formData.value }
+    }
+
+    // Mark as saved
+    store.setUnsavedChanges(false)
+  }
+
   router.push('/home')
 }
 
 const handleNavigationCancel = () => {
   showNavigationModal.value = false
-}
-
-// Generate appointment details
-const generateAppointment = () => {
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  formData.value.appointmentDate = tomorrow.toISOString().split('T')[0]
-
-  // Generate time between 9am and 4pm
-  const hour = Math.floor(Math.random() * 8) + 9
-  formData.value.appointmentTime = `${hour}:00 ${hour >= 12 ? 'PM' : 'AM'}`
-
-  // Generate unique verification codes
-  formData.value.inspectionCode = 'INS-' + Math.random().toString(36).substring(2, 10).toUpperCase()
-  formData.value.paymentCode = 'PAY-' + Math.random().toString(36).substring(2, 10).toUpperCase()
 }
 
 // Handle file uploads with validation
@@ -654,6 +833,7 @@ const validateFinalStep = async (): Promise<void> => {
             Inspection & Verification
           </h2>
 
+          <!-- Show inspection schedule always in step 3 -->
           <div class="bg-green-50 p-6 rounded-lg mb-6 border border-green-200">
             <h3 class="text-lg font-semibold text-green-800 mb-4">Your Inspection Schedule</h3>
             <div class="space-y-4">
@@ -661,14 +841,18 @@ const validateFinalStep = async (): Promise<void> => {
                 <font-awesome-icon :icon="['fa', 'calendar']" class="text-green-600 w-5 h-5 mr-3" />
                 <div>
                   <p class="text-green-600">Date</p>
-                  <p class="font-medium text-green-800">{{ formData.appointmentDate }}</p>
+                  <p class="font-medium text-green-800">
+                    {{ formData.appointmentDate || 'Not scheduled' }}
+                  </p>
                 </div>
               </div>
               <div class="flex items-center">
                 <font-awesome-icon :icon="['fa', 'clock']" class="text-green-600 w-5 h-5 mr-3" />
                 <div>
                   <p class="text-green-600">Time</p>
-                  <p class="font-medium text-green-800">{{ formData.appointmentTime }}</p>
+                  <p class="font-medium text-green-800">
+                    {{ formData.appointmentTime || 'Not scheduled' }}
+                  </p>
                 </div>
               </div>
               <div class="flex items-center">
@@ -685,12 +869,54 @@ const validateFinalStep = async (): Promise<void> => {
                 <font-awesome-icon :icon="['fas', 'qrcode']" class="text-green-600 w-5 h-5 mr-3" />
                 <div>
                   <p class="text-green-600">Verification Code</p>
-                  <p class="font-medium text-green-800">{{ formData.inspectionCode }}</p>
+                  <p class="font-medium text-green-800">
+                    {{ formData.inspectionCode || 'Not generated' }}
+                  </p>
                 </div>
               </div>
             </div>
           </div>
 
+          <!-- Application status section - only show when status is pending -->
+          <div
+            v-if="formData.status === 'pending'"
+            class="bg-blue-50 p-6 rounded-lg mb-6 border border-blue-200"
+          >
+            <h3 class="text-lg font-semibold text-blue-800 mb-4 flex items-center">
+              <font-awesome-icon :icon="['fas', 'info-circle']" class="text-blue-600 mr-2" />
+              Application Status
+            </h3>
+            <p class="text-blue-700 mb-3">
+              Your application has been submitted and is now awaiting review by an LTO officer. This
+              page will automatically update when your application is approved.
+            </p>
+            <div class="bg-white p-3 rounded border border-blue-200">
+              <div class="flex items-center">
+                <font-awesome-icon
+                  :icon="['fas', 'check-circle']"
+                  class="text-green-500 w-5 h-5 mr-3"
+                />
+                <span class="text-sm text-gray-700">Application submitted</span>
+              </div>
+              <div class="ml-5 border-l border-dashed border-gray-300 pl-3 my-2">
+                <div class="flex items-center">
+                  <font-awesome-icon
+                    :icon="['fas', 'clock']"
+                    class="text-yellow-500 w-5 h-5 mr-3"
+                  />
+                  <span class="text-sm text-gray-700">Awaiting LTO officer review</span>
+                </div>
+              </div>
+              <div class="flex items-center opacity-40">
+                <font-awesome-icon :icon="['fas', 'calendar']" class="text-gray-500 w-5 h-5 mr-3" />
+                <span class="text-sm text-gray-700"
+                  >Inspection appointment will be scheduled upon approval</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- Important information section -->
           <div class="bg-yellow-50 p-6 rounded-lg">
             <h3 class="text-lg font-medium text-gray-800 mb-4 flex items-center">
               <font-awesome-icon :icon="['fas', 'info-circle']" class="text-yellow-500 mr-2" />
@@ -815,33 +1041,56 @@ const validateFinalStep = async (): Promise<void> => {
 
         <!-- Navigation buttons -->
         <div class="flex justify-between mt-8">
-          <button
-            @click="prevStep"
-            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
-            :disabled="currentStep === 1"
-            :class="{ 'opacity-50 cursor-not-allowed': currentStep === 1 }"
-          >
-            <font-awesome-icon :icon="['fas', 'arrow-left']" class="mr-2" />
-            Previous
-          </button>
+          <!-- Previous button - hide when in step 3 -->
+          <div v-if="currentStep !== 3">
+            <button
+              @click="prevStep"
+              class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
+              :disabled="currentStep === 1"
+              :class="{ 'opacity-50 cursor-not-allowed': currentStep === 1 }"
+            >
+              <font-awesome-icon :icon="['fas', 'arrow-left']" class="mr-2" />
+              Previous
+            </button>
+          </div>
 
-          <button
-            v-if="currentStep < totalSteps"
-            @click="nextStep"
-            class="px-6 py-2 bg-dark-blue text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-          >
-            Next
-            <font-awesome-icon :icon="['fas', 'arrow-right']" class="ml-2" />
-          </button>
+          <!-- Next/Submit button - hide when in step 3 -->
+          <div v-if="currentStep !== 3">
+            <button
+              v-if="currentStep < totalSteps"
+              @click="nextStep"
+              class="px-6 py-2 bg-dark-blue text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+            >
+              Next
+              <font-awesome-icon :icon="['fas', 'arrow-right']" class="ml-2" />
+            </button>
 
-          <button
-            v-else
-            @click="validateFinalStep"
-            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
-          >
-            <font-awesome-icon :icon="['fas', 'check']" class="mr-2" />
-            Submit Registration
-          </button>
+            <button
+              v-else
+              @click="validateFinalStep"
+              class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+            >
+              <font-awesome-icon :icon="['fas', 'check']" class="mr-2" />
+              Submit Registration
+            </button>
+          </div>
+
+          <!-- When in step 3, show info text instead of buttons -->
+          <div v-if="currentStep === 3" class="w-full">
+            <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-center">
+              <font-awesome-icon
+                :icon="['fas', 'exclamation-circle']"
+                class="text-yellow-500 mr-2"
+              />
+              <span class="text-gray-700">
+                {{
+                  formData.status === 'pending'
+                    ? 'Please wait for LTO officer to process your inspection request. Once approved, you will automatically proceed to payment.'
+                    : 'Your inspection has been approved. You will be redirected to the payment page.'
+                }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
