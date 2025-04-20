@@ -35,6 +35,35 @@ export interface VehicleRegistrationErrors {
   declarationConsent: string
 }
 
+// Additional vehicle data collected during inspection
+export interface AdditionalVehicleData {
+  mvFileNumber: string
+  conductionSticker: string
+  vehicleSeries: string
+  bodyType: string
+  pistonDisplacement: number
+  numberOfCylinders: number
+  fuelType: string
+  gvw: number
+  netWeight: number
+  shippingWeight: number
+  usageClassification: string
+  firstRegistrationDate: string
+  ltoOfficeCode: string
+  classification: string
+  denomination: string
+  orNumber: string
+  orDate: string
+}
+
+// Payment details for registration
+export interface PaymentDetails {
+  amountPaid: number
+  paymentDate: string
+  paymentMethod: string
+  receiptNumber: string
+}
+
 export interface VehicleRegistrationForm {
   id: string
   userId: string
@@ -52,15 +81,23 @@ export interface VehicleRegistrationForm {
   appointmentDate: string | null
   appointmentTime: string | null
   referenceCode: string
-  inspectionStatus: 'pending' | 'approved' | 'rejected'
+  inspectionStatus: RegistrationStatus
   inspectionCode: string
-  paymentStatus: 'pending' | 'approved' | 'rejected'
+  inspectionNotes?: string
+  additionalVehicleData?: AdditionalVehicleData
+  paymentStatus: RegistrationStatus
   paymentCode: string
-  verificationStatus: 'pending' | 'approved' | 'rejected'
-  status: 'pending' | 'approved' | 'rejected'
+  paymentNotes?: string
+  paymentDetails?: PaymentDetails
+  verificationStatus: RegistrationStatus
+  status: RegistrationStatus
   submissionDate: string
   expiryDate?: string
   plateNumber?: string
+  plateType?: string
+  plateIssueDate?: string
+  plateExpirationDate?: string
+  plateIssuanceNotes?: string
   registrationType: 'New Vehicle' | 'Renewal'
   privacyConsent: boolean
   declarationConsent: boolean
@@ -77,3 +114,17 @@ export interface VehicleRegistrationState {
   isSubmitting: boolean
   currentStep: number
 }
+
+export type RegistrationStatus = 'pending' | 'approved' | 'rejected'
+
+export interface RegistrationStatusMessages {
+  pending: string
+  approved: string
+  rejected: string
+}
+
+export const registrationStatusMessages: RegistrationStatusMessages = {
+  pending: 'Waiting for LTO officer approval',
+  approved: 'Registration approved by LTO officer',
+  rejected: 'Registration rejected by LTO officer',
+} as const

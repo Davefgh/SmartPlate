@@ -4,8 +4,16 @@ import type {
   VehicleRegistrationState,
   VehicleDocuments,
 } from '@/types/vehicleRegistration'
+import { registrationStatusMessages, type RegistrationStatus } from '@/types/vehicleRegistration'
 
-// Mock data for vehicle registration forms
+// Using imported registration status messages for status display
+const statusMessages = registrationStatusMessages
+
+// Helper function to check if status is final
+const isFinalStatus = (status: RegistrationStatus): boolean => {
+  return status === 'approved' || status === 'rejected'
+}
+
 const mockRegistrationForms: VehicleRegistrationForm[] = [
   {
     id: 'REG-2024-001',
@@ -115,7 +123,7 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
     forms: [...mockRegistrationForms],
     formData: {
       id: '',
-      userId: '',
+      userId: localStorage.getItem('userId') || '',
       isNewVehicle: true,
       vehicleType: '',
       make: '',
@@ -398,6 +406,50 @@ export const useVehicleRegistrationFormStore = defineStore('vehicleRegistrationF
 
       this.hasUnsavedChanges = true
       return isValid
+    },
+
+    getStatusMessage(status: RegistrationStatus): string {
+      return statusMessages[status]
+    },
+
+    updateRegistrationStatus(newStatus: RegistrationStatus): void {
+      if (!isFinalStatus(this.formData.status)) {
+        this.formData.status = newStatus
+        this.hasUnsavedChanges = true
+      }
+    },
+
+    canUpdateStatus(): boolean {
+      return !isFinalStatus(this.formData.status)
+    },
+
+    saveCurrentForm(): void {
+      if (!this.formData.id) {
+        this.formData.id = 'REG-' + new Date().getTime()
+      }
+
+      if (!this.formData.userId && localStorage.getItem('userId')) {
+        this.formData.userId = localStorage.getItem('userId') || ''
+      }
+
+      const existingFormIndex = this.forms.findIndex((form) => form.id === this.formData.id)
+
+      if (existingFormIndex === -1) {
+        this.forms.push({ ...this.formData })
+      } else {
+        this.forms[existingFormIndex] = { ...this.formData }
+      }
+
+      this.hasUnsavedChanges = false
+    },
+
+    loadForm(formId: string): boolean {
+      const form = this.forms.find((f) => f.id === formId)
+      if (form) {
+        this.formData = { ...form }
+        return true
+      }
+      return false
     },
   },
 })
