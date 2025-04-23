@@ -93,6 +93,43 @@ func main() {
 	p.PUT	 ("/:plate_id",   plateHandler.UpdatePlate)//working
 	p.DELETE("/:plate_id",    plateHandler.DeletePlateByID)//working
 
+	//registration routes
+	rfRepo := repository.NewRegistrationFormRepository(db)
+	riRepo := repository.NewRegistrationInspectionRepository(db)
+	rpRepo := repository.NewRegistrationPaymentRepository(db)
+	rdRepo := repository.NewRegistrationDocumentRepository(db)
+	vRepo := repository.NewVehicleRepository(db)
+	
+	rh := handlers.NewRegistrationHandler(rfRepo, riRepo, rpRepo, rdRepo, vRepo)
+	g := e.Group("/api/registration-form")
+	g.POST("", rh.CreateForm)//working
+	g.GET("", rh.GetAllForms)//working
+	g.GET("/:id", rh.GetFormByID)//working
+	g.PUT("/:id", rh.UpdateForm)//working
+	g.DELETE("/:id", rh.DeleteForm)//working
+	g.GET("/:id/full", rh.GetFull)
+
+	// inspection
+	g.POST("/:id/inspection", rh.CreateInspection)//working
+	g.GET("/:id/inspection", rh.GetInspections)//working
+	g.GET("/:id/inspection/:inspId", rh.GetInspection)//working
+	g.PUT("/:id/inspection/:inspId", rh.UpdateInspection)//working
+	g.DELETE("/:id/inspection/:inspId", rh.DeleteInspection)//working
+
+	// payment
+	g.POST("/:id/payment", rh.CreatePayment)//working
+	g.GET("/:id/payment", rh.GetPayments)//working
+	g.GET("/:id/payment/:payId", rh.GetPayment)//working
+	g.PUT("/:id/payment/:payId", rh.UpdatePayment)//working
+	g.DELETE("/:id/payment/:payId", rh.DeletePayment)//woriking
+
+	// document
+	g.POST("/:id/document", rh.CreateDocument)//working
+	g.GET("/:id/document", rh.GetDocuments)//working
+	g.GET("/:id/document/:docId", rh.GetDocument)//working
+	g.PUT("/:id/document/:docId", rh.UpdateDocument)//working
+	g.DELETE("/:id/document/:docId", rh.DeleteDocument)//working
+
 	// Start server
 	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
 e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
