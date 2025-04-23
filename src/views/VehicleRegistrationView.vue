@@ -15,16 +15,10 @@ const totalSteps = 4
 const isCheckingStatus = ref<boolean>(false)
 
 // Use store's state and computed properties
-const { formData, errors, currentStep, isSubmitting } = storeToRefs(store)
+const { formData, errors, currentStep } = storeToRefs(store)
 
 // Use store's actions
-const {
-  validateVehicleInfo,
-  validateDocuments,
-  validateAppointment,
-  validatePayment,
-  submitRegistration,
-} = store
+const { validateVehicleInfo, validateDocuments, validateAppointment } = store
 
 // Define helper functions first
 // Generate appointment details
@@ -120,14 +114,7 @@ watch(
   currentStep,
   (newStep) => {
     if (newStep === 3) {
-      // Always generate appointment details when entering step 3
-      if (
-        !formData.value.appointmentDate ||
-        !formData.value.appointmentTime ||
-        !formData.value.inspectionCode
-      ) {
-        generateAppointment()
-      }
+      // Only check application status, don't generate appointment yet
       checkApplicationStatus()
     }
   },
@@ -162,6 +149,17 @@ watch(
   },
 )
 
+// Also watch for inspection status changes
+watch(
+  () => formData.value.inspectionStatus,
+  (newStatus) => {
+    if (newStatus === 'approved' && currentStep.value === 3) {
+      console.log('Inspection approved, advancing to payment step')
+      currentStep.value = 4
+    }
+  },
+)
+
 // Clear interval on component unmount
 onUnmounted(() => {
   if (statusCheckInterval) {
@@ -176,11 +174,6 @@ const nextStep = (): void => {
     isValid = validateVehicleInfo()
   } else if (currentStep.value === 2) {
     isValid = validateDocuments()
-
-    // Pre-generate appointment details when moving from step 2 to 3
-    if (isValid) {
-      generateAppointment()
-    }
   } else if (currentStep.value === 3) {
     // Always ensure we have appointment details for step 3
     if (
@@ -196,7 +189,8 @@ const nextStep = (): void => {
       store.setUnsavedChanges(true)
     }
   } else if (currentStep.value === 4) {
-    isValid = validatePayment()
+    // Step 4 doesn't require validation anymore
+    isValid = true
   }
 
   if (isValid && currentStep.value < totalSteps) {
@@ -285,21 +279,9 @@ const handleFileUpload = (event: Event, documentType: keyof VehicleDocuments): v
   }
 }
 
-// Submit the registration
+// Submit the registration - no longer needed as we removed the Submit button from step 4
 const validateFinalStep = async (): Promise<void> => {
-  if (validatePayment()) {
-    try {
-      isSubmitting.value = true
-      const success = await submitRegistration()
-      if (success) {
-        router.push('/home')
-      }
-    } catch (error) {
-      console.error('Registration submission failed:', error)
-    } finally {
-      isSubmitting.value = false
-    }
-  }
+  router.push('/home')
 }
 </script>
 
@@ -916,6 +898,29 @@ const validateFinalStep = async (): Promise<void> => {
             </div>
           </div>
 
+          <!-- Approval notice - show when inspection is approved -->
+          <div
+            v-if="formData.inspectionStatus === 'approved'"
+            class="bg-green-50 p-6 rounded-lg mb-6 border border-green-300"
+          >
+            <h3 class="text-lg font-semibold text-green-800 mb-4 flex items-center">
+              <font-awesome-icon :icon="['fas', 'check-circle']" class="text-green-600 mr-2" />
+              Inspection Approved
+            </h3>
+            <p class="text-green-700 mb-3">
+              Your inspection has been approved. You will be redirected to the payment page.
+            </p>
+            <div class="flex justify-center mt-4">
+              <button
+                @click="currentStep = 4"
+                class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+              >
+                <font-awesome-icon :icon="['fas', 'arrow-right']" class="mr-2" />
+                Proceed to Payment
+              </button>
+            </div>
+          </div>
+
           <!-- Important information section -->
           <div class="bg-yellow-50 p-6 rounded-lg">
             <h3 class="text-lg font-medium text-gray-800 mb-4 flex items-center">
@@ -987,62 +992,12 @@ const validateFinalStep = async (): Promise<void> => {
               </div>
             </div>
           </div>
-
-          <div class="space-y-4 mb-6">
-            <div class="flex items-start">
-              <div class="flex items-center h-5">
-                <input
-                  id="privacy-consent"
-                  type="checkbox"
-                  v-model="formData.privacyConsent"
-                  class="focus:ring-dark-blue h-4 w-4 text-dark-blue border-gray-300 rounded"
-                  :class="{ 'border-red-500': errors.privacyConsent }"
-                />
-              </div>
-              <div class="ml-3 text-sm">
-                <label for="privacy-consent" class="font-medium text-gray-700 required-field"
-                  >Privacy Consent</label
-                >
-                <p class="text-gray-500">
-                  I consent to the collection and processing of my personal data in accordance with
-                  the Data Privacy Act of 2012.
-                </p>
-                <p v-if="errors.privacyConsent" class="mt-1 text-sm error-message">
-                  {{ errors.privacyConsent }}
-                </p>
-              </div>
-            </div>
-
-            <div class="flex items-start">
-              <div class="flex items-center h-5">
-                <input
-                  id="declaration-consent"
-                  type="checkbox"
-                  v-model="formData.declarationConsent"
-                  class="focus:ring-dark-blue h-4 w-4 text-dark-blue border-gray-300 rounded"
-                  :class="{ 'border-red-500': errors.declarationConsent }"
-                />
-              </div>
-              <div class="ml-3 text-sm">
-                <label for="declaration-consent" class="font-medium text-gray-700 required-field"
-                  >Declaration</label
-                >
-                <p class="text-gray-500">
-                  I declare that all information provided is true and correct to the best of my
-                  knowledge.
-                </p>
-                <p v-if="errors.declarationConsent" class="mt-1 text-sm error-message">
-                  {{ errors.declarationConsent }}
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- Navigation buttons -->
         <div class="flex justify-between mt-8">
-          <!-- Previous button - hide when in step 3 -->
-          <div v-if="currentStep !== 3">
+          <!-- Previous button - hide when in step 3 or 4 -->
+          <div v-if="currentStep !== 3 && currentStep !== 4">
             <button
               @click="prevStep"
               class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
@@ -1054,8 +1009,8 @@ const validateFinalStep = async (): Promise<void> => {
             </button>
           </div>
 
-          <!-- Next/Submit button - hide when in step 3 -->
-          <div v-if="currentStep !== 3">
+          <!-- Next/Submit button - hide when in step 3 or 4 -->
+          <div v-if="currentStep !== 3 && currentStep !== 4">
             <button
               v-if="currentStep < totalSteps"
               @click="nextStep"
@@ -1088,6 +1043,20 @@ const validateFinalStep = async (): Promise<void> => {
                     ? 'Please wait for LTO officer to process your inspection request. Once approved, you will automatically proceed to payment.'
                     : 'Your inspection has been approved. You will be redirected to the payment page.'
                 }}
+              </span>
+            </div>
+          </div>
+
+          <!-- When in step 4, show payment completion info text -->
+          <div v-if="currentStep === 4" class="w-full">
+            <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-center">
+              <font-awesome-icon
+                :icon="['fas', 'exclamation-circle']"
+                class="text-yellow-500 mr-2"
+              />
+              <span class="text-gray-700">
+                Payment processing can only be completed by an LTO Officer. Please visit your
+                nearest LTO office with your payment code to complete this transaction.
               </span>
             </div>
           </div>

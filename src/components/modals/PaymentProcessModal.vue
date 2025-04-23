@@ -46,6 +46,15 @@ const generateReferenceNumber = (): string => {
   return `PAY-${timestamp}-${random}`
 }
 
+// Generate a unique receipt number
+const generateReceiptNumber = (): string => {
+  const timestamp = new Date().getTime().toString().slice(-6)
+  const random = Math.floor(Math.random() * 10000)
+    .toString()
+    .padStart(4, '0')
+  return `RCT-${timestamp}-${random}`
+}
+
 // Validation errors
 const validationErrors = ref<Record<string, string>>({})
 
@@ -83,8 +92,8 @@ const resetForm = () => {
   paymentDetails.value = {
     amountPaid: parseFloat(totalFee.value),
     paymentDate: new Date().toISOString().split('T')[0],
-    paymentMethod: '',
-    receiptNumber: '',
+    paymentMethod: 'Cash', // Default to Cash
+    receiptNumber: generateReceiptNumber(), // Generate receipt number automatically
     referenceNumber: generateReferenceNumber(),
   }
 
@@ -119,18 +128,6 @@ const validateForm = (): boolean => {
   // Check payment date
   if (!paymentDetails.value.paymentDate) {
     validationErrors.value.paymentDate = 'Payment date is required'
-    isValid = false
-  }
-
-  // Check payment method
-  if (!paymentDetails.value.paymentMethod) {
-    validationErrors.value.paymentMethod = 'Payment method is required'
-    isValid = false
-  }
-
-  // Check receipt number
-  if (!paymentDetails.value.receiptNumber) {
-    validationErrors.value.receiptNumber = 'Receipt number is required'
     isValid = false
   }
 
@@ -199,12 +196,18 @@ const cancelPayment = () => {
             <div class="flex items-center justify-between">
               <div>
                 <h4 class="text-md font-medium text-blue-700 mb-1">Payment Verification Code</h4>
-                <p class="text-sm text-blue-600">
-                  {{ registration.paymentCode || 'No payment code available' }}
+                <p
+                  v-if="registration.paymentCode"
+                  class="text-sm text-blue-600 font-mono font-bold"
+                >
+                  {{ registration.paymentCode }}
+                </p>
+                <p v-else class="text-sm text-red-600">
+                  No payment code available. Please contact system administrator.
                 </p>
               </div>
               <div class="text-blue-600 bg-blue-100 px-3 py-1 rounded-lg text-xs font-medium">
-                VERIFY BEFORE PROCESSING
+                VERIFY BEFORE PAYMENT
               </div>
             </div>
           </div>
@@ -282,21 +285,12 @@ const cancelPayment = () => {
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Payment Reference Number
                 </label>
-                <div class="flex">
-                  <input
-                    v-model="paymentDetails.referenceNumber"
-                    type="text"
-                    readonly
-                    class="w-full px-3 py-2 border border-gray-300 bg-gray-50 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono"
-                  />
-                  <button
-                    @click="paymentDetails.referenceNumber = generateReferenceNumber()"
-                    type="button"
-                    class="ml-2 inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded shadow-sm text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    Regenerate
-                  </button>
-                </div>
+                <input
+                  v-model="paymentDetails.referenceNumber"
+                  type="text"
+                  readonly
+                  class="w-full px-3 py-2 border border-gray-300 bg-gray-50 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono"
+                />
                 <p class="mt-1 text-xs text-gray-500">Automatically generated payment reference</p>
               </div>
 
@@ -322,24 +316,13 @@ const cancelPayment = () => {
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Payment Method <span class="text-red-600">*</span>
                 </label>
-                <select
+                <input
                   v-model="paymentDetails.paymentMethod"
-                  class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  :class="{
-                    'border-red-500': validationErrors.paymentMethod,
-                    'border-gray-300': !validationErrors.paymentMethod,
-                  }"
-                >
-                  <option value="">Select Payment Method</option>
-                  <option value="Cash">Cash</option>
-                  <option value="Credit Card">Credit Card</option>
-                  <option value="Debit Card">Debit Card</option>
-                  <option value="Bank Transfer">Bank Transfer</option>
-                  <option value="E-Wallet">E-Wallet</option>
-                </select>
-                <p v-if="validationErrors.paymentMethod" class="mt-1 text-sm text-red-600">
-                  {{ validationErrors.paymentMethod }}
-                </p>
+                  type="text"
+                  readonly
+                  class="w-full px-3 py-2 border border-gray-300 bg-gray-50 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+                <p class="mt-1 text-xs text-gray-500">Fixed to Cash payment only</p>
               </div>
 
               <div class="mb-3">
@@ -349,15 +332,10 @@ const cancelPayment = () => {
                 <input
                   v-model="paymentDetails.receiptNumber"
                   type="text"
-                  class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  :class="{
-                    'border-red-500': validationErrors.receiptNumber,
-                    'border-gray-300': !validationErrors.receiptNumber,
-                  }"
+                  readonly
+                  class="w-full px-3 py-2 border border-gray-300 bg-gray-50 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono"
                 />
-                <p v-if="validationErrors.receiptNumber" class="mt-1 text-sm text-red-600">
-                  {{ validationErrors.receiptNumber }}
-                </p>
+                <p class="mt-1 text-xs text-gray-500">Automatically generated receipt number</p>
               </div>
             </div>
 

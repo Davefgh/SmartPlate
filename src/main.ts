@@ -80,6 +80,7 @@ import {
   faClipboard,
   faUpload,
   faQrcode,
+  faPlus,
 } from '@fortawesome/free-solid-svg-icons'
 import { faGoogle } from '@fortawesome/free-brands-svg-icons'
 
@@ -155,6 +156,7 @@ const icons: IconDefinition[] = [
   faClipboard,
   faUpload,
   faQrcode,
+  faPlus,
 ]
 library.add(...icons)
 

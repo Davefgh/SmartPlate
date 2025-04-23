@@ -36,11 +36,15 @@ const errors = reactive({
 })
 
 // Check for redirect query parameter
-watch(() => route.query.redirect, (newRedirect) => {
-  if (newRedirect) {
-    errors.form = 'Please log in to access that page'
-  }
-}, { immediate: true })
+watch(
+  () => route.query.redirect,
+  (newRedirect) => {
+    if (newRedirect) {
+      errors.form = 'Please log in to access that page'
+    }
+  },
+  { immediate: true },
+)
 
 // Toggle between login and registration forms
 const isLogin = ref(true)
@@ -87,9 +91,9 @@ const handleRegistration = () => {
     // Start the registration process in the user store
     userStore.startRegistration({
       email: registerData.email,
-      password: registerData.password
+      password: registerData.password,
     })
-    
+
     // Redirect to the full registration form
     router.push('/register')
   }
@@ -229,10 +233,10 @@ const validateTerms = () => {
 // Form submission handlers with validation
 const validateAndLogin = () => {
   clearErrors()
-  
+
   const isEmailValid = validateLoginEmail()
   const isPasswordValid = validateLoginPassword()
-  
+
   if (isEmailValid && isPasswordValid) {
     handleLogin()
   }
@@ -240,12 +244,12 @@ const validateAndLogin = () => {
 
 const validateAndRegister = () => {
   clearErrors()
-  
+
   const isEmailValid = validateRegisterEmail()
   const isPasswordValid = validateRegisterPassword()
   const isConfirmPasswordValid = validateConfirmPassword()
   const isTermsValid = validateTerms()
-  
+
   if (isEmailValid && isPasswordValid && isConfirmPasswordValid && isTermsValid) {
     handleRegistration()
   }
@@ -256,10 +260,10 @@ const handleLogin = async () => {
   try {
     // Show loading state
     errors.form = 'Logging in...'
-    
+
     // Call the login action from the user store
     await userStore.login(email.value, password.value)
-    
+
     // Check for redirect query parameter
     const redirectPath = route.query.redirect || '/home'
     router.push(redirectPath)
@@ -271,7 +275,14 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="flex min-h-screen">
+  <div class="flex min-h-screen relative">
+    <!-- Back Button -->
+    <button
+      @click="router.back()"
+      class="absolute top-4 left-4 text-white hover:text-red transition-colors focus:outline-none z-10"
+    >
+      <font-awesome-icon :icon="['fas', 'arrow-left']" class="h-5 w-5" />
+    </button>
     <!-- Left Column - Welcome Text and Registration -->
     <div
       class="hidden md:flex md:w-1/2 bg-gradient-to-br from-dark-blue to-black p-8 text-white flex-col justify-center items-center"
@@ -283,7 +294,9 @@ const handleLogin = async () => {
           fraud, and ensure compliance with registration regulations.
         </p>
         <div class="border-t border-white/20 w-24 mx-auto my-8"></div>
-        <p class="mb-6">Don't have an account yet?</p>
+        <p class="mb-6">
+          {{ isLogin ? "Don't have an account yet?" : 'Already have an account?' }}
+        </p>
         <a
           href="#"
           @click.prevent="toggleForm"
@@ -298,12 +311,12 @@ const handleLogin = async () => {
     <div
       class="w-full md:w-1/2 bg-gradient-to-br from-light-blue/10 to-white p-5 flex items-center justify-center"
     >
-      <div class="w-full max-w-md bg-white rounded-xl shadow-lg p-8 md:p-10">
+      <div class="w-full max-w-md bg-white rounded-xl shadow-lg p-8 md:p-10 relative">
         <!-- Login Form -->
         <div v-if="isLogin">
           <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-dark-blue mb-2">SmartPlate</h1>
-            <p class="text-gray text-base">Sign in to access into your account!</p>
+            <p class="text-gray text-base">Sign in to access your account!</p>
           </div>
           <form @submit.prevent="validateAndLogin" class="flex flex-col gap-5" novalidate>
             <div class="flex flex-col gap-2">
@@ -389,7 +402,7 @@ const handleLogin = async () => {
               type="submit"
               class="bg-dark-blue text-white font-semibold py-3 px-4 rounded-lg mt-2 hover:bg-light-blue transform hover:-translate-y-0.5 transition-all hover:shadow-lg active:translate-y-0"
             >
-              Sign In
+              Log In
             </button>
             <div class="relative flex items-center py-2">
               <div class="flex-grow border-t border-gray-200"></div>
@@ -409,7 +422,9 @@ const handleLogin = async () => {
 
           <!-- Mobile-only registration button -->
           <div class="md:hidden text-center mt-8">
-            <p class="text-gray mb-4">Don't have an account yet?</p>
+            <p class="text-gray mb-4">
+              {{ isLogin ? "Don't have an account yet?" : 'Already have an account?' }}
+            </p>
             <a
               href="#"
               @click.prevent="toggleForm"
@@ -566,7 +581,7 @@ const handleLogin = async () => {
               type="submit"
               class="bg-dark-blue text-white font-semibold py-3 px-4 rounded-lg mt-2 hover:bg-light-blue transform hover:-translate-y-0.5 transition-all hover:shadow-lg active:translate-y-0"
             >
-              Create Account
+              Continue Registration
             </button>
           </form>
 
@@ -578,7 +593,7 @@ const handleLogin = async () => {
               @click.prevent="toggleForm"
               class="inline-block bg-red text-white font-semibold py-3 px-6 rounded-lg w-full hover:bg-opacity-90 transition-all"
             >
-              Sign In
+              Back to Login
             </a>
           </div>
         </div>

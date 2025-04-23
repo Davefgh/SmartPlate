@@ -37,6 +37,7 @@ export interface Plate extends Vehicle {
   plate_issue_date: string
   plate_expiration_date: string
   status: string
+  region?: string
 }
 
 export interface Registration {

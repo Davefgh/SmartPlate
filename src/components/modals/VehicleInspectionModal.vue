@@ -48,6 +48,147 @@ const additionalData = ref<AdditionalVehicleData>({
 // Validation errors
 const validationErrors = ref<Record<string, string>>({})
 
+// Region selection for MV File Number generation
+const selectedRegion = ref('NCR')
+
+// Track last used regions to control regeneration
+const lastMVFileRegion = ref('')
+const hasGeneratedConductionSticker = ref(false)
+
+// List of regions for region selection
+const regions = [
+  { code: 'NCR', name: 'National Capital Region' },
+  { code: 'CALABARZON', name: 'CALABARZON (Region 4A)' },
+  { code: 'CENTRAL_LUZON', name: 'Central Luzon (Region 3)' },
+  { code: 'WESTERN_VISAYAS', name: 'Western Visayas (Region 6)' },
+  { code: 'CENTRAL_VISAYAS', name: 'Central Visayas (Region 7)' },
+  { code: 'EASTERN_VISAYAS', name: 'Eastern Visayas (Region 8)' },
+  { code: 'NORTHERN_MINDANAO', name: 'Northern Mindanao (Region 10)' },
+  { code: 'SOUTHERN_MINDANAO', name: 'Davao Region (Region 11)' },
+  { code: 'CAR', name: 'Cordillera Administrative Region' },
+  { code: 'CARAGA', name: 'CARAGA (Region 13)' },
+  { code: 'BICOL', name: 'Bicol Region (Region 5)' },
+  { code: 'ILOCOS', name: 'Ilocos Region (Region 1)' },
+  { code: 'MIMAROPA', name: 'MIMAROPA (Region 4B)' },
+  { code: 'SOCCSKSARGEN', name: 'SOCCSKSARGEN (Region 12)' },
+  { code: 'ZAMBOANGA', name: 'Zamboanga Peninsula (Region 9)' },
+  { code: 'BARMM', name: 'Bangsamoro Autonomous Region in Muslim Mindanao' },
+]
+
+// Region codes mapping for MV File Number generation
+const regionCodes = {
+  NCR: '01',
+  CALABARZON: '02',
+  CENTRAL_LUZON: '03',
+  WESTERN_VISAYAS: '04',
+  CENTRAL_VISAYAS: '05',
+  EASTERN_VISAYAS: '06',
+  NORTHERN_MINDANAO: '07',
+  SOUTHERN_MINDANAO: '08',
+  CAR: '09',
+  CARAGA: '10',
+  BICOL: '11',
+  ILOCOS: '12',
+  MIMAROPA: '13',
+  SOCCSKSARGEN: '14',
+  ZAMBOANGA: '15',
+  BARMM: '16',
+}
+
+// Generate MV File Number
+// Format: RR YY XXXXXX (RR: 2-digit region code, YY: last two digits of year, XXXXXX: 6-digit sequence)
+const generateMVFileNumber = () => {
+  if (!props.registration) return ''
+
+  // Only allow regeneration if region has changed
+  if (lastMVFileRegion.value === selectedRegion.value && additionalData.value.mvFileNumber) {
+    return additionalData.value.mvFileNumber
+  }
+
+  // Get region code from selected region
+  const regionCode = regionCodes[selectedRegion.value as keyof typeof regionCodes] || '01'
+
+  // Get the last two digits of the current year
+  const currentYear = new Date().getFullYear().toString().slice(-2)
+
+  // Generate a random 6-digit sequence (in a real app, this would increment based on stored values)
+  const existingMVNumbers = JSON.parse(localStorage.getItem('mv_file_numbers') || '[]')
+  const regionYearKey = `${regionCode}${currentYear}`
+
+  // Find the highest sequence number for this region and year
+  let highestSequence = 0
+  existingMVNumbers.forEach((mvNumber: string) => {
+    if (mvNumber.startsWith(regionYearKey)) {
+      const sequence = parseInt(mvNumber.slice(4), 10)
+      if (sequence > highestSequence) {
+        highestSequence = sequence
+      }
+    }
+  })
+
+  // Increment the sequence
+  const newSequence = highestSequence + 1
+
+  // Zero-pad to 6 digits
+  const sequencePadded = newSequence.toString().padStart(6, '0')
+
+  // Construct the MV File Number
+  const mvFileNumber = `${regionCode} ${currentYear} ${sequencePadded}`
+
+  // Store the new MV File Number
+  existingMVNumbers.push(mvFileNumber)
+  localStorage.setItem('mv_file_numbers', JSON.stringify(existingMVNumbers))
+
+  // Record the region that was used
+  lastMVFileRegion.value = selectedRegion.value
+
+  return mvFileNumber
+}
+
+// Generate Conduction Sticker
+// Format: CS YY NNNN (CS: fixed prefix, YY: last two digits of year, NNNN: 4-digit sequence)
+const generateConductionSticker = () => {
+  // Only allow generation once
+  if (hasGeneratedConductionSticker.value && additionalData.value.conductionSticker) {
+    return additionalData.value.conductionSticker
+  }
+
+  // Get the last two digits of the current year
+  const currentYear = new Date().getFullYear().toString().slice(-2)
+
+  // Load existing conduction stickers from localStorage
+  const existingStickers = JSON.parse(localStorage.getItem('conduction_stickers') || '[]')
+
+  // Find the highest sequence number for this year
+  let highestSequence = 0
+  existingStickers.forEach((sticker: string) => {
+    if (sticker.startsWith(`CS ${currentYear}`)) {
+      const sequence = parseInt(sticker.slice(5), 10)
+      if (sequence > highestSequence) {
+        highestSequence = sequence
+      }
+    }
+  })
+
+  // Increment the sequence
+  const newSequence = highestSequence + 1
+
+  // Zero-pad to 4 digits
+  const sequencePadded = newSequence.toString().padStart(4, '0')
+
+  // Construct the Conduction Sticker
+  const conductionSticker = `CS ${currentYear} ${sequencePadded}`
+
+  // Store the new Conduction Sticker
+  existingStickers.push(conductionSticker)
+  localStorage.setItem('conduction_stickers', JSON.stringify(existingStickers))
+
+  // Mark as generated
+  hasGeneratedConductionSticker.value = true
+
+  return conductionSticker
+}
+
 // Define resetForm before using it in watch
 const resetForm = () => {
   additionalData.value = {
@@ -72,7 +213,26 @@ const resetForm = () => {
   inspectionNotes.value = ''
   inspectionStatus.value = 'approved'
   validationErrors.value = {}
+  lastMVFileRegion.value = ''
+  hasGeneratedConductionSticker.value = false
 }
+
+// Function to auto-generate and fill the MV File Number and Conduction Sticker
+const generateIdentifiers = () => {
+  additionalData.value.mvFileNumber = generateMVFileNumber()
+  additionalData.value.conductionSticker = generateConductionSticker()
+}
+
+// Watch for region changes to enable regeneration of MV File Number
+watch(
+  () => selectedRegion.value,
+  (newRegion, oldRegion) => {
+    if (newRegion !== oldRegion) {
+      // Allow regeneration when region changes
+      lastMVFileRegion.value = ''
+    }
+  },
+)
 
 // Reset data when registration changes
 watch(
@@ -85,6 +245,11 @@ watch(
     } else {
       // Reset to defaults otherwise
       resetForm()
+
+      // Auto-generate MV File Number and Conduction Sticker
+      if (props.registration) {
+        generateIdentifiers()
+      }
     }
   },
   { immediate: true },
@@ -166,6 +331,18 @@ const submitInspection = () => {
 const cancelInspection = () => {
   emit('close')
 }
+
+// MV File Number section - Fix UI structure and linter errors
+const canGenerateMVFileNumber = computed(() => {
+  return !(
+    lastMVFileRegion.value === selectedRegion.value && additionalData.value.mvFileNumber !== ''
+  )
+})
+
+// Conduction Sticker section - Fix linter errors
+const canGenerateConductionSticker = computed(() => {
+  return !(hasGeneratedConductionSticker.value && additionalData.value.conductionSticker !== '')
+})
 </script>
 
 <template>
@@ -199,8 +376,14 @@ const cancelInspection = () => {
             <div class="flex items-center justify-between">
               <div>
                 <h4 class="text-md font-medium text-blue-700 mb-1">Inspection Verification Code</h4>
-                <p class="text-sm text-blue-600">
-                  {{ registration.inspectionCode || 'No inspection code available' }}
+                <p
+                  v-if="registration.inspectionCode"
+                  class="text-sm text-blue-600 font-mono font-bold"
+                >
+                  {{ registration.inspectionCode }}
+                </p>
+                <p v-else class="text-sm text-red-600">
+                  No inspection code available. Please contact system administrator.
                 </p>
               </div>
               <div class="text-blue-600 bg-blue-100 px-3 py-1 rounded-lg text-xs font-medium">
@@ -257,29 +440,80 @@ const cancelInspection = () => {
                   MV File Number
                   <span v-if="requiredFields.includes('mvFileNumber')" class="text-red-600">*</span>
                 </label>
-                <input
-                  v-model="additionalData.mvFileNumber"
-                  type="text"
-                  class="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  :class="{
-                    'border-red-500': validationErrors.mvFileNumber,
-                    'border-gray-300': !validationErrors.mvFileNumber,
-                  }"
-                />
+                <div class="flex flex-col space-y-2">
+                  <div class="mb-2">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">
+                      Region for MV File Number
+                    </label>
+                    <select
+                      v-model="selectedRegion"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    >
+                      <option v-for="region in regions" :key="region.code" :value="region.code">
+                        {{ region.name }}
+                      </option>
+                    </select>
+                  </div>
+                  <div class="flex space-x-2">
+                    <input
+                      v-model="additionalData.mvFileNumber"
+                      type="text"
+                      class="flex-grow px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      :class="{
+                        'border-red-500': validationErrors.mvFileNumber,
+                        'border-gray-300': !validationErrors.mvFileNumber,
+                      }"
+                    />
+                    <button
+                      @click="additionalData.mvFileNumber = generateMVFileNumber()"
+                      class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      :disabled="!canGenerateMVFileNumber"
+                      :class="{
+                        'opacity-50 cursor-not-allowed': !canGenerateMVFileNumber,
+                      }"
+                      :title="
+                        !canGenerateMVFileNumber
+                          ? 'Change region to regenerate'
+                          : 'Generate MV File Number'
+                      "
+                    >
+                      Generate
+                    </button>
+                  </div>
+                </div>
                 <p v-if="validationErrors.mvFileNumber" class="mt-1 text-sm text-red-600">
                   {{ validationErrors.mvFileNumber }}
                 </p>
+                <p class="mt-1 text-xs text-gray-500">Format: RR YY XXXXXX</p>
               </div>
 
               <div class="mb-3">
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Conduction Sticker
                 </label>
-                <input
-                  v-model="additionalData.conductionSticker"
-                  type="text"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
+                <div class="flex space-x-2">
+                  <input
+                    v-model="additionalData.conductionSticker"
+                    type="text"
+                    class="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                  <button
+                    @click="additionalData.conductionSticker = generateConductionSticker()"
+                    class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    :disabled="!canGenerateConductionSticker"
+                    :class="{
+                      'opacity-50 cursor-not-allowed': !canGenerateConductionSticker,
+                    }"
+                    :title="
+                      !canGenerateConductionSticker
+                        ? 'Can only generate once'
+                        : 'Generate Conduction Sticker'
+                    "
+                  >
+                    Generate
+                  </button>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">Format: CS YY NNNN</p>
               </div>
 
               <div class="mb-3">
@@ -370,7 +604,6 @@ const cancelInspection = () => {
                   <option value="Diesel">Diesel</option>
                   <option value="Electric">Electric</option>
                   <option value="Hybrid">Hybrid</option>
-                  <option value="LPG">LPG</option>
                 </select>
                 <p v-if="validationErrors.fuelType" class="mt-1 text-sm text-red-600">
                   {{ validationErrors.fuelType }}

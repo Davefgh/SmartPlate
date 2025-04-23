@@ -142,23 +142,47 @@ export const useUserStore = defineStore('user', {
   actions: {
     checkAuth(): boolean {
       const token = localStorage.getItem('token')
+      console.log('Checking authentication with token:', token)
+
       if (token) {
         const tokenPrefix = token.startsWith('admin_') ? 'admin_' : 'user_'
-        const user = this.users.find((u) => {
-          if (tokenPrefix === 'admin_') {
-            return u.role === 'admin' || u.role === 'LTO Officer'
-          }
-          return u.role === 'user'
-        })
+        // Get userId from localStorage as a backup to ensure proper user identification
+        const userId = localStorage.getItem('userId')
+        console.log('Found userId in localStorage:', userId)
+
+        // First try to find the user by userId (more specific)
+        let user = userId ? this.users.find((u) => u.ltoClientId === userId) : null
+
+        // If not found by userId, fall back to role-based search
+        if (!user) {
+          console.log('User not found by userId, searching by role with token prefix:', tokenPrefix)
+          user = this.users.find((u) => {
+            if (tokenPrefix === 'admin_') {
+              // Ensure we match the exact role - either 'admin' OR 'LTO Officer'
+              return u.role === 'admin' || u.role === 'LTO Officer'
+            }
+            return u.role === 'user'
+          })
+        }
 
         if (user) {
+          console.log('Found user:', user.ltoClientId, 'with role:', user.role)
           const userWithoutPassword = { ...user }
           delete userWithoutPassword.password
           this.currentUser = userWithoutPassword
           this.isAuthenticated = true
           this.token = token
+
+          // Ensure userId is set in localStorage when session is restored
+          console.log('Restoring userId in localStorage:', user.ltoClientId)
+          localStorage.setItem('userId', user.ltoClientId)
+
           return true
+        } else {
+          console.warn('No matching user found for token')
         }
+      } else {
+        console.warn('No token found in localStorage')
       }
       return false
     },
@@ -193,6 +217,10 @@ export const useUserStore = defineStore('user', {
           const fakeToken = tokenPrefix + Math.random().toString(36).substring(2)
           this.token = fakeToken
           localStorage.setItem('token', fakeToken)
+
+          // Store user ID in localStorage for form association
+          localStorage.setItem('userId', foundUser.ltoClientId)
+          console.log('Setting userId in localStorage on login:', foundUser.ltoClientId)
 
           this.loading = false
           return this.currentUser
@@ -263,10 +291,24 @@ export const useUserStore = defineStore('user', {
     },
 
     logout(): void {
+      // Save the current userId to log it
+      const userId = this.currentUser?.ltoClientId
+
+      // Clear the current user and auth state
       this.currentUser = null
       this.isAuthenticated = false
       this.token = null
+
+      // Remove auth tokens
       localStorage.removeItem('token')
+      console.log('Logging out user:', userId)
+
+      // IMPORTANT: Remove userId from localStorage
+      // This prevents forms from one account being shown in another
+      localStorage.removeItem('userId')
+      console.log('Removed userId from localStorage')
+
+      // Navigate to login page
       router.push('/login')
     },
     async updateUserProfile(updatedData: Partial<User>): Promise<User | null> {

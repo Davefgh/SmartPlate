@@ -31,8 +31,6 @@ export interface VehicleRegistrationErrors {
   color: string
   documents: DocumentErrors
   referenceSlip: string
-  privacyConsent: string
-  declarationConsent: string
 }
 
 // Additional vehicle data collected during inspection
@@ -98,9 +96,8 @@ export interface VehicleRegistrationForm {
   plateIssueDate?: string
   plateExpirationDate?: string
   plateIssuanceNotes?: string
+  plateRegion?: string
   registrationType: 'New Vehicle' | 'Renewal'
-  privacyConsent: boolean
-  declarationConsent: boolean
   applicantName?: string
   applicantEmail?: string
   applicantPhone?: string

@@ -7,14 +7,11 @@
           LTO SmartPlate
         </router-link>
         <div class="flex items-center gap-4">
-          <router-link to="/login" class="text-white hover:text-red transition-colors">
-            Login
-          </router-link>
           <router-link
-            to="/login"
+            :to="userStore.isAuthenticated ? '/home' : '/login'"
             class="bg-red hover:bg-opacity-90 text-white font-semibold py-2 px-4 rounded-lg transition-all transform hover:-translate-y-0.5 hover:shadow-lg"
           >
-            Sign Up
+            {{ userStore.isAuthenticated ? 'Go to Home' : 'Log In' }}
           </router-link>
         </div>
       </div>
@@ -162,8 +159,8 @@
           <div class="space-y-4">
             <h3 class="text-xl font-bold mb-4">LTO SmartPlate</h3>
             <p class="text-gray-300 text-sm">
-              The Vehicle Registration Management System of the Land Transportation Office
-              of the Philippines.
+              The Vehicle Registration Management System of the Land Transportation Office of the
+              Philippines.
             </p>
             <div class="flex space-x-4 mt-4">
               <a href="#" class="text-white hover:text-red transition-colors">
@@ -249,6 +246,7 @@
 <script setup>
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { library } from '@fortawesome/fontawesome-svg-core'
+import { useUserStore } from '@/stores/user'
 import {
   faCamera,
   faDatabase,
@@ -261,6 +259,8 @@ import {
   faEnvelope,
 } from '@fortawesome/free-solid-svg-icons'
 import { faFacebook, faTwitter, faInstagram } from '@fortawesome/free-brands-svg-icons'
+
+const userStore = useUserStore()
 
 library.add(
   faCamera,

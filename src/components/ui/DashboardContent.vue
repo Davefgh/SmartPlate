@@ -2,9 +2,10 @@
 import { useUserStore } from '@/stores/user'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
 import { useVehicleRegistrationFormStore } from '@/stores/vehicleRegistrationForm'
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Vehicle, Plate } from '@/types/vehicle'
+import type { VehicleRegistrationForm } from '@/types/vehicleRegistration'
 
 interface User {
   name: string
@@ -48,12 +49,85 @@ const allPlatesUpToDate = computed(() => {
 
 const pendingRenewals = computed(() => vehicleStore.soonToExpireRegistrations.length)
 
+// Explicitly load forms when component is mounted
+onMounted(() => {
+  // Log current user and ID
+  console.log('==== Dashboard mounted ====')
+  console.log('Current user:', userStore.fullName)
+  console.log('User ID:', userStore.currentUser?.ltoClientId)
+
+  // Debug store state
+  registrationFormStore.debugForms()
+
+  // Force setting userId to ensure correct forms association
+  if (userStore.currentUser?.ltoClientId) {
+    const userId = userStore.currentUser.ltoClientId
+    localStorage.setItem('userId', userId)
+    console.log('Set userId in localStorage:', userId)
+
+    // Get all forms for this user
+    const userForms = registrationFormStore.getUserRegistrations(userId)
+    console.log(`Found ${userForms.length} forms for user ${userId}`)
+
+    // Ensure all approved forms have appointment details and codes
+    userForms.forEach((form) => {
+      if (form.status === 'approved' || form.inspectionStatus === 'approved') {
+        console.log(`Ensuring form ${form.id} has proper appointment details and codes`)
+        registrationFormStore.ensureFormHasAppointmentAndCodes(form.id)
+      }
+    })
+  } else {
+    console.warn('No user is logged in, dashboard may not display correct data')
+  }
+
+  console.log('==== Dashboard initialization complete ====')
+})
+
 // Get in-progress vehicle registration forms
 const inProgressForms = computed(() => {
-  const userEmail = userStore.currentUser?.email || ''
-  return registrationFormStore.forms.filter(
-    (form) => form.userId === userEmail && form.status === 'pending',
-  )
+  // Get the current user's ID from the store - never use localStorage directly here
+  const userId = userStore.currentUser?.ltoClientId || ''
+
+  console.log('Computing in-progress forms for user:', userId)
+
+  if (!userId) {
+    console.warn('No userId available in computed property')
+    return []
+  }
+
+  // Get all forms for this specific user using the getUserRegistrations getter
+  const userForms = registrationFormStore.getUserRegistrations(userId)
+  console.log(`Retrieved ${userForms.length} forms for user ${userId}`)
+
+  // Filter to forms that are either pending status OR have pending inspection
+  // This ensures we show forms that are in any part of the registration process
+  const pendingForms = userForms.filter((form) => {
+    const isPendingStatus = form.status === 'pending'
+    const isPendingInspection = form.inspectionStatus === 'pending'
+    const isPendingPayment = form.paymentStatus === 'pending'
+
+    // Consider a form "in progress" if any of these conditions are true
+    const isInProgress = isPendingStatus || isPendingInspection || isPendingPayment
+
+    if (isInProgress) {
+      console.log(
+        `Found in-progress form: ID=${form.id}, Status=${form.status}, InspectionStatus=${form.inspectionStatus}, PaymentStatus=${form.paymentStatus}`,
+      )
+    }
+
+    return isInProgress
+  })
+
+  console.log(`Found ${pendingForms.length} in-progress forms for user ${userId}`)
+
+  // Log each pending form for debugging
+  if (pendingForms.length > 0) {
+    pendingForms.forEach((form) => {
+      console.log(`In-progress form details: ID=${form.id}, Make=${form.make}, Model=${form.model}`)
+    })
+  }
+
+  return pendingForms
 })
 
 // Check if there is an active registration in progress
@@ -82,28 +156,58 @@ const navigateToPlates = () => {
   emit('navigate', 'Plates')
 }
 
-const navigateToVehicleRegistrationForm = () => {
-  // If there's an active registration, load the most recent one
-  if (hasActiveRegistration.value && latestInProgressForm.value) {
-    registrationFormStore.loadForm(latestInProgressForm.value.id)
-  }
-  router.push('/vehicle-registration')
-}
-
 const continueRegistration = (formId: string) => {
+  // First ensure the form has all required data
+  registrationFormStore.ensureFormHasAppointmentAndCodes(formId)
+
+  // Then load the form data
   registrationFormStore.loadForm(formId)
   router.push('/vehicle-registration')
 }
 
 // Function to handle the registration button click
 const handleRegistrationButtonClick = () => {
+  console.log('Has active registration:', hasActiveRegistration.value)
+  console.log('Latest in-progress form:', latestInProgressForm.value)
+  console.log('All in-progress forms:', inProgressForms.value)
+
   if (hasActiveRegistration.value && latestInProgressForm.value) {
     // If there's a pending registration, load that form
+    console.log('Loading existing form:', latestInProgressForm.value.id)
     registrationFormStore.loadForm(latestInProgressForm.value.id)
     router.push('/vehicle-registration')
   } else {
     // Start a new registration
+    console.log('Starting new registration')
+    // Reset the form first
+    registrationFormStore.resetForm()
+    // Ensure userId is set correctly
+    registrationFormStore.formData.userId =
+      userStore.currentUser?.ltoClientId || localStorage.getItem('userId') || ''
     router.push('/vehicle-registration')
+  }
+}
+
+// Function to get the registration status label based on the form status
+const getRegistrationStatusLabel = (form: VehicleRegistrationForm) => {
+  if (form.status === 'pending' || form.inspectionStatus === 'pending') {
+    return 'Pending Approval'
+  } else if (
+    form.status === 'approved' &&
+    form.inspectionStatus === 'approved' &&
+    form.paymentStatus === 'pending'
+  ) {
+    return 'Pending Payment'
+  } else if (
+    form.status === 'approved' &&
+    form.inspectionStatus === 'approved' &&
+    form.paymentStatus === 'approved'
+  ) {
+    return 'Approved'
+  } else if (form.status === 'rejected') {
+    return 'Rejected'
+  } else {
+    return form.status
   }
 }
 </script>
@@ -222,7 +326,7 @@ const handleRegistrationButtonClick = () => {
         <div class="bg-gradient-to-r from-amber-600 to-amber-500 px-6 py-5 text-white">
           <h2 class="text-xl font-bold flex items-center">
             <font-awesome-icon :icon="['fas', 'clipboard-list']" class="w-5 h-5 mr-3" />
-            Pending Registration Process
+            Vehicle Registration Process
           </h2>
         </div>
 
@@ -235,7 +339,14 @@ const handleRegistrationButtonClick = () => {
           >
             <div class="flex items-start">
               <div
-                class="w-12 h-12 rounded-full flex items-center justify-center mr-4 shadow-sm bg-amber-100 text-amber-600"
+                class="w-12 h-12 rounded-full flex items-center justify-center mr-4 shadow-sm"
+                :class="{
+                  'bg-amber-100 text-amber-600':
+                    form.status === 'pending' || form.inspectionStatus === 'pending',
+                  'bg-green-100 text-green-600':
+                    form.status === 'approved' && form.inspectionStatus === 'approved',
+                  'bg-red-100 text-red-600': form.status === 'rejected',
+                }"
               >
                 <font-awesome-icon :icon="['fas', 'car']" class="w-6 h-6" />
               </div>
@@ -257,19 +368,83 @@ const handleRegistrationButtonClick = () => {
                   {{ form.isNewVehicle ? 'New Vehicle' : 'Used Vehicle' }} |
                   {{ form.vehicleType || 'Not specified' }} |
                   <span
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                    :class="{
+                      'bg-yellow-100 text-yellow-800':
+                        form.status === 'pending' || form.inspectionStatus === 'pending',
+                      'bg-blue-100 text-blue-800':
+                        form.status === 'approved' &&
+                        form.inspectionStatus === 'approved' &&
+                        form.paymentStatus === 'pending',
+                      'bg-green-100 text-green-800':
+                        form.status === 'approved' &&
+                        form.inspectionStatus === 'approved' &&
+                        form.paymentStatus === 'approved',
+                      'bg-red-100 text-red-800': form.status === 'rejected',
+                    }"
                   >
                     <font-awesome-icon :icon="['fas', 'clock']" class="mr-1 w-3 h-3" />
-                    {{ form.status === 'pending' ? 'Pending Approval' : form.status }}
+                    {{ getRegistrationStatusLabel(form) }}
                   </span>
                 </p>
+
+                <!-- Appointment Details -->
+                <div
+                  v-if="form.appointmentDate || form.inspectionCode || form.paymentCode"
+                  class="mt-2 text-sm"
+                >
+                  <div
+                    v-if="form.appointmentDate && form.appointmentTime"
+                    class="flex items-center text-gray-700 mb-1"
+                  >
+                    <font-awesome-icon :icon="['fas', 'calendar']" class="mr-2 text-amber-600" />
+                    <span>Scheduled: {{ form.appointmentDate }} at {{ form.appointmentTime }}</span>
+                  </div>
+
+                  <div v-if="form.inspectionCode" class="flex items-center text-gray-700 mb-1">
+                    <font-awesome-icon :icon="['fas', 'check-circle']" class="mr-2 text-blue-600" />
+                    <span
+                      >Inspection Code:
+                      <span class="font-mono">{{ form.inspectionCode }}</span></span
+                    >
+                  </div>
+
+                  <div v-if="form.paymentCode" class="flex items-center text-gray-700 mb-1">
+                    <font-awesome-icon :icon="['fas', 'credit-card']" class="mr-2 text-green-600" />
+                    <span
+                      >Payment Code: <span class="font-mono">{{ form.paymentCode }}</span></span
+                    >
+                  </div>
+                </div>
+
                 <div class="mt-3 flex gap-2">
                   <button
                     @click="continueRegistration(form.id)"
-                    class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm flex items-center"
+                    class="px-4 py-2 rounded-lg text-sm flex items-center"
+                    :class="{
+                      'bg-amber-600 hover:bg-amber-700 text-white':
+                        form.status === 'pending' || form.inspectionStatus === 'pending',
+                      'bg-blue-600 hover:bg-blue-700 text-white':
+                        form.status === 'approved' &&
+                        form.inspectionStatus === 'approved' &&
+                        form.paymentStatus === 'pending',
+                      'bg-green-600 hover:bg-green-700 text-white':
+                        form.status === 'approved' &&
+                        form.inspectionStatus === 'approved' &&
+                        form.paymentStatus === 'approved',
+                      'bg-gray-600 hover:bg-gray-700 text-white': form.status === 'rejected',
+                    }"
                   >
                     <font-awesome-icon :icon="['fas', 'arrow-right']" class="w-3 h-3 mr-2" />
-                    Continue Registration
+                    {{
+                      form.status === 'pending'
+                        ? 'Continue Registration'
+                        : form.status === 'approved' &&
+                            form.inspectionStatus === 'approved' &&
+                            form.paymentStatus === 'pending'
+                          ? 'Complete Payment'
+                          : 'View Details'
+                    }}
                   </button>
                 </div>
               </div>
@@ -283,7 +458,8 @@ const handleRegistrationButtonClick = () => {
                 :icon="['fas', 'clipboard-check']"
                 class="w-12 h-12 text-gray-300 mb-4"
               />
-              <p>No pending registration processes</p>
+              <p>No vehicle registrations found</p>
+              <p class="text-sm text-gray-400 mt-1">Start a new registration or check back later</p>
               <button
                 @click="handleRegistrationButtonClick"
                 class="mt-4 px-4 py-2 bg-dark-blue text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center"

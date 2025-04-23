@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, defineAsyncComponent } from 'vue'
+import { ref, computed, defineAsyncComponent, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { useRouter } from 'vue-router'
 
 const Dashboard = defineAsyncComponent(() => import('@/components/lto/LTODashboard.vue'))
 const Registrations = defineAsyncComponent(() => import('@/components/lto/LTORegistrations.vue'))
@@ -9,21 +10,67 @@ const Plates = defineAsyncComponent(() => import('@/components/lto/LTOPlates.vue
 const Violations = defineAsyncComponent(() => import('@/components/lto/LTOViolations.vue'))
 
 const userStore = useUserStore()
+const router = useRouter()
 const activeSection = ref('dashboard')
+const registrationStatus = ref('pending')
+const isRegistrationDropdownOpen = ref(false)
+
+// Ensure authentication is checked when the component is mounted
+onMounted(() => {
+  console.log('LTOView mounted, checking authentication...')
+
+  // Force authentication check
+  const isAuthenticated = userStore.isAuthenticated || userStore.checkAuth()
+  const userRole = userStore.userRole
+
+  console.log('Authentication state:', { isAuthenticated, userRole })
+
+  // If not authenticated or not an LTO Officer (except admin)
+  if (!isAuthenticated) {
+    console.log('Not authenticated, redirecting to login')
+    router.push('/login')
+    return
+  }
+
+  if (userRole !== 'LTO Officer' && userRole !== 'admin') {
+    console.log('Not authorized as LTO Officer, redirecting to appropriate view')
+    if (userRole === 'admin') {
+      router.push('/admin')
+    } else {
+      router.push('/home')
+    }
+    return
+  }
+
+  console.log('Authentication check passed, user can access LTO View')
+})
+
 const componentMap: Record<
   string,
   typeof Dashboard | typeof Registrations | typeof Plates | typeof Violations
 > = {
   dashboard: Dashboard,
-  registrations: Registrations,
+  'registrations-pending': Registrations,
+  'registrations-processing': Registrations,
+  'registrations-completed': Registrations,
   plates: Plates,
   violations: Violations,
 }
 
 const currentUser = computed(() => userStore.currentUser)
 
-const navigateTo = (section: string) => {
-  activeSection.value = section
+const navigateTo = (section: string, status?: string) => {
+  if (status) {
+    registrationStatus.value = status
+    activeSection.value = `registrations-${status}`
+  } else {
+    activeSection.value = section
+  }
+  isRegistrationDropdownOpen.value = false
+}
+
+const toggleRegistrationDropdown = () => {
+  isRegistrationDropdownOpen.value = !isRegistrationDropdownOpen.value
 }
 </script>
 
@@ -54,17 +101,49 @@ const navigateTo = (section: string) => {
           <font-awesome-icon icon="home" class="h-5 w-5 mr-3" />
           <span>Dashboard</span>
         </button>
-        <button
-          @click="navigateTo('registrations')"
-          :class="[
-            'w-full flex items-center py-2.5 px-4 rounded transition duration-200',
-            activeSection === 'registrations' ? 'bg-blue-800' : 'hover:bg-blue-800',
-            'focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50',
-          ]"
-        >
-          <font-awesome-icon icon="clipboard" class="h-5 w-5 mr-3" />
-          <span>Vehicle Registrations</span>
-        </button>
+        <div class="relative">
+          <button
+            @click="toggleRegistrationDropdown"
+            :class="[
+              'w-full flex items-center justify-between py-2.5 px-4 rounded transition duration-200',
+              activeSection.includes('registrations') ? 'bg-blue-800' : 'hover:bg-blue-800',
+              'focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50',
+            ]"
+          >
+            <div class="flex items-center">
+              <font-awesome-icon icon="file-alt" class="h-5 w-5 mr-3" />
+              <span>Vehicle Registrations</span>
+            </div>
+            <font-awesome-icon
+              :icon="isRegistrationDropdownOpen ? 'chevron-up' : 'chevron-down'"
+              class="h-4 w-4 transform transition-transform duration-200"
+              :class="{ 'rotate-180': isRegistrationDropdownOpen }"
+            />
+          </button>
+          <transition
+            enter-active-class="transition ease-out duration-200"
+            enter-from-class="transform opacity-0 -translate-y-2"
+            enter-to-class="transform opacity-100 translate-y-0"
+            leave-active-class="transition ease-in duration-150"
+            leave-from-class="transform opacity-100 translate-y-0"
+            leave-to-class="transform opacity-0 -translate-y-2"
+          >
+            <div v-if="isRegistrationDropdownOpen" class="pl-8 mt-1 space-y-1">
+              <button
+                v-for="status in ['pending', 'processing', 'completed']"
+                :key="status"
+                @click="navigateTo('registrations', status)"
+                :class="[
+                  'w-full flex items-center py-2 px-4 rounded text-sm transition duration-200',
+                  activeSection === `registrations-${status}` ? 'bg-blue-700' : 'hover:bg-blue-700',
+                  'focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50',
+                ]"
+              >
+                {{ status.charAt(0).toUpperCase() + status.slice(1) }}
+              </button>
+            </div>
+          </transition>
+        </div>
         <button
           @click="navigateTo('plates')"
           :class="[
@@ -73,8 +152,8 @@ const navigateTo = (section: string) => {
             'focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50',
           ]"
         >
-          <font-awesome-icon icon="car" class="h-5 w-5 mr-3" />
-          <span>Plate Issuance</span>
+          <font-awesome-icon icon="id-card" class="h-5 w-5 mr-3" />
+          <span>Plates</span>
         </button>
         <button
           @click="navigateTo('violations')"
@@ -121,9 +200,13 @@ const navigateTo = (section: string) => {
       </header>
 
       <!-- Main Content Area -->
-      <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+      <main class="flex-1 overflow-y-auto bg-gray-50 p-6">
         <div class="container mx-auto">
-          <component :is="componentMap[activeSection]" />
+          <component
+            :is="componentMap[activeSection]"
+            :registration-status="registrationStatus"
+            v-if="componentMap[activeSection]"
+          />
         </div>
       </main>
     </div>

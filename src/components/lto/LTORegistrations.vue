@@ -1,22 +1,30 @@
 <script setup lang="ts">
 import type { VehicleRegistrationForm, AdditionalVehicleData } from '@/types/vehicleRegistration'
-
-interface RegistrationForm extends VehicleRegistrationForm {}
-
 import { useVehicleRegistrationFormStore } from '@/stores/vehicleRegistrationForm'
+import { useUserStore } from '@/stores/user'
 import { computed, ref, defineAsyncComponent } from 'vue'
+import PendingRegistrations from './PendingRegistrations.vue'
+import ProcessingRegistrations from './ProcessingRegistrations.vue'
+import CompletedRegistrations from './CompletedRegistrations.vue'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
-// Lazy load the modal components
+const props = defineProps<{
+  registrationStatus: string
+}>()
+
+// Selected status for dropdown (now controlled by prop)
+const selectedStatus = computed(() => props.registrationStatus)
+
+// Loading state
+const isLoading = ref(false)
+
 const VehicleInspectionModal = defineAsyncComponent({
   loader: () => import('../modals/VehicleInspectionModal.vue'),
-  // Add error handling
   onError(error, retry, fail, attempts) {
     console.error('Error loading VehicleInspectionModal:', error)
     if (attempts <= 3) {
-      // Retry a few times
       retry()
     } else {
-      // Show error in console but fail gracefully
       console.error('Failed to load VehicleInspectionModal after multiple attempts')
       fail()
     }
@@ -25,7 +33,6 @@ const VehicleInspectionModal = defineAsyncComponent({
 
 const PaymentProcessModal = defineAsyncComponent({
   loader: () => import('../modals/PaymentProcessModal.vue'),
-  // Add error handling
   onError(error, retry, fail, attempts) {
     console.error('Error loading PaymentProcessModal:', error)
     if (attempts <= 3) {
@@ -38,101 +45,122 @@ const PaymentProcessModal = defineAsyncComponent({
 })
 
 const registrationFormStore = useVehicleRegistrationFormStore()
-const sortBy = ref('submissionDate')
-const sortOrder = ref('desc')
+const userStore = useUserStore()
 
-// Active registration for modal
-const activeRegistration = ref<RegistrationForm | null>(null)
+const activeRegistration = ref<VehicleRegistrationForm | null>(null)
 const showInspectionModal = ref(false)
 const showPaymentModal = ref(false)
 
-// Get pending registrations that haven't been approved yet
-const pendingRegistrations = computed<RegistrationForm[]>(() =>
-  registrationFormStore.forms.filter((form) => form.status === 'pending'),
-)
-
-// Get registrations that are approved but still in processing
-const processingRegistrations = computed<RegistrationForm[]>(() =>
-  registrationFormStore.forms.filter(
-    (form) =>
-      form.status === 'approved' &&
-      (form.inspectionStatus !== 'approved' || form.paymentStatus !== 'approved'),
-  ),
-)
-
-// Get completed registrations
-const completedRegistrations = computed<RegistrationForm[]>(() =>
-  registrationFormStore.forms.filter(
-    (form) =>
-      form.status === 'approved' &&
-      form.inspectionStatus === 'approved' &&
-      form.paymentStatus === 'approved',
-  ),
-)
-
-// Sort pending registrations
-const sortedPendingRegistrations = computed<RegistrationForm[]>(() => {
-  return [...pendingRegistrations.value].sort((a, b) => {
-    const aValue = (a as any)[sortBy.value] || ''
-    const bValue = (b as any)[sortBy.value] || ''
-    const order = sortOrder.value === 'asc' ? 1 : -1
-    return aValue > bValue ? order : -order
-  })
+const pendingRegistrations = computed<VehicleRegistrationForm[]>(() => {
+  return registrationFormStore.forms
+    .filter((form) => form.status === 'pending')
+    .map((form) => {
+      const owner = userStore.users.find((user) => user.ltoClientId === form.userId)
+      return {
+        ...form,
+        applicantName: owner ? `${owner.firstName} ${owner.lastName}` : 'Unknown',
+      }
+    })
 })
 
-// Sort processing registrations
-const sortedProcessingRegistrations = computed<RegistrationForm[]>(() => {
-  return [...processingRegistrations.value].sort((a, b) => {
-    const aValue = (a as any)[sortBy.value] || ''
-    const bValue = (b as any)[sortBy.value] || ''
-    const order = sortOrder.value === 'asc' ? 1 : -1
-    return aValue > bValue ? order : -order
-  })
+const processingRegistrations = computed<VehicleRegistrationForm[]>(() => {
+  return registrationFormStore.forms
+    .filter(
+      (form) =>
+        form.status === 'approved' &&
+        (form.inspectionStatus !== 'approved' || form.paymentStatus !== 'approved'),
+    )
+    .map((form) => {
+      const owner = userStore.users.find((user) => user.ltoClientId === form.userId)
+      return {
+        ...form,
+        applicantName: owner ? `${owner.firstName} ${owner.lastName}` : 'Unknown',
+      }
+    })
 })
 
-// Sort completed registrations
-const sortedCompletedRegistrations = computed<RegistrationForm[]>(() => {
-  return [...completedRegistrations.value].sort((a, b) => {
-    const aValue = (a as any)[sortBy.value] || ''
-    const bValue = (b as any)[sortBy.value] || ''
-    const order = sortOrder.value === 'asc' ? 1 : -1
-    return aValue > bValue ? order : -order
-  })
-})
+const completedRegistrations = computed<VehicleRegistrationForm[]>(() => {
+  console.log('Computing completed registrations...')
+  console.log('Total forms available:', registrationFormStore.forms.length)
 
-const toggleSort = (field: 'id' | 'vehicleType' | 'applicantName' | 'submissionDate') => {
-  if (sortBy.value === field) {
-    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortBy.value = field
-    sortOrder.value = 'desc'
-  }
-}
+  // Log all forms with their statuses for debugging
+  registrationFormStore.forms.forEach((form, index) => {
+    console.log(
+      `Form ${index + 1}: ID=${form.id}, Status=${form.status}, InspectionStatus=${form.inspectionStatus}, PaymentStatus=${form.paymentStatus}`,
+    )
+  })
+
+  // Get completed forms
+  const completed = registrationFormStore.forms
+    .filter((form) => {
+      const isCompleted =
+        form.status === 'approved' &&
+        form.inspectionStatus === 'approved' &&
+        form.paymentStatus === 'approved'
+
+      if (isCompleted) {
+        console.log(`Form ${form.id} is completed!`)
+      }
+
+      return isCompleted
+    })
+    .map((form) => {
+      const owner = userStore.users.find((user) => user.ltoClientId === form.userId)
+      return {
+        ...form,
+        applicantName: owner ? `${owner.firstName} ${owner.lastName}` : 'Unknown',
+      }
+    })
+
+  console.log(`Found ${completed.length} completed forms`)
+  return completed
+})
 
 // Process a registration - approve, reject, or update status
-const processRegistration = async (registrationId: string, action: 'approve' | 'reject') => {
+const processRegistration = async (data: {
+  registrationId: string
+  action: 'approve' | 'reject'
+}) => {
   await registrationFormStore.$patch((state) => {
-    const form = state.forms.find((f) => f.id === registrationId)
+    const form = state.forms.find((f) => f.id === data.registrationId)
     if (form) {
-      form.status = action === 'approve' ? 'approved' : 'rejected'
+      form.status = data.action === 'approve' ? 'approved' : 'rejected'
 
       // If approved, set initial processing state
-      if (action === 'approve') {
+      if (data.action === 'approve') {
         form.inspectionStatus = 'pending'
         form.paymentStatus = 'pending'
+
+        // Generate inspection code if it doesn't exist
+        if (!form.inspectionCode) {
+          const timestamp = new Date().getTime().toString().slice(-6)
+          const random = Math.floor(Math.random() * 10000)
+            .toString()
+            .padStart(4, '0')
+          form.inspectionCode = `INS-${timestamp}-${random}`
+        }
+
+        // Generate payment code if it doesn't exist
+        if (!form.paymentCode) {
+          const timestamp = new Date().getTime().toString().slice(-6)
+          const random = Math.floor(Math.random() * 10000)
+            .toString()
+            .padStart(4, '0')
+          form.paymentCode = `PAY-${timestamp}-${random}`
+        }
       }
     }
   })
 }
 
 // Open inspection modal for a registration
-const openInspectionModal = (registration: RegistrationForm) => {
+const openInspectionModal = (registration: VehicleRegistrationForm) => {
   activeRegistration.value = JSON.parse(JSON.stringify(registration)) // Deep copy
   showInspectionModal.value = true
 }
 
 // Open payment modal for a registration
-const openPaymentModal = (registration: RegistrationForm) => {
+const openPaymentModal = (registration: VehicleRegistrationForm) => {
   activeRegistration.value = JSON.parse(JSON.stringify(registration)) // Deep copy
   showPaymentModal.value = true
 }
@@ -159,23 +187,48 @@ const handleInspectionSubmit = async (data: {
   await registrationFormStore.$patch((state) => {
     const form = state.forms.find((f) => f.id === data.id)
     if (form) {
-      // Update inspection status
       form.inspectionStatus = data.inspectionStatus
-
-      // Add inspection data to the form
       form.inspectionNotes = data.inspectionNotes
-
-      // Update vehicle data with additional inspection data
       form.additionalVehicleData = data.additionalVehicleData
 
-      // If inspection is rejected, also reject the overall status
+      // Status updates
       if (data.inspectionStatus === 'rejected') {
         form.status = 'rejected'
+      } else if (data.inspectionStatus === 'approved') {
+        // Set default appointment date and time if not already scheduled
+        if (!form.appointmentDate || !form.appointmentTime) {
+          // Set date to 7 days from now
+          const appointmentDate = new Date()
+          appointmentDate.setDate(appointmentDate.getDate() + 7)
+
+          // Format the date as YYYY-MM-DD
+          form.appointmentDate = appointmentDate.toISOString().split('T')[0]
+
+          // Set a default appointment time (10:00 AM)
+          form.appointmentTime = '10:00'
+        }
       }
     }
   })
 
-  // Close modal
+  // Force the store to save the updated form to localStorage
+  registrationFormStore.saveFormsToStorage()
+
+  // If inspection was approved, we need to explicitly mark the form for advancement
+  if (data.inspectionStatus === 'approved') {
+    // Find the form in the store and update its step directly in localStorage
+    const forms = registrationFormStore.forms
+    const formIndex = forms.findIndex((f) => f.id === data.id)
+
+    if (formIndex !== -1) {
+      // Mark the form as approved in our copy
+      forms[formIndex].inspectionStatus = 'approved'
+
+      // Force save the forms again to ensure the changes persist
+      registrationFormStore.saveFormsToStorage()
+    }
+  }
+
   showInspectionModal.value = false
   activeRegistration.value = null
 }
@@ -193,283 +246,178 @@ const handlePaymentSubmit = async (data: {
     referenceNumber: string
   }
 }) => {
+  console.log(`Processing payment submission for form ${data.id}, status: ${data.paymentStatus}`)
+
   await registrationFormStore.$patch((state) => {
     const form = state.forms.find((f) => f.id === data.id)
     if (form) {
-      // Update payment status
       form.paymentStatus = data.paymentStatus
-
-      // Add payment data to the form
       form.paymentNotes = data.paymentNotes
       form.paymentDetails = data.paymentDetails
 
-      // If payment is approved, update status to 'payment_completed' so it shows up in plate issuance
       if (data.paymentStatus === 'approved') {
-        form.status = 'payment_completed' as any
+        // Update status to payment_completed to show in pending plate issuance
+        form.status = 'payment_completed' as any // Using type assertion to bypass type checking
+        console.log(`Payment approved for form ${data.id}, status updated to payment_completed`)
 
-        // Generate payment confirmation code if not present
         if (!(form as any).paymentConfirmationCode) {
           const timestamp = new Date().getTime().toString().slice(-6)
           const random = Math.floor(Math.random() * 10000)
             .toString()
             .padStart(4, '0')
           ;(form as any).paymentConfirmationCode = `CONF-${timestamp}-${random}`
+          console.log(
+            `Generated payment confirmation code: ${(form as any).paymentConfirmationCode}`,
+          )
         }
-      }
-      // If payment is rejected, also reject the overall status
-      else if (data.paymentStatus === 'rejected') {
+      } else if (data.paymentStatus === 'rejected') {
         form.status = 'rejected'
+        console.log(`Payment rejected for form ${data.id}`)
       }
+
+      console.log(`Updated form status: ${form.status}, paymentStatus: ${form.paymentStatus}`)
+    } else {
+      console.warn(`Form ${data.id} not found in store`)
     }
   })
 
-  // Close modal
+  // Force the store to save the updated form to localStorage
+  registrationFormStore.saveFormsToStorage()
+  console.log('Forms saved to localStorage after payment processing')
+
+  // Debug: Check if the form appears in the completed registrations now
+  const completedForms = registrationFormStore.forms.filter(
+    (form) =>
+      form.status === 'approved' &&
+      form.inspectionStatus === 'approved' &&
+      form.paymentStatus === 'approved',
+  )
+  console.log(`Number of completed forms after payment: ${completedForms.length}`)
+  if (completedForms.length > 0) {
+    completedForms.forEach((form) => {
+      console.log(
+        `Completed form: ID=${form.id}, Status=${form.status}, InspectionStatus=${form.inspectionStatus}, PaymentStatus=${form.paymentStatus}`,
+      )
+    })
+  }
+
+  // Debug: Check how many forms are ready for plate issuance
+  const plateIssuanceForms = registrationFormStore.forms.filter(
+    (form) => form.status === ('payment_completed' as any),
+  )
+  console.log(`Number of forms ready for plate issuance: ${plateIssuanceForms.length}`)
+  if (plateIssuanceForms.length > 0) {
+    plateIssuanceForms.forEach((form) => {
+      console.log(`Plate issuance form: ID=${form.id}, Status=${form.status}`)
+    })
+  }
+
+  // If payment was approved, transfer the registration to the vehicleRegistration store
+  // so it appears in the user's Vehicles section even before a plate is issued
+  if (data.paymentStatus === 'approved') {
+    registrationFormStore.transferToVehicleRegistration(data.id)
+    console.log(
+      `Transferred registration ${data.id} to vehicle registration store after payment approval`,
+    )
+  }
+
   showPaymentModal.value = false
   activeRegistration.value = null
 }
+
+// Empty state computed properties
+const getEmptyStateIcon = computed(() => {
+  switch (selectedStatus.value) {
+    case 'pending':
+      return 'inbox'
+    case 'processing':
+      return 'cogs'
+    case 'completed':
+      return 'check-circle'
+    default:
+      return 'folder-open'
+  }
+})
+
+const getEmptyStateTitle = computed(() => {
+  switch (selectedStatus.value) {
+    case 'pending':
+      return 'No Pending Registrations'
+    case 'processing':
+      return 'No Processing Registrations'
+    case 'completed':
+      return 'No Completed Registrations'
+    default:
+      return 'No Registrations Found'
+  }
+})
+
+const getEmptyStateMessage = computed(() => {
+  switch (selectedStatus.value) {
+    case 'pending':
+      return 'There are currently no vehicle registrations waiting for approval. New registrations will appear here.'
+    case 'processing':
+      return 'No registrations are currently being processed. Approved registrations pending inspection or payment will appear here.'
+    case 'completed':
+      return 'No registrations have been completed yet. Successfully processed registrations will be listed here.'
+    default:
+      return 'No registrations found in this category.'
+  }
+})
 </script>
 
 <template>
   <div class="p-6">
-    <!-- Pending Registrations Table -->
-    <h1 class="text-2xl font-semibold text-gray-900 mb-6">Pending Vehicle Registrations</h1>
-    <div class="bg-white rounded-lg shadow overflow-hidden mb-8">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th
-                v-for="header in ['Registration ID', 'Vehicle Details', 'Owner', 'Submission Date']"
-                :key="header"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                @click="
-                  toggleSort(
-                    header.toLowerCase().replace(' ', '') as
-                      | 'id'
-                      | 'vehicleType'
-                      | 'applicantName'
-                      | 'submissionDate',
-                  )
-                "
-              >
-                {{ header }}
-                <span v-if="sortBy === header.toLowerCase().replace(' ', '')">
-                  {{ sortOrder === 'asc' ? '↑' : '↓' }}
-                </span>
-              </th>
-              <th
-                class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="registration in sortedPendingRegistrations" :key="registration.id">
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {{ registration.id }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ `${registration.make} ${registration.model} (${registration.year})` }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ registration.applicantName || 'Unknown' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ new Date(registration.submissionDate as string).toLocaleDateString() }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                <button
-                  @click="processRegistration(registration.id, 'approve')"
-                  class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                >
-                  Accept
-                </button>
-                <button
-                  @click="processRegistration(registration.id, 'reject')"
-                  class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  Reject
-                </button>
-              </td>
-            </tr>
-            <tr v-if="sortedPendingRegistrations.length === 0">
-              <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
-                No pending registrations found
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- Loading State -->
+    <div v-if="isLoading" class="flex flex-col items-center justify-center py-12">
+      <div class="relative">
+        <div class="w-16 h-16 border-4 border-blue-200 rounded-full animate-spin"></div>
+        <div
+          class="absolute top-0 left-0 w-16 h-16 border-t-4 border-blue-600 rounded-full animate-spin"
+        ></div>
       </div>
+      <p class="mt-4 text-lg text-gray-600">Loading registrations...</p>
     </div>
 
-    <!-- Processing Registrations Table -->
-    <h1 class="text-2xl font-semibold text-gray-900 mb-6">Processing Registrations</h1>
-    <div class="bg-white rounded-lg shadow overflow-hidden mb-8">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Registration ID
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Vehicle Details
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Inspection Status
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Payment Status
-              </th>
-              <th
-                class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="registration in sortedProcessingRegistrations" :key="registration.id">
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {{ registration.id }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ `${registration.make} ${registration.model} (${registration.year})` }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <span
-                  class="px-2 py-1 text-xs font-medium rounded-full"
-                  :class="{
-                    'bg-yellow-100 text-yellow-800': registration.inspectionStatus === 'pending',
-                    'bg-green-100 text-green-800': registration.inspectionStatus === 'approved',
-                    'bg-red-100 text-red-800': registration.inspectionStatus === 'rejected',
-                  }"
-                >
-                  {{ registration.inspectionStatus.toUpperCase() }}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <span
-                  class="px-2 py-1 text-xs font-medium rounded-full"
-                  :class="{
-                    'bg-yellow-100 text-yellow-800': registration.paymentStatus === 'pending',
-                    'bg-green-100 text-green-800': registration.paymentStatus === 'approved',
-                    'bg-red-100 text-red-800': registration.paymentStatus === 'rejected',
-                  }"
-                >
-                  {{ registration.paymentStatus.toUpperCase() }}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                <!-- Step 3: Inspection Controls -->
-                <div v-if="registration.inspectionStatus === 'pending'" class="mb-2">
-                  <button
-                    @click="openInspectionModal(registration)"
-                    class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
-                  >
-                    Process Inspection
-                  </button>
-                </div>
-
-                <!-- Step 4: Payment Controls -->
-                <div
-                  v-if="
-                    registration.paymentStatus === 'pending' &&
-                    registration.inspectionStatus === 'approved'
-                  "
-                >
-                  <button
-                    @click="openPaymentModal(registration)"
-                    class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
-                  >
-                    Process Payment
-                  </button>
-                </div>
-              </td>
-            </tr>
-            <tr v-if="sortedProcessingRegistrations.length === 0">
-              <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
-                No registrations in processing
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- Empty State -->
+    <div
+      v-else-if="
+        (selectedStatus === 'pending' && !pendingRegistrations.length) ||
+        (selectedStatus === 'processing' && !processingRegistrations.length) ||
+        (selectedStatus === 'completed' && !completedRegistrations.length)
+      "
+      class="flex flex-col items-center justify-center py-16 px-4"
+    >
+      <div class="bg-gray-50 rounded-full p-6 mb-4">
+        <font-awesome-icon :icon="getEmptyStateIcon" class="h-16 w-16 text-blue-400" />
       </div>
+      <h3 class="text-xl font-semibold text-gray-800 mb-2">
+        {{ getEmptyStateTitle }}
+      </h3>
+      <p class="text-gray-500 text-center max-w-md">
+        {{ getEmptyStateMessage }}
+      </p>
     </div>
 
-    <!-- Completed Registrations Table -->
-    <h1 class="text-2xl font-semibold text-gray-900 mb-6">Completed Registrations</h1>
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Registration ID
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Vehicle Details
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Owner
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Completion Date
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Status
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="registration in sortedCompletedRegistrations" :key="registration.id">
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {{ registration.id }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ `${registration.make} ${registration.model} (${registration.year})` }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ registration.applicantName || 'Unknown' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ new Date(registration.submissionDate as string).toLocaleDateString() }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <span
-                  class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800"
-                >
-                  COMPLETED
-                </span>
-              </td>
-            </tr>
-            <tr v-if="sortedCompletedRegistrations.length === 0">
-              <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
-                No completed registrations
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <!-- Registration Components -->
+    <div v-else>
+      <PendingRegistrations
+        v-if="selectedStatus === 'pending'"
+        :registrations="pendingRegistrations"
+        @process="processRegistration"
+      />
+
+      <ProcessingRegistrations
+        v-if="selectedStatus === 'processing'"
+        :registrations="processingRegistrations"
+        @inspection-process="openInspectionModal"
+        @payment-process="openPaymentModal"
+      />
+
+      <CompletedRegistrations
+        v-if="selectedStatus === 'completed'"
+        :registrations="completedRegistrations"
+      />
     </div>
 
     <!-- Lazy-loaded modals -->
