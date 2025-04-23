@@ -9,7 +9,7 @@ import (
 const dateLayout = "2006-01-02"
 
 type Vehicle struct {
-	VEHICLE_ID               *int             `json:"vehicle_id,omitempty" db:"vehicle_id"`
+	VEHICLE_ID               string  `json:"vehicle_id,omitempty" db:"vehicle_id"`
 	VEHICLE_CATEGORY         string           `json:"vehicle_category" db:"vehicle_category"`
 	MV_FILE_NUMBER           string           `json:"mv_file_number" db:"mv_file_number"`
 	VEHICLE_MAKE             string           `json:"vehicle_make" db:"vehicle_make"`
@@ -37,16 +37,17 @@ type Vehicle struct {
 	OR_NUMBER                string           `json:"or_number" db:"or_number"`
 	CR_NUMBER                string           `json:"cr_number" db:"cr_number"`
 	LTO_CLIENT_ID            string           `json:"lto_client_id,omitempty" db:"lto_client_id"`
-	PLATE                    Plate            `json:"plate" db:"plate"`
 }
 
+
 type Plate struct {
-    VEHICLE_ID            int        `json:"vehicle_id" db:"vehicle_id"`
-    PLATE_NUMBER          string     `json:"plate_number" db:"plate_number"`
-    PLATE_TYPE            string     `json:"plate_type" db:"plate_type"`
-    PLATE_ISSUE_DATE      time.Time  `json:"plate_issue_date" db:"plate_issue_date"`
-    PLATE_EXPIRATION_DATE time.Time  `json:"plate_expiration_date" db:"plate_expiration_date"`
-    STATUS                string     `json:"status" db:"status"`
+    PlateID             string       `json:"plate_id"            db:"plate_id"`
+    VEHICLE_ID          string    `json:"vehicle_id"          db:"vehicle_id"`          // now a UUID
+    PLATE_NUMBER        string    `json:"plate_number"        db:"plate_number"`
+    PLATE_TYPE          string    `json:"plate_type"          db:"plate_type"`
+    PLATE_ISSUE_DATE    time.Time `json:"plate_issue_date"    db:"plate_issue_date"`
+    PLATE_EXPIRATION_DATE time.Time `json:"plate_expiration_date" db:"plate_expiration_date"`
+    STATUS              string    `json:"status"              db:"status"`
 }
 
 func (p *Plate) UnmarshalJSON(data []byte) error {

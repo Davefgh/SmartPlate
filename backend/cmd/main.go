@@ -22,12 +22,6 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
-	// Initialize repositories and handlers
-	userRepo := repository.NewUserRepository(db)
-	userHandler := handlers.NewUserHandler(userRepo)
-
-	vehicleRepo := repository.NewVehicleRepository(db)
-	vehicleHandler := handlers.NewVehicleHandler(vehicleRepo)
 
 
 	// Middleware
@@ -55,6 +49,11 @@ func main() {
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Server is running")
 	})
+
+	// Initialize repositories and handlers
+	userRepo := repository.NewUserRepository(db)
+	userHandler := handlers.NewUserHandler(userRepo)
+
 	e.POST("/users", userHandler.CreateUser)//working
 	e.GET("/users", userHandler.GetAllUsers)//working
 	e.GET("/users/:id", userHandler.GetUserByID)//working
@@ -67,17 +66,32 @@ func main() {
 	e.PUT("/users/by-lto/:lto_client_id", userHandler.UpdateUserByLTO)//working
 	e.DELETE("/users/by-lto/:lto_client_id", userHandler.DeleteUserByLTO)//working
 	//for generating lto client id
-	e.GET("/generate-lto-id", userHandler.GenerateLTOID)  
+	// e.GET("/generate-lto-id", userHandler.GenerateLTOID)  
 
 	//for Vehicle routes
-	e.POST("/api/vehicles", vehicleHandler.CreateVehicle)//working
-	e.GET("/api/vehicles", vehicleHandler.GetAllVehicles)//working
-	e.GET("/api/vehicles/:id", vehicleHandler.GetVehicle)//working
-	e.PUT("/api/vehicles/:id/plate", vehicleHandler.UpdatePlate)
-	e.PUT("/api/vehicles/:id", vehicleHandler.UpdateVehicle)
-	e.DELETE("/api/vehicles/:id", vehicleHandler.DeleteVehicle)//working
+	vh := handlers.NewVehicleHandler(repository.NewVehicleRepository(db))
 
+	e.POST   ("/api/vehicles",       vh.CreateVehicle)//working
+	e.GET    ("/api/vehicles",       vh.GetAllVehicles)//working
 
+	e.GET    ("/api/vehicles/:id",   vh.GetVehicle)//working
+	e.PUT    ("/api/vehicles/:id",   vh.UpdateVehicle) //working
+	e.DELETE ("/api/vehicles/:id",   vh.DeleteVehicle)//working
+
+	e.GET    ("/api/vehicles/lto/:lto_client_id", vh.GetByClientID)//working
+	e.PUT    ("/api/vehicles/lto/:lto_client_id", vh.UpdateByClientID)//working
+	e.DELETE ("/api/vehicles/lto/:lto_client_id", vh.DeleteByClientID)//working
+
+	//for plates routes
+	plateRepo    := repository.NewPlateRepository(db)
+	plateHandler := handlers.NewPlateHandler(plateRepo)
+	
+	p := e.Group("/api/vehicles/:vehicle_id/plates")
+	p.POST   ("",               plateHandler.CreatePlate)//working
+	p.GET    ("",               plateHandler.GetPlates)//working
+	p.GET    ("/:plate_id",   plateHandler.GetPlateByID)//working
+	p.PUT	 ("/:plate_id",   plateHandler.UpdatePlate)//working
+	p.DELETE("/:plate_id",    plateHandler.DeletePlateByID)//working
 
 	// Start server
 	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
