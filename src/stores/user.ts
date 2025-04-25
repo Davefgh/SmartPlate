@@ -320,5 +320,43 @@ export const useUserStore = defineStore('user', {
       }
       return Promise.resolve(this.currentUser)
     },
+
+    // New action for updating any user (not just current user)
+    async updateUser(userId: string, updatedData: Partial<User>): Promise<User | null> {
+      try {
+        // Find the user to update
+        const userIndex = this.users.findIndex((u) => u.ltoClientId === userId)
+
+        if (userIndex === -1) {
+          throw new Error(`User with ID ${userId} not found`)
+        }
+
+        // In a real app, this would call an API
+        // For example:
+        // const response = await api.put(`/users/${userId}`, updatedData)
+
+        // For demo purposes, we'll update the local store
+        const updatedUser = {
+          ...this.users[userIndex],
+          ...updatedData,
+        }
+
+        // Update the user in the store
+        this.users[userIndex] = updatedUser
+
+        // If the updated user is the currently logged in user, update currentUser also
+        if (this.currentUser && this.currentUser.ltoClientId === userId) {
+          this.currentUser = {
+            ...this.currentUser,
+            ...updatedData,
+          }
+        }
+
+        return updatedUser
+      } catch (error) {
+        console.error('Error updating user:', error)
+        throw error
+      }
+    },
   },
 })

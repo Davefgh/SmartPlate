@@ -5,7 +5,7 @@ export interface User {
   middleName: string
   role: 'user' | 'admin' | 'LTO Officer'
   password?: string
-  status: 'active' | 'inactive'
+  status: 'active' | 'inactive' | 'pending'
   email: string
   telephoneNumber?: string
   intAreaCode?: string
