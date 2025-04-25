@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 
 const AccountInfo = defineAsyncComponent(() => import('@/components/profile/AccountInfo.vue'))
 const ContactInfo = defineAsyncComponent(() => import('@/components/profile/ContactInfo.vue'))
@@ -10,75 +11,18 @@ const AddressInfo = defineAsyncComponent(() => import('@/components/profile/Addr
 const VehiclesInfo = defineAsyncComponent(() => import('@/components/profile/VehiclesInfo.vue'))
 
 const router = useRouter()
+const userStore = useUserStore()
 
-// User profile data (mock data)
-const user = reactive({
-  // Account Information
-  ltoClientId: 'LTO-2023-78945',
-  lastName: 'Morales',
-  firstName: 'Stanleigh',
-  middleName: 'Garcia',
+// Check if user is authenticated
+if (!userStore.isAuthenticated) {
+  router.push('/login')
+}
 
-  // Contact Information
-  email: 'stanleighmorales@gmail.com',
-  telephoneNumber: '(02) 8123-4567',
-  intAreaCode: '+63',
-  mobileNumber: '912 345 6789',
+// User profile data from store
+const user = reactive({ ...userStore.currentUser })
 
-  // Personal Information - General
-  nationality: 'Filipino',
-  civilStatus: 'Single',
-  dateOfBirth: '1990-05-15',
-  placeOfBirth: 'Manila, Philippines',
-  educationalAttainment: 'College Graduate',
-  tin: '123-456-789-000',
-
-  // Personal Information - Medical
-  gender: 'Male',
-  bloodType: 'O+',
-  complexion: 'Fair',
-  bodyType: 'Medium',
-  eyeColor: 'Brown',
-  hairColor: 'Black',
-  weight: 70, // kg
-  height: 175, // cm
-  organDonor: false,
-
-  // People - Emergency Contact
-  emergencyContactName: 'Maria Morales',
-  emergencyContactNumber: '+63 917 123 4567',
-  emergencyContactAddress: '123 Main Street, Quezon City',
-
-  // People - Employer
-  employerName: 'ABC Corporation',
-  employerAddress: '789 Corporate Ave, Makati City',
-
-  // People - Mother's Maiden Name
-  motherLastName: 'Santos',
-  motherFirstName: 'Elena',
-  motherMiddleName: 'Cruz',
-
-  // People - Father
-  fatherLastName: 'Morales',
-  fatherFirstName: 'Roberto',
-  fatherMiddleName: 'Reyes',
-
-  // Address
-  houseNo: '123',
-  street: 'Main Street',
-  province: 'Metro Manila',
-  city: 'Quezon City',
-  barangay: 'Barangay 123',
-  zipCode: '1100',
-
-  // Other
-  avatar: '/Land_Transportation_Office.webp',
-})
-
-// Computed full name
-const fullName = computed(() => {
-  return `${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}`
-})
+// Computed full name - use the store getter
+const fullName = computed(() => userStore.fullName)
 
 // Edit mode state
 const isEditMode = ref(false)
@@ -89,21 +33,124 @@ const activeTab = ref('account')
 // Form data for editing
 const formData = reactive({ ...user })
 
+// Error handling
+const errors = reactive({
+  // Account Information
+  lastName: '',
+  firstName: '',
+  email: '',
+
+  // Contact Information
+  mobileNumber: '',
+
+  // Address fields
+  houseNo: '',
+  street: '',
+  province: '',
+  city: '',
+  barangay: '',
+
+  // General error
+  form: '',
+})
+
 // Toggle edit mode
 const toggleEditMode = () => {
   if (isEditMode.value) {
     // If we're exiting edit mode, reset form data
     Object.assign(formData, user)
+    // Clear errors
+    clearErrors()
   }
   isEditMode.value = !isEditMode.value
 }
 
-// Save profile changes
-const saveChanges = () => {
-  Object.assign(user, formData)
+// Clear all errors
+const clearErrors = () => {
+  Object.keys(errors).forEach((key) => {
+    errors[key] = ''
+  })
+}
 
-  // Exit edit mode
-  isEditMode.value = false
+// Validation functions
+const validateProfile = () => {
+  let isValid = true
+  clearErrors()
+
+  // First Name validation
+  if (!formData.firstName || formData.firstName.trim() === '') {
+    errors.firstName = 'First name is required'
+    isValid = false
+  }
+
+  // Last Name validation
+  if (!formData.lastName || formData.lastName.trim() === '') {
+    errors.lastName = 'Last name is required'
+    isValid = false
+  }
+
+  // Email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!formData.email || formData.email.trim() === '') {
+    errors.email = 'Email is required'
+    isValid = false
+  } else if (!emailRegex.test(formData.email)) {
+    errors.email = 'Please enter a valid email address'
+    isValid = false
+  }
+
+  // Mobile Number validation
+  if (!formData.mobileNumber || formData.mobileNumber.trim() === '') {
+    errors.mobileNumber = 'Mobile number is required'
+    isValid = false
+  }
+
+  // Address validation - required fields
+  if (!formData.houseNo || formData.houseNo.trim() === '') {
+    errors.houseNo = 'House No. is required'
+    isValid = false
+  }
+
+  if (!formData.street || formData.street.trim() === '') {
+    errors.street = 'Street is required'
+    isValid = false
+  }
+
+  if (!formData.province || formData.province.trim() === '') {
+    errors.province = 'Province is required'
+    isValid = false
+  }
+
+  if (!formData.city || formData.city.trim() === '') {
+    errors.city = 'City is required'
+    isValid = false
+  }
+
+  return isValid
+}
+
+// Save profile changes
+const saveChanges = async () => {
+  // Validate form data
+  if (!validateProfile()) {
+    errors.form = 'Please fix the errors above before saving'
+    return
+  }
+
+  try {
+    errors.form = ''
+    // Update the user data in the store
+    await userStore.updateUserProfile(formData)
+
+    // Update local reactive object with the latest user data
+    Object.assign(user, userStore.currentUser)
+
+    // Exit edit mode
+    isEditMode.value = false
+  } catch (error) {
+    console.error('Error updating profile:', error)
+    errors.form = 'Failed to update profile. Please try again.'
+  }
 }
 
 const goBack = () => {
@@ -185,6 +232,11 @@ const goBack = () => {
           </div>
         </div>
 
+        <!-- Error message if any -->
+        <div v-if="errors.form" class="bg-red-50 text-red-700 p-3 border-b border-red-200 text-sm">
+          {{ errors.form }}
+        </div>
+
         <!-- Profile Navigation Tabs -->
         <div class="bg-gray-50 border-b border-gray-200">
           <nav class="flex overflow-x-auto">
@@ -259,6 +311,7 @@ const goBack = () => {
             :user="user"
             :is-edit-mode="isEditMode"
             :form-data="formData"
+            :errors="errors"
           />
 
           <!-- Contact Information -->
@@ -267,6 +320,7 @@ const goBack = () => {
             :user="user"
             :is-edit-mode="isEditMode"
             :form-data="formData"
+            :errors="errors"
           />
 
           <!-- Personal Information -->
@@ -275,6 +329,7 @@ const goBack = () => {
             :user="user"
             :is-edit-mode="isEditMode"
             :form-data="formData"
+            :errors="errors"
           />
 
           <!-- People Information -->
@@ -283,6 +338,7 @@ const goBack = () => {
             :user="user"
             :is-edit-mode="isEditMode"
             :form-data="formData"
+            :errors="errors"
           />
 
           <!-- Address Information -->
@@ -291,6 +347,7 @@ const goBack = () => {
             :user="user"
             :is-edit-mode="isEditMode"
             :form-data="formData"
+            :errors="errors"
           />
         </div>
       </div>

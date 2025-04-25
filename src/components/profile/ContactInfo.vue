@@ -1,5 +1,5 @@
 <script setup>
-import { defineProps } from 'vue'
+import { defineProps, defineEmits } from 'vue'
 
 defineProps({
   user: {
@@ -14,22 +14,33 @@ defineProps({
     type: Object,
     required: true,
   },
+  errors: {
+    type: Object,
+    default: () => ({}),
+  },
 })
+
+defineEmits(['update:formData'])
 </script>
 
 <template>
   <div class="space-y-4 bg-white">
     <!-- Email -->
     <div class="flex flex-col space-y-1">
-      <label class="text-sm text-gray-500">Email Address</label>
+      <label class="text-sm text-gray-500">Email Address <span class="text-red-500">*</span></label>
       <div v-if="!isEditMode" class="text-gray-800 font-medium">{{ user.email }}</div>
-      <input
-        v-else
-        :model-value="formData.email"
-        @update:model-value="$emit('update:formData', { ...formData, email: $event })"
-        type="email"
-        class="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-      />
+      <div v-else class="relative">
+        <input
+          :value="formData.email"
+          @input="$emit('update:formData', { ...formData, email: $event.target.value })"
+          type="email"
+          class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+          :class="[errors?.email ? 'border-red-500' : '']"
+        />
+        <div v-if="errors?.email" class="text-red-500 text-xs mt-1">
+          {{ errors.email }}
+        </div>
+      </div>
     </div>
 
     <!-- Telephone Number -->
@@ -40,8 +51,8 @@ defineProps({
       </div>
       <input
         v-else
-        :model-value="formData.telephoneNumber"
-        @update:model-value="$emit('update:formData', { ...formData, telephoneNumber: $event })"
+        :value="formData.telephoneNumber"
+        @input="$emit('update:formData', { ...formData, telephoneNumber: $event.target.value })"
         type="tel"
         class="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
       />
@@ -57,8 +68,8 @@ defineProps({
         </div>
         <input
           v-else
-          :model-value="formData.intAreaCode"
-          @update:model-value="$emit('update:formData', { ...formData, intAreaCode: $event })"
+          :value="formData.intAreaCode"
+          @input="$emit('update:formData', { ...formData, intAreaCode: $event.target.value })"
           type="text"
           class="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
         />
@@ -66,17 +77,24 @@ defineProps({
 
       <!-- Mobile Number -->
       <div class="flex flex-col space-y-1 md:col-span-2">
-        <label class="text-sm text-gray-500">Mobile Number</label>
+        <label class="text-sm text-gray-500"
+          >Mobile Number <span class="text-red-500">*</span></label
+        >
         <div v-if="!isEditMode" class="text-gray-800 font-medium">
           {{ user.mobileNumber }}
         </div>
-        <input
-          v-else
-          :model-value="formData.mobileNumber"
-          @update:model-value="$emit('update:formData', { ...formData, mobileNumber: $event })"
-          type="tel"
-          class="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-        />
+        <div v-else class="relative">
+          <input
+            :value="formData.mobileNumber"
+            @input="$emit('update:formData', { ...formData, mobileNumber: $event.target.value })"
+            type="tel"
+            class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            :class="[errors?.mobileNumber ? 'border-red-500' : '']"
+          />
+          <div v-if="errors?.mobileNumber" class="text-red-500 text-xs mt-1">
+            {{ errors.mobileNumber }}
+          </div>
+        </div>
       </div>
     </div>
   </div>

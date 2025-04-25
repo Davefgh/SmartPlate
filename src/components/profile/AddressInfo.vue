@@ -1,5 +1,5 @@
 <script setup>
-import { defineProps, computed } from 'vue'
+import { defineProps, defineEmits, computed } from 'vue'
 
 const props = defineProps({
   user: {
@@ -14,7 +14,13 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  errors: {
+    type: Object,
+    default: () => ({}),
+  },
 })
+
+defineEmits(['update:formData'])
 
 // Computed full address
 const fullAddress = computed(() => {
@@ -33,32 +39,44 @@ const fullAddress = computed(() => {
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <!-- House Number -->
       <div class="flex flex-col space-y-1">
-        <label class="text-sm text-gray-500">House/Unit Number</label>
+        <label class="text-sm text-gray-500"
+          >House/Unit Number <span class="text-red-500">*</span></label
+        >
         <div v-if="!isEditMode" class="text-gray-800 font-medium">
           {{ user.houseNo }}
         </div>
-        <input
-          v-else
-          :value="formData.houseNo"
-          @input="$emit('update:formData', { ...formData, houseNo: $event.target.value })"
-          type="text"
-          class="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-        />
+        <div v-else class="relative">
+          <input
+            :value="formData.houseNo"
+            @input="$emit('update:formData', { ...formData, houseNo: $event.target.value })"
+            type="text"
+            class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            :class="[errors?.houseNo ? 'border-red-500' : '']"
+          />
+          <div v-if="errors?.houseNo" class="text-red-500 text-xs mt-1">
+            {{ errors.houseNo }}
+          </div>
+        </div>
       </div>
 
       <!-- Street -->
       <div class="flex flex-col space-y-1 md:col-span-2">
-        <label class="text-sm text-gray-500">Street</label>
+        <label class="text-sm text-gray-500">Street <span class="text-red-500">*</span></label>
         <div v-if="!isEditMode" class="text-gray-800 font-medium">
           {{ user.street }}
         </div>
-        <input
-          v-else
-          :value="formData.street"
-          @input="$emit('update:formData', { ...formData, street: $event.target.value })"
-          type="text"
-          class="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-        />
+        <div v-else class="relative">
+          <input
+            :value="formData.street"
+            @input="$emit('update:formData', { ...formData, street: $event.target.value })"
+            type="text"
+            class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            :class="[errors?.street ? 'border-red-500' : '']"
+          />
+          <div v-if="errors?.street" class="text-red-500 text-xs mt-1">
+            {{ errors.street }}
+          </div>
+        </div>
       </div>
     </div>
 
@@ -66,47 +84,64 @@ const fullAddress = computed(() => {
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <!-- Barangay -->
       <div class="flex flex-col space-y-1">
-        <label class="text-sm text-gray-500">Barangay</label>
+        <label class="text-sm text-gray-500">Barangay <span class="text-red-500">*</span></label>
         <div v-if="!isEditMode" class="text-gray-800 font-medium">
           {{ user.barangay }}
         </div>
-        <input
-          v-else
-          :value="formData.barangay"
-          @input="$emit('update:formData', { ...formData, barangay: $event.target.value })"
-          type="text"
-          class="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-        />
+        <div v-else class="relative">
+          <input
+            :value="formData.barangay"
+            @input="$emit('update:formData', { ...formData, barangay: $event.target.value })"
+            type="text"
+            class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            :class="[errors?.barangay ? 'border-red-500' : '']"
+          />
+          <div v-if="errors?.barangay" class="text-red-500 text-xs mt-1">
+            {{ errors.barangay }}
+          </div>
+        </div>
       </div>
 
       <!-- City -->
       <div class="flex flex-col space-y-1">
-        <label class="text-sm text-gray-500">City/Municipality</label>
+        <label class="text-sm text-gray-500"
+          >City/Municipality <span class="text-red-500">*</span></label
+        >
         <div v-if="!isEditMode" class="text-gray-800 font-medium">
           {{ user.city }}
         </div>
-        <input
-          v-else
-          :value="formData.city"
-          @input="$emit('update:formData', { ...formData, city: $event.target.value })"
-          type="text"
-          class="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-        />
+        <div v-else class="relative">
+          <input
+            :value="formData.city"
+            @input="$emit('update:formData', { ...formData, city: $event.target.value })"
+            type="text"
+            class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            :class="[errors?.city ? 'border-red-500' : '']"
+          />
+          <div v-if="errors?.city" class="text-red-500 text-xs mt-1">
+            {{ errors.city }}
+          </div>
+        </div>
       </div>
 
       <!-- Province -->
       <div class="flex flex-col space-y-1">
-        <label class="text-sm text-gray-500">Province</label>
+        <label class="text-sm text-gray-500">Province <span class="text-red-500">*</span></label>
         <div v-if="!isEditMode" class="text-gray-800 font-medium">
           {{ user.province }}
         </div>
-        <input
-          v-else
-          :value="formData.province"
-          @input="$emit('update:formData', { ...formData, province: $event.target.value })"
-          type="text"
-          class="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-        />
+        <div v-else class="relative">
+          <input
+            :value="formData.province"
+            @input="$emit('update:formData', { ...formData, province: $event.target.value })"
+            type="text"
+            class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            :class="[errors?.province ? 'border-red-500' : '']"
+          />
+          <div v-if="errors?.province" class="text-red-500 text-xs mt-1">
+            {{ errors.province }}
+          </div>
+        </div>
       </div>
     </div>
 
