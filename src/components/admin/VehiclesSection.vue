@@ -1,27 +1,27 @@
 <script setup lang="ts">
-import { ref, computed, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
-import type { Vehicle, Plate } from '@/types/vehicle'
+import { useUserStore } from '@/stores/user'
+import VehicleDetailsModal from '@/components/modals/VehicleDetailsModal.vue'
+import VehicleEditModal from '@/components/modals/VehicleEditModal.vue'
 
-const VehicleDetailsModal = defineAsyncComponent(
-  () => import('@/components/modals/VehicleDetailsModal.vue'),
-)
-
+// Define interfaces
 interface VehicleDisplay {
   id: number
-  make: string
-  model: string
-  year: number
+  mvFileNumber: string
+  ownerName: string
+  vehicleMake: string
+  vehicleSeries: string
+  vehicleType: string
   plateNumber: string
-  color: string
   status: string
-  owner: string
 }
 
 interface StatusFilter {
   value: string
   label: string
   active: boolean
+  count: number
 }
 
 interface TableHeader {
@@ -30,108 +30,156 @@ interface TableHeader {
   sortable: boolean
 }
 
+// Initialize stores
 const vehicleStore = useVehicleRegistrationStore()
+const userStore = useUserStore()
 
-// Get all vehicles with owner information
-const vehicles = computed<VehicleDisplay[]>(() => {
-  return vehicleStore.vehicles.map((vehicle: Vehicle) => {
-    const plate = vehicleStore.platesWithVehicleInfo.find((p: Plate) => p.vehicleId === vehicle.id)
-    return {
-      id: vehicle.id,
-      make: vehicle.vehicleMake,
-      model: vehicle.vehicleSeries,
-      year: vehicle.yearModel,
-      plateNumber: plate ? plate.plate_number : 'N/A',
-      color: vehicle.color,
-      status: plate ? plate.status : 'N/A',
-      owner: vehicle.ownerId,
-    }
-  })
-})
+// State
+const searchQuery = ref('')
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
+const sortBy = ref<keyof VehicleDisplay>('mvFileNumber')
+const sortDesc = ref(false)
+const selectedVehicle = ref<any>(null)
+const showDetailsModal = ref(false)
+const showEditModal = ref(false)
 
 // Status filters
 const statusFilters = ref<StatusFilter[]>([
-  { value: 'all', label: 'All Status', active: true },
-  { value: 'Active', label: 'Active', active: false },
-  { value: 'Pending', label: 'Pending', active: false },
-  { value: 'Inactive', label: 'Inactive', active: false },
+  { value: '', label: 'All Status', active: true, count: 0 },
+  { value: 'Active', label: 'Active', active: false, count: 0 },
+  { value: 'Pending', label: 'Pending', active: false, count: 0 },
+  { value: 'Expired', label: 'Expired', active: false, count: 0 },
 ])
 
-// Search and filter state
-const searchQuery = ref<string>('')
-const sortBy = ref<keyof VehicleDisplay>('make')
-const sortDesc = ref<boolean>(false)
-const currentPage = ref<number>(1)
-const itemsPerPage = ref<number>(10)
+// Table headers
+const headers: TableHeader[] = [
+  { text: 'MV File #', value: 'mvFileNumber', sortable: true },
+  { text: 'Owner', value: 'ownerName', sortable: true },
+  { text: 'Make', value: 'vehicleMake', sortable: true },
+  { text: 'Model', value: 'vehicleSeries', sortable: true },
+  { text: 'Type', value: 'vehicleType', sortable: true },
+  { text: 'Plate #', value: 'plateNumber', sortable: true },
+  { text: 'Status', value: 'status', sortable: true },
+  { text: 'Actions', value: 'actions', sortable: false },
+]
 
-// Active filters
-const activeStatusFilter = computed<string>(() => {
-  const filter = statusFilters.value.find((f) => f.active === true)
-  return filter ? filter.value : 'all'
+// Load vehicles
+onMounted(() => {
+  loadVehicles()
 })
 
-// Apply status filter
-const setStatusFilter = (value: string): void => {
-  statusFilters.value = statusFilters.value.map((filter) => ({
-    ...filter,
-    active: filter.value === value,
-  }))
+const loadVehicles = () => {
+  try {
+    // In a real app, this would make an API call
+    // For now, assume vehicles are already loaded in the store
+    updateStatusCounts()
+  } catch (error) {
+    console.error('Error loading vehicles:', error)
+  }
 }
 
-// Filtered vehicles based on active filters and search query
-const filteredVehicles = computed<VehicleDisplay[]>(() => {
-  let result = vehicles.value
+// Update status filter counts
+const updateStatusCounts = () => {
+  // Count vehicles by status
+  const counts: Record<string, number> = {}
 
-  // Apply status filter
-  if (activeStatusFilter.value !== 'all') {
-    result = result.filter((vehicle) => vehicle.status === activeStatusFilter.value)
-  }
+  vehicleStore.vehicles.forEach((vehicle) => {
+    // Get registration status from registration records
+    const registration = vehicleStore.getRegistrationByVehicleId(vehicle.id)
+    const status = registration ? registration.status : 'Unknown'
+    counts[status] = (counts[status] || 0) + 1
+  })
 
-  // Apply search filter
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    result = result.filter(
-      (vehicle) =>
-        vehicle.make.toLowerCase().includes(query) ||
-        vehicle.model.toLowerCase().includes(query) ||
-        vehicle.plateNumber?.toLowerCase().includes(query) ||
-        vehicle.owner.toLowerCase().includes(query),
-    )
-  }
-
-  // Apply sorting
-  return [...result].sort((a, b) => {
-    const aValue = a[sortBy.value]
-    const bValue = b[sortBy.value]
-
-    // Handle null/undefined values
-    if (aValue === null || aValue === undefined) return sortDesc.value ? -1 : 1
-    if (bValue === null || bValue === undefined) return sortDesc.value ? 1 : -1
-    if (aValue === bValue) return 0
-
-    // Handle numeric values
-    if (typeof aValue === 'number' && typeof bValue === 'number') {
-      return sortDesc.value ? bValue - aValue : aValue - bValue
+  // Update filter counts
+  statusFilters.value.forEach((filter) => {
+    if (filter.value === '') {
+      filter.count = vehicleStore.vehicles.length
+    } else {
+      filter.count = counts[filter.value] || 0
     }
+  })
+}
 
-    // Handle string values
-    const aString = String(aValue).toLowerCase()
-    const bString = String(bValue).toLowerCase()
-    return sortDesc.value ? bString.localeCompare(aString) : aString.localeCompare(bString)
+// Helper method to get owner name by ID
+const getOwnerNameById = (ownerId: string) => {
+  const owner = userStore.users.find((user) => user.ltoClientId === ownerId)
+  return owner ? `${owner.firstName} ${owner.lastName}` : 'Unknown'
+}
+
+// Map vehicles to display format with owner names and plate numbers
+const vehiclesWithDetails = computed(() => {
+  return vehicleStore.vehicles.map((vehicle) => {
+    const plateDetails = vehicleStore.plates.find((plate) => plate.vehicleId === vehicle.id)
+    const registration = vehicleStore.getRegistrationByVehicleId(vehicle.id)
+
+    return {
+      id: vehicle.id,
+      mvFileNumber: vehicle.mvFileNumber,
+      ownerName: getOwnerNameById(vehicle.ownerId),
+      vehicleMake: vehicle.vehicleMake,
+      vehicleSeries: vehicle.vehicleSeries,
+      vehicleType: vehicle.vehicleType || 'N/A',
+      plateNumber: plateDetails?.plate_number || 'Not Assigned',
+      status: registration ? registration.status : 'Unknown',
+    } as VehicleDisplay
   })
 })
 
-// Pagination
-const totalPages = computed<number>(() =>
-  Math.ceil(filteredVehicles.value.length / itemsPerPage.value),
-)
-const paginatedVehicles = computed<VehicleDisplay[]>(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value
-  const end = start + itemsPerPage.value
-  return filteredVehicles.value.slice(start, end)
+// Filtered vehicles based on search and status filter
+const filteredVehicles = computed(() => {
+  // Get active status filter
+  const activeFilter = statusFilters.value.find((filter) => filter.active)
+  const statusFilter = activeFilter?.value || ''
+
+  // Filter by search query and status
+  return vehiclesWithDetails.value.filter((vehicle) => {
+    // Check if vehicle matches search query
+    const matchesSearch =
+      searchQuery.value === '' ||
+      Object.values(vehicle).some((value) =>
+        String(value).toLowerCase().includes(searchQuery.value.toLowerCase()),
+      )
+
+    // Check if vehicle matches status filter
+    const matchesStatus = statusFilter === '' || vehicle.status === statusFilter
+
+    return matchesSearch && matchesStatus
+  })
 })
 
-// Sort handler
+// Sorted vehicles based on sort key and direction
+const sortedVehicles = computed(() => {
+  return [...filteredVehicles.value].sort((a, b) => {
+    const valueA = a[sortBy.value]
+    const valueB = b[sortBy.value]
+
+    if (typeof valueA === 'string' && typeof valueB === 'string') {
+      return sortDesc.value ? valueB.localeCompare(valueA) : valueA.localeCompare(valueB)
+    } else {
+      // Sort numerically if values are numbers
+      if (sortDesc.value) {
+        return valueA < valueB ? 1 : -1
+      } else {
+        return valueA > valueB ? 1 : -1
+      }
+    }
+  })
+})
+
+// Paginated vehicles
+const paginatedVehicles = computed(() => {
+  const startIndex = (currentPage.value - 1) * itemsPerPage.value
+  const endIndex = startIndex + itemsPerPage.value
+  return sortedVehicles.value.slice(startIndex, endIndex)
+})
+
+// Total pages
+const totalPages = computed(() => {
+  return Math.ceil(filteredVehicles.value.length / itemsPerPage.value)
+})
+
+// Methods
 const sort = (header: TableHeader): void => {
   if (!header.sortable) return
   if (sortBy.value === header.value) {
@@ -142,82 +190,139 @@ const sort = (header: TableHeader): void => {
   }
 }
 
-// Modal state
-const showModal = ref<boolean>(false)
-const selectedVehicle = ref<Vehicle | null>(null)
+const setStatusFilter = (value: string) => {
+  statusFilters.value = statusFilters.value.map((filter) => ({
+    ...filter,
+    active: filter.value === value,
+  }))
+}
 
-const openVehicleDetails = (vehicle: VehicleDisplay): void => {
-  // Get the complete vehicle details from the store
+const viewVehicleDetails = (vehicle: VehicleDisplay) => {
+  // Find the full vehicle details
   selectedVehicle.value = vehicleStore.vehicles.find((v) => v.id === vehicle.id) || null
-  showModal.value = true
+  showDetailsModal.value = true
 }
 
-const closeModal = (): void => {
-  showModal.value = false
-  selectedVehicle.value = null
+const editVehicle = (vehicle: VehicleDisplay) => {
+  // Find the full vehicle details
+  selectedVehicle.value = vehicleStore.vehicles.find((v) => v.id === vehicle.id) || null
+  showEditModal.value = true
 }
 
-// Table headers
-const headers: TableHeader[] = [
-  { text: 'Make', value: 'make', sortable: true },
-  { text: 'Model', value: 'model', sortable: true },
-  { text: 'Year', value: 'year', sortable: true },
-  { text: 'Plate Number', value: 'plateNumber', sortable: true },
-  { text: 'Color', value: 'color', sortable: true },
-  { text: 'Status', value: 'status', sortable: true },
-  { text: 'Owner', value: 'owner', sortable: true },
-  { text: 'Actions', value: 'actions', sortable: false },
-]
+const handleVehicleUpdated = (updatedVehicle: any) => {
+  // In a real app, this would call an API
+  // For demo, just reload vehicles
+  console.log('Vehicle updated:', updatedVehicle.id)
+  loadVehicles()
+}
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'Active':
+      return 'bg-green-100 text-green-800'
+    case 'Pending':
+      return 'bg-yellow-100 text-yellow-800'
+    case 'Expired':
+      return 'bg-red-100 text-red-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
+}
+
+const getStatusDot = (status: string) => {
+  switch (status) {
+    case 'Active':
+      return 'bg-green-700'
+    case 'Pending':
+      return 'bg-yellow-700'
+    case 'Expired':
+      return 'bg-red-700'
+    default:
+      return 'bg-gray-700'
+  }
+}
+
+// Pagination
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+  }
+}
+
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+  }
+}
+
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
+}
 </script>
 
 <template>
-  <div class="p-6">
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-semibold text-gray-800">Vehicles Management</h2>
+  <div>
+    <div class="flex justify-between items-center mb-8">
+      <div>
+        <h2 class="text-2xl font-bold text-dark-blue">Vehicle Registrations</h2>
+        <p class="text-gray mt-1">Manage and monitor all vehicle registrations</p>
+      </div>
     </div>
 
     <!-- Filters and Search -->
-    <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-      <div class="space-y-4">
+    <div class="bg-white rounded-xl shadow-md border border-light-gray border-opacity-20 p-6 mb-8">
+      <div class="space-y-5">
         <!-- Search Bar -->
         <div class="relative">
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Search by make, model, plate number, or owner..."
-            class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-dark-blue/20 transition-all"
+            placeholder="Search by file number, owner, make or model..."
+            class="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-light-blue focus:border-transparent transition-all"
           />
-          <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-            <i class="fas fa-search w-4 h-4"></i>
-          </div>
+          <font-awesome-icon
+            :icon="['fas', 'search']"
+            class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray"
+          />
         </div>
 
-        <!-- Filter Options -->
-        <div class="flex flex-wrap gap-2">
-          <div class="mr-4">
-            <span class="text-sm font-medium text-gray-700 mr-2">Status:</span>
-            <div class="inline-flex rounded-md shadow-sm mt-1">
-              <button
-                v-for="filter in statusFilters"
-                :key="filter.value"
-                @click="setStatusFilter(filter.value)"
+        <!-- Status Filters -->
+        <div>
+          <h3 class="text-sm font-medium text-gray mb-2">Filter by Status</h3>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="filter in statusFilters"
+              :key="filter.value"
+              @click="setStatusFilter(filter.value)"
+              :class="[
+                'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
+                filter.active
+                  ? 'bg-dark-blue text-white shadow-sm'
+                  : 'bg-gray-50 text-gray hover:bg-light-blue hover:bg-opacity-10',
+              ]"
+            >
+              {{ filter.label }}
+              <span
+                v-if="filter.count > 0"
+                class="ml-1.5 px-2 py-0.5 rounded-full text-xs"
                 :class="[
-                  'px-3 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-dark-blue',
-                  filter.active
-                    ? 'bg-dark-blue text-white rounded-md'
-                    : 'text-gray-700 hover:bg-gray-100 rounded-md',
+                  filter.active ? 'bg-white bg-opacity-20 text-white' : 'bg-gray-200 text-gray-700',
                 ]"
               >
-                {{ filter.label }}
-              </button>
-            </div>
+                {{ filter.count }}
+              </span>
+            </button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Vehicles Table -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div
+      class="bg-white rounded-xl shadow-md border border-light-gray border-opacity-20 overflow-hidden mb-6"
+    >
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
@@ -226,7 +331,7 @@ const headers: TableHeader[] = [
                 v-for="header in headers"
                 :key="header.value"
                 @click="sort(header)"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                class="px-6 py-4 text-left text-xs font-medium text-gray uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                 :class="{ 'cursor-default': !header.sortable }"
               >
                 <div class="flex items-center gap-2">
@@ -243,12 +348,14 @@ const headers: TableHeader[] = [
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-if="paginatedVehicles.length === 0" class="hover:bg-gray-50">
-              <td colspan="8" class="px-6 py-8 whitespace-nowrap text-sm text-gray-500 text-center">
-                <div class="flex flex-col items-center justify-center gap-2">
-                  <font-awesome-icon :icon="['fas', 'inbox']" class="text-gray-400 text-3xl mb-2" />
-                  <p>No vehicles found</p>
-                  <p class="text-xs text-gray-400">Try adjusting your search or filter criteria</p>
+            <tr v-if="paginatedVehicles.length === 0">
+              <td colspan="8" class="px-6 py-10 text-center text-gray">
+                <div class="flex flex-col items-center justify-center space-y-3">
+                  <div class="bg-light-blue bg-opacity-10 p-4 rounded-full">
+                    <font-awesome-icon :icon="['fas', 'car']" class="text-3xl text-light-blue" />
+                  </div>
+                  <p class="text-lg font-medium text-dark-blue">No vehicles found</p>
+                  <p class="text-sm text-gray">Try adjusting your search or filter criteria</p>
                 </div>
               </td>
             </tr>
@@ -258,58 +365,62 @@ const headers: TableHeader[] = [
               :key="vehicle.id"
               class="hover:bg-gray-50 transition-colors"
             >
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ vehicle.make }}
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm font-medium text-dark-blue">{{ vehicle.mvFileNumber }}</span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ vehicle.model }}
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <div
+                    class="flex-shrink-0 h-10 w-10 bg-light-blue bg-opacity-10 rounded-full flex items-center justify-center"
+                  >
+                    <font-awesome-icon :icon="['fas', 'user']" class="text-light-blue" />
+                  </div>
+                  <div class="ml-4">
+                    <div class="text-sm font-medium text-dark-blue">{{ vehicle.ownerName }}</div>
+                  </div>
+                </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ vehicle.year }}
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-700">{{ vehicle.vehicleMake }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ vehicle.plateNumber }}
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-700">{{ vehicle.vehicleSeries }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ vehicle.color }}
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-700">{{ vehicle.vehicleType }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-700">{{ vehicle.plateNumber }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
                 <span
-                  :class="{
-                    'px-2 py-1 rounded-full text-xs font-medium': true,
-                    'bg-green-100 text-green-800': vehicle.status === 'Active',
-                    'bg-yellow-100 text-yellow-800': vehicle.status === 'Pending',
-                    'bg-red-100 text-red-800': vehicle.status === 'Inactive',
-                  }"
+                  :class="[
+                    'px-3 py-1 rounded-full text-xs font-medium inline-flex items-center',
+                    getStatusColor(vehicle.status),
+                  ]"
                 >
+                  <span
+                    class="h-1.5 w-1.5 rounded-full mr-1.5"
+                    :class="getStatusDot(vehicle.status)"
+                  ></span>
                   {{ vehicle.status }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ vehicle.owner }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center gap-3">
                   <button
-                    class="text-blue-600 hover:text-blue-900 flex items-center gap-1"
-                    @click="openVehicleDetails(vehicle)"
+                    class="text-light-blue hover:text-dark-blue transition-colors flex items-center gap-1 text-sm"
+                    @click="viewVehicleDetails(vehicle)"
                   >
                     <font-awesome-icon :icon="['fas', 'eye']" />
-                    View
+                    <span>View</span>
                   </button>
                   <button
-                    class="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
-                    @click="() => {}"
+                    class="text-light-blue hover:text-dark-blue transition-colors flex items-center gap-1 text-sm"
+                    @click="editVehicle(vehicle)"
                   >
                     <font-awesome-icon :icon="['fas', 'edit']" />
-                    Edit
-                  </button>
-                  <button
-                    class="text-red-600 hover:text-red-900 flex items-center gap-1"
-                    @click="() => {}"
-                  >
-                    <font-awesome-icon :icon="['fas', 'trash']" />
-                    Delete
+                    <span>Edit</span>
                   </button>
                 </div>
               </td>
@@ -320,28 +431,94 @@ const headers: TableHeader[] = [
 
       <!-- Pagination -->
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
-        <div class="flex items-center justify-between">
-          <div class="text-sm text-gray-700">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="text-sm text-gray">
             Showing {{ filteredVehicles.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0 }} to
             {{ Math.min(currentPage * itemsPerPage, filteredVehicles.length) }} of
-            {{ filteredVehicles.length }} entries
+            {{ filteredVehicles.length }} vehicles
           </div>
           <div class="flex items-center gap-2">
             <button
-              @click="currentPage--"
+              @click="prevPage"
               :disabled="currentPage === 1 || filteredVehicles.length === 0"
-              class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+              class="p-2 rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
             >
               <font-awesome-icon :icon="['fas', 'chevron-left']" />
             </button>
-            <span class="text-sm text-gray-700"
-              >Page {{ filteredVehicles.length > 0 ? currentPage : 0 }} of
-              {{ totalPages || 0 }}</span
-            >
+
+            <!-- Page number buttons -->
+            <div v-if="totalPages <= 5" class="flex gap-1">
+              <button
+                v-for="page in totalPages"
+                :key="page"
+                @click="goToPage(page)"
+                class="w-8 h-8 rounded-lg flex items-center justify-center border text-sm transition-colors"
+                :class="
+                  page === currentPage
+                    ? 'bg-dark-blue text-white'
+                    : 'border-gray-200 hover:bg-gray-100'
+                "
+              >
+                {{ page }}
+              </button>
+            </div>
+            <div v-else class="flex gap-1">
+              <button
+                v-if="currentPage > 2"
+                @click="goToPage(1)"
+                class="w-8 h-8 rounded-lg flex items-center justify-center border border-gray-200 hover:bg-gray-100 text-sm"
+              >
+                1
+              </button>
+              <span
+                v-if="currentPage > 3"
+                class="w-8 h-8 flex items-center justify-center text-gray"
+                >...</span
+              >
+
+              <button
+                v-if="currentPage > 1"
+                @click="goToPage(currentPage - 1)"
+                class="w-8 h-8 rounded-lg flex items-center justify-center border border-gray-200 hover:bg-gray-100 text-sm"
+              >
+                {{ currentPage - 1 }}
+              </button>
+
+              <button
+                class="w-8 h-8 rounded-lg flex items-center justify-center border bg-dark-blue text-white text-sm"
+              >
+                {{ currentPage }}
+              </button>
+
+              <button
+                v-if="currentPage < totalPages"
+                @click="goToPage(currentPage + 1)"
+                class="w-8 h-8 rounded-lg flex items-center justify-center border border-gray-200 hover:bg-gray-100 text-sm"
+              >
+                {{ currentPage + 1 }}
+              </button>
+
+              <span
+                v-if="currentPage < totalPages - 2"
+                class="w-8 h-8 flex items-center justify-center text-gray"
+                >...</span
+              >
+              <button
+                v-if="currentPage < totalPages - 1"
+                @click="goToPage(totalPages)"
+                class="w-8 h-8 rounded-lg flex items-center justify-center border border-gray-200 hover:bg-gray-100 text-sm"
+              >
+                {{ totalPages }}
+              </button>
+            </div>
+
+            <span class="text-sm text-gray font-medium mx-1">
+              Page {{ filteredVehicles.length > 0 ? currentPage : 0 }} of {{ totalPages }}
+            </span>
             <button
-              @click="currentPage++"
+              @click="nextPage"
               :disabled="currentPage === totalPages || filteredVehicles.length === 0"
-              class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+              class="p-2 rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
             >
               <font-awesome-icon :icon="['fas', 'chevron-right']" />
             </button>
@@ -350,12 +527,18 @@ const headers: TableHeader[] = [
       </div>
     </div>
 
-    <!-- Vehicle Details Modal -->
+    <!-- Modals -->
     <VehicleDetailsModal
-      v-if="selectedVehicle"
-      :show="showModal"
+      :show="showDetailsModal"
       :vehicle="selectedVehicle"
-      @close="closeModal"
+      @close="showDetailsModal = false"
+    />
+
+    <VehicleEditModal
+      :show="showEditModal"
+      :vehicle="selectedVehicle"
+      @close="showEditModal = false"
+      @update="handleVehicleUpdated"
     />
   </div>
 </template>
