@@ -1,34 +1,19 @@
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useUserStore } from '@/stores/user'
+import { useRouter, useRoute } from 'vue-router'
 
-// User profile data (mock data) - copied from ProfileView.vue
-const user = reactive({
-  // Account Information
-  ltoClientId: 'LTO-2023-78945',
-  lastName: 'Morales',
-  firstName: 'Stanleigh',
-  middleName: 'Garcia',
-  email: 'stanleighmorales@gmail.com',
-  telephoneNumber: '(02) 8123-4567',
-  intAreaCode: '+63',
-  mobileNumber: '912 345 6789',
+const userStore = useUserStore()
+const router = useRouter()
+const route = useRoute()
 
-  // Personal Information
-  nationality: 'Filipino',
-  civilStatus: 'Single',
-  dateOfBirth: '1990-05-15',
-  placeOfBirth: 'Manila, Philippines',
-  gender: 'Male',
+// Check if user is authenticated
+if (!userStore.isAuthenticated) {
+  router.push('/login')
+}
 
-  // Other
-  avatar: '/Land_Transportation_Office.webp',
-  joinDate: 'January 2023',
-})
-
-// Computed full name
-const fullName = computed(() => {
-  return `${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}`
-})
+// Computed full name from the store
+const fullName = computed(() => userStore.fullName)
 
 // Form states
 const securityForm = reactive({
@@ -37,38 +22,98 @@ const securityForm = reactive({
   confirmPassword: '',
 })
 
+// Password visibility toggles
+const showCurrentPassword = ref(false)
+const showNewPassword = ref(false)
+const showConfirmPassword = ref(false)
+
 // Form validation states
 const formErrors = reactive({
   currentPassword: '',
   newPassword: '',
   confirmPassword: '',
+  form: '',
 })
+
+// Success message state
+const successMessage = ref('')
 
 // Active tab state
 const activeTab = ref('security')
 
-const updatePassword = () => {
-  // Reset errors
+// Check URL query parameters for tab
+onMounted(() => {
+  const tabParam = route.query.tab
+  if (tabParam && (tabParam === 'security' || tabParam === 'notifications')) {
+    activeTab.value = tabParam
+  }
+})
+
+// Password validation rules
+const validatePassword = (password) => {
+  const errors = []
+
+  if (password.length < 8) {
+    errors.push('Password must be at least 8 characters long')
+  }
+
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter')
+  }
+
+  if (!/[a-z]/.test(password)) {
+    errors.push('Password must contain at least one lowercase letter')
+  }
+
+  if (!/[0-9]/.test(password)) {
+    errors.push('Password must contain at least one number')
+  }
+
+  return errors
+}
+
+const updatePassword = async () => {
+  // Reset error and success messages
   formErrors.currentPassword = ''
   formErrors.newPassword = ''
   formErrors.confirmPassword = ''
+  formErrors.form = ''
+  successMessage.value = ''
 
   // Validate passwords
   let isValid = true
 
+  // Current password check
   if (!securityForm.currentPassword) {
     formErrors.currentPassword = 'Current password is required'
     isValid = false
+  } else {
+    // In a real app, would verify the current password against the server
+    const foundUser = userStore.users.find(
+      (user) =>
+        user.ltoClientId === userStore.currentUser?.ltoClientId &&
+        user.password === securityForm.currentPassword,
+    )
+
+    if (!foundUser) {
+      formErrors.currentPassword = 'Current password is incorrect'
+      isValid = false
+    }
   }
 
+  // New password validation
   if (!securityForm.newPassword) {
     formErrors.newPassword = 'New password is required'
     isValid = false
-  } else if (securityForm.newPassword.length < 8) {
-    formErrors.newPassword = 'Password must be at least 8 characters long'
-    isValid = false
+  } else {
+    const passwordErrors = validatePassword(securityForm.newPassword)
+    if (passwordErrors.length > 0) {
+      formErrors.newPassword = passwordErrors[0]
+      isValid = false
+    }
   }
 
+  // Confirm password check
   if (!securityForm.confirmPassword) {
     formErrors.confirmPassword = 'Please confirm your new password'
     isValid = false
@@ -79,33 +124,39 @@ const updatePassword = () => {
 
   if (!isValid) return
 
-  // In a real app, this would make an API call
-  securityForm.currentPassword = ''
-  securityForm.newPassword = ''
-  securityForm.confirmPassword = ''
+  try {
+    // Find the user in the users array and update the password
+    const userIndex = userStore.users.findIndex(
+      (user) => user.ltoClientId === userStore.currentUser?.ltoClientId,
+    )
 
-  alert('Password updated successfully!')
-}
+    if (userIndex !== -1) {
+      userStore.users[userIndex].password = securityForm.newPassword
 
-// File upload handling
-const selectedFile = ref(null)
-const previewUrl = ref(null)
+      // Reset form fields
+      securityForm.currentPassword = ''
+      securityForm.newPassword = ''
+      securityForm.confirmPassword = ''
 
-const handleFileUpload = (event) => {
-  const file = event.target.files[0]
-  if (file) {
-    selectedFile.value = file
-    previewUrl.value = URL.createObjectURL(file)
+      // Show success message
+      successMessage.value = 'Password updated successfully!'
+    } else {
+      formErrors.form = 'An error occurred. User not found.'
+    }
+  } catch (error) {
+    formErrors.form = 'An error occurred while updating your password.'
+    console.error('Password update error:', error)
   }
 }
 
-const uploadAvatar = () => {
-  if (selectedFile.value) {
-    // In a real app, this would upload the file to a server
-    user.avatar = previewUrl.value
-    alert('Profile picture updated successfully!')
-  } else {
-    alert('Please select an image first!')
+// Toggle password visibility
+const togglePasswordVisibility = (field) => {
+  if (field === 'current') {
+    showCurrentPassword.value = !showCurrentPassword.value
+  } else if (field === 'new') {
+    showNewPassword.value = !showNewPassword.value
+  } else if (field === 'confirm') {
+    showConfirmPassword.value = !showConfirmPassword.value
   }
 }
 
@@ -118,7 +169,7 @@ const notificationSettings = reactive({
 
 const saveNotificationPreferences = () => {
   // In a real app, this would make an API call
-  alert('Notification preferences saved!')
+  successMessage.value = 'Notification preferences saved!'
 }
 </script>
 
@@ -173,8 +224,7 @@ const saveNotificationPreferences = () => {
               >
                 <img
                   :src="
-                    previewUrl ||
-                    user.avatar ||
+                    userStore.currentUser?.avatar ||
                     'https://ui-avatars.com/api/?name=' +
                       encodeURIComponent(fullName) +
                       '&background=0D8ABC&color=fff'
@@ -183,25 +233,13 @@ const saveNotificationPreferences = () => {
                   class="h-full w-full object-cover"
                 />
               </div>
-              <label
-                class="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-md cursor-pointer hover:bg-gray-100 transition-colors"
-              >
-                <input type="file" accept="image/*" class="hidden" @change="handleFileUpload" />
-                <font-awesome-icon :icon="['fas', 'camera']" class="h-4 w-4 text-gray-600" />
-              </label>
             </div>
             <div class="md:ml-8 text-center md:text-left">
               <h2 class="text-2xl font-bold text-white">{{ fullName }}</h2>
-              <p class="text-blue-100">{{ user.email }}</p>
-              <p class="text-blue-200 text-sm mt-1">Member since {{ user.joinDate }}</p>
-              <button
-                v-if="selectedFile"
-                @click="uploadAvatar"
-                class="mt-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-800 hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <font-awesome-icon :icon="['fas', 'save']" class="mr-2 -ml-1 h-4 w-4" />
-                Save New Photo
-              </button>
+              <p class="text-blue-100">{{ userStore.currentUser?.email }}</p>
+              <p class="text-blue-200 text-sm mt-1">
+                LTO Client ID: {{ userStore.currentUser?.ltoClientId }}
+              </p>
             </div>
           </div>
         </div>
@@ -238,6 +276,56 @@ const saveNotificationPreferences = () => {
 
         <!-- Tab Content -->
         <div class="p-6">
+          <!-- Success Message -->
+          <div
+            v-if="successMessage"
+            class="mb-6 p-4 bg-green-50 rounded-md border border-green-200"
+          >
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <font-awesome-icon :icon="['fas', 'check-circle']" class="h-5 w-5 text-green-400" />
+              </div>
+              <div class="ml-3">
+                <p class="text-sm font-medium text-green-800">{{ successMessage }}</p>
+              </div>
+              <div class="ml-auto pl-3">
+                <div class="-mx-1.5 -my-1.5">
+                  <button
+                    @click="successMessage = ''"
+                    class="inline-flex rounded-md p-1.5 text-green-500 hover:bg-green-100 focus:outline-none"
+                  >
+                    <font-awesome-icon :icon="['fas', 'times']" class="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Error Message -->
+          <div v-if="formErrors.form" class="mb-6 p-4 bg-red-50 rounded-md border border-red-200">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <font-awesome-icon
+                  :icon="['fas', 'exclamation-circle']"
+                  class="h-5 w-5 text-red-400"
+                />
+              </div>
+              <div class="ml-3">
+                <p class="text-sm font-medium text-red-800">{{ formErrors.form }}</p>
+              </div>
+              <div class="ml-auto pl-3">
+                <div class="-mx-1.5 -my-1.5">
+                  <button
+                    @click="formErrors.form = ''"
+                    class="inline-flex rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none"
+                  >
+                    <font-awesome-icon :icon="['fas', 'times']" class="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Security Tab -->
           <div v-if="activeTab === 'security'">
             <h3 class="text-lg font-medium text-gray-900">Security Settings</h3>
@@ -245,63 +333,105 @@ const saveNotificationPreferences = () => {
 
             <form @submit.prevent="updatePassword" class="mt-6">
               <div class="space-y-6">
+                <!-- Current Password -->
                 <div>
                   <label for="current-password" class="block text-sm font-medium text-gray-700">
-                    Current Password
+                    Current Password <span class="text-red-500">*</span>
                   </label>
-                  <div class="mt-1">
+                  <div class="mt-1 relative rounded-md shadow-sm">
                     <input
-                      type="password"
+                      :type="showCurrentPassword ? 'text' : 'password'"
                       id="current-password"
                       v-model="securityForm.currentPassword"
-                      class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                      class="pr-10 py-3 text-base shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full border-gray-300 rounded-md"
                       :class="{
                         'border-red-300 focus:ring-red-500 focus:border-red-500':
                           formErrors.currentPassword,
                       }"
                     />
+                    <button
+                      type="button"
+                      class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                      @click="togglePasswordVisibility('current')"
+                    >
+                      <font-awesome-icon
+                        :icon="['fas', showCurrentPassword ? 'eye-slash' : 'eye']"
+                        class="h-5 w-5"
+                      />
+                    </button>
                     <p v-if="formErrors.currentPassword" class="mt-1 text-sm text-red-600">
                       {{ formErrors.currentPassword }}
                     </p>
                   </div>
                 </div>
 
+                <!-- New Password -->
                 <div>
                   <label for="new-password" class="block text-sm font-medium text-gray-700">
-                    New Password
+                    New Password <span class="text-red-500">*</span>
                   </label>
-                  <div class="mt-1">
+                  <div class="mt-1 relative rounded-md shadow-sm">
                     <input
-                      type="password"
+                      :type="showNewPassword ? 'text' : 'password'"
                       id="new-password"
                       v-model="securityForm.newPassword"
-                      class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                      class="pr-10 py-3 text-base shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full border-gray-300 rounded-md"
                       :class="{
                         'border-red-300 focus:ring-red-500 focus:border-red-500':
                           formErrors.newPassword,
                       }"
                     />
+                    <button
+                      type="button"
+                      class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                      @click="togglePasswordVisibility('new')"
+                    >
+                      <font-awesome-icon
+                        :icon="['fas', showNewPassword ? 'eye-slash' : 'eye']"
+                        class="h-5 w-5"
+                      />
+                    </button>
                     <p v-if="formErrors.newPassword" class="mt-1 text-sm text-red-600">
                       {{ formErrors.newPassword }}
                     </p>
                   </div>
+                  <div class="mt-1 text-xs text-gray-500">
+                    <p>Password must:</p>
+                    <ul class="list-disc pl-5 mt-1 space-y-1">
+                      <li>Be at least 8 characters long</li>
+                      <li>Include at least one uppercase letter</li>
+                      <li>Include at least one lowercase letter</li>
+                      <li>Include at least one number</li>
+                    </ul>
+                  </div>
                 </div>
 
+                <!-- Confirm New Password -->
                 <div>
                   <label for="confirm-password" class="block text-sm font-medium text-gray-700">
-                    Confirm New Password
+                    Confirm New Password <span class="text-red-500">*</span>
                   </label>
-                  <div class="mt-1">
+                  <div class="mt-1 relative rounded-md shadow-sm">
                     <input
-                      type="password"
+                      :type="showConfirmPassword ? 'text' : 'password'"
                       id="confirm-password"
                       v-model="securityForm.confirmPassword"
-                      class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                      class="pr-10 py-3 text-base shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full border-gray-300 rounded-md"
                       :class="{
                         'border-red-300 focus:ring-red-500 focus:border-red-500':
                           formErrors.confirmPassword,
                       }"
                     />
+                    <button
+                      type="button"
+                      class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                      @click="togglePasswordVisibility('confirm')"
+                    >
+                      <font-awesome-icon
+                        :icon="['fas', showConfirmPassword ? 'eye-slash' : 'eye']"
+                        class="h-5 w-5"
+                      />
+                    </button>
                     <p v-if="formErrors.confirmPassword" class="mt-1 text-sm text-red-600">
                       {{ formErrors.confirmPassword }}
                     </p>
@@ -416,7 +546,14 @@ const saveNotificationPreferences = () => {
                 </div>
               </div>
 
-              <div class="flex justify-end">
+              <div class="flex justify-between">
+                <router-link
+                  to="/notifications"
+                  class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <font-awesome-icon :icon="['fas', 'arrow-left']" class="mr-2 -ml-1 h-4 w-4" />
+                  Return to Notifications
+                </router-link>
                 <button
                   type="button"
                   @click="saveNotificationPreferences"
