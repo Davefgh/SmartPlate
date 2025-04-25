@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { VehicleRegistrationForm, AdditionalVehicleData } from '@/types/vehicleRegistration'
 import { ref, defineProps, defineEmits, computed, watch } from 'vue'
+import { useNotificationStore } from '@/stores/notification'
 
+const notificationStore = useNotificationStore()
 const props = defineProps<{
   isOpen: boolean
   registration: VehicleRegistrationForm | null
@@ -313,17 +315,30 @@ const validateForm = (): boolean => {
   return isValid
 }
 
-// Submit inspection details
-const submitInspection = () => {
+// Submit form
+const submitForm = () => {
   if (!props.registration) return
 
-  if (validateForm()) {
-    emit('submit', {
+  // Perform validation
+  validateForm()
+
+  // Only proceed if there are no validation errors
+  if (Object.keys(validationErrors.value).length === 0) {
+    const result = {
       id: props.registration.id,
       inspectionStatus: inspectionStatus.value,
       inspectionNotes: inspectionNotes.value,
       additionalVehicleData: { ...additionalData.value },
+    }
+
+    // Show toast notification
+    notificationStore.showVehicleInspectionNotification(inspectionStatus.value, {
+      make: props.registration.make,
+      model: props.registration.model,
     })
+
+    emit('submit', result)
+    emit('close')
   }
 }
 
@@ -755,7 +770,7 @@ const canGenerateConductionSticker = computed(() => {
             Cancel
           </button>
           <button
-            @click="submitInspection"
+            @click="submitForm"
             class="px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             Submit Inspection

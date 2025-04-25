@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { VehicleRegistrationForm } from '@/types/vehicleRegistration'
 import { ref, defineProps, defineEmits, watch } from 'vue'
+import { useNotificationStore } from '@/stores/notification'
 
+const notificationStore = useNotificationStore()
 const props = defineProps<{
   isOpen: boolean
   registration: VehicleRegistrationForm | null
@@ -244,18 +246,27 @@ const validateForm = (): boolean => {
 }
 
 // Submit plate issuance
-const submitPlateIssuance = () => {
+const submitIssuance = () => {
   if (!props.registration) return
 
   if (validateForm()) {
-    emit('submit', {
+    const result = {
       id: props.registration.id,
       plateNumber: plateNumber.value,
       plateType: plateType.value,
       plateIssueDate: plateIssueDate.value,
       plateExpirationDate: plateExpirationDate.value,
       issuanceNotes: issuanceNotes.value,
+    }
+
+    // Show toast notification
+    notificationStore.showPlateIssuanceNotification('issued', {
+      plateNumber: plateNumber.value,
+      vehicle: `${props.registration.make || ''} ${props.registration.model || ''}`.trim(),
     })
+
+    emit('submit', result)
+    emit('close')
   }
 }
 
@@ -491,7 +502,7 @@ const cancelPlateIssuance = () => {
             Cancel
           </button>
           <button
-            @click="submitPlateIssuance"
+            @click="submitIssuance"
             class="px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             Issue Plate

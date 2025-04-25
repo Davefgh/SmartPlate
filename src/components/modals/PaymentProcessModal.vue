@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { VehicleRegistrationForm } from '@/types/vehicleRegistration'
 import { ref, defineProps, defineEmits, computed, watch } from 'vue'
+import { useNotificationStore } from '@/stores/notification'
 
+const notificationStore = useNotificationStore()
 const props = defineProps<{
   isOpen: boolean
   registration: VehicleRegistrationForm | null
@@ -150,12 +152,24 @@ const submitPayment = () => {
       paymentDetails.value.referenceNumber = generateReferenceNumber()
     }
 
-    emit('submit', {
+    const result = {
       id: props.registration.id,
       paymentStatus: paymentStatus.value,
       paymentNotes: paymentNotes.value,
       paymentDetails: { ...paymentDetails.value },
-    })
+    }
+
+    // Show toast notification
+    notificationStore.showPaymentNotification(
+      paymentStatus.value === 'approved' ? 'success' : 'failed',
+      {
+        amount: paymentDetails.value.amountPaid,
+        reference: paymentDetails.value.referenceNumber,
+      },
+    )
+
+    emit('submit', result)
+    emit('close')
   }
 }
 

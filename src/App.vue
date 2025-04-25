@@ -3,9 +3,12 @@ import { RouterView } from 'vue-router'
 import { onMounted } from 'vue'
 import { useUserStore } from './stores/user'
 import { useVehicleRegistrationFormStore } from './stores/vehicleRegistrationForm'
+import { useNotificationStore } from './stores/notification'
+import ToastContainer from './components/ToastContainer.vue'
 
 const userStore = useUserStore()
 const registrationFormStore = useVehicleRegistrationFormStore()
+const notificationStore = useNotificationStore()
 
 // On app startup, ensure we load all forms and restore user session
 onMounted(() => {
@@ -25,9 +28,19 @@ onMounted(() => {
   }
 
   console.log('==== App initialization complete ====')
+
+  // Test toast notification (remove this in production)
+  setTimeout(() => {
+    notificationStore.showToast({
+      title: 'Toast Notification System',
+      message: 'The toast notification system is working!',
+      type: 'success',
+    })
+  }, 2000)
 })
 </script>
 
 <template>
   <RouterView />
+  <ToastContainer />
 </template>
