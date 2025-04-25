@@ -1,18 +1,17 @@
 <script setup>
 import { computed } from 'vue'
-import { Line } from 'vue-chartjs'
+import { Bar } from 'vue-chartjs'
 import {
   Chart as ChartJS,
   Title,
   Tooltip,
   Legend,
-  LineElement,
+  BarElement,
   CategoryScale,
   LinearScale,
-  PointElement,
 } from 'chart.js'
 
-ChartJS.register(CategoryScale, LinearScale, LineElement, PointElement, Title, Tooltip, Legend)
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 const props = defineProps({
   approvedRegistrations: {
@@ -23,34 +22,42 @@ const props = defineProps({
     type: Number,
     required: true,
   },
-  totalRegistrations: {
-    type: Number,
-    required: true,
+  chartTitle: {
+    type: String,
+    default: 'Registration Status',
+  },
+  primaryColor: {
+    type: String,
+    default: '#172a45', // light-blue from theme
+  },
+  secondaryColor: {
+    type: String,
+    default: '#e63946', // red from theme
+  },
+  labelColor: {
+    type: String,
+    default: '#8892b0', // gray from theme
+  },
+  backgroundColor: {
+    type: String,
+    default: 'white',
   },
 })
+
+// Calculate total registrations
+const totalRegistrations = computed(() => props.approvedRegistrations + props.pendingRegistrations)
 
 // Chart data
 const chartData = computed(() => {
   return {
-    labels: ['Last Month', 'Current'],
+    labels: ['Approved', 'Pending'],
     datasets: [
       {
-        label: 'Approved',
-        backgroundColor: 'rgba(16, 185, 129, 0.2)',
-        borderColor: '#10b981',
-        borderWidth: 2,
-        tension: 0.4,
-        fill: true,
-        data: [props.totalRegistrations - props.approvedRegistrations, props.approvedRegistrations],
-      },
-      {
-        label: 'Pending',
-        backgroundColor: 'rgba(245, 158, 11, 0.2)',
-        borderColor: '#f59e0b',
-        borderWidth: 2,
-        tension: 0.4,
-        fill: true,
-        data: [0, props.pendingRegistrations],
+        data: [props.approvedRegistrations, props.pendingRegistrations],
+        backgroundColor: [props.primaryColor, props.secondaryColor],
+        borderRadius: 6,
+        borderWidth: 0,
+        maxBarThickness: 50,
       },
     ],
   }
@@ -63,48 +70,130 @@ const chartOptions = computed(() => {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'top',
+        display: false,
       },
       title: {
-        display: true,
-        text: 'Registration Status Trends',
+        display: false,
+      },
+      tooltip: {
+        backgroundColor: '#0a192f',
+        titleColor: 'white',
+        bodyColor: 'white',
+        bodyFont: {
+          family: 'Inter, sans-serif',
+          size: 13,
+        },
+        titleFont: {
+          family: 'Inter, sans-serif',
+          size: 14,
+          weight: 'bold',
+        },
+        padding: 12,
+        displayColors: true,
+        boxWidth: 10,
+        boxHeight: 10,
+        boxPadding: 3,
+        cornerRadius: 8,
+        callbacks: {
+          label: function (context) {
+            const value = context.raw
+            const percentage = Math.round((value / totalRegistrations.value) * 100)
+            return `${value} (${percentage}%)`
+          },
+        },
       },
     },
     scales: {
       y: {
         beginAtZero: true,
+        grid: {
+          color: '#f1f5f990',
+          drawBorder: false,
+        },
+        ticks: {
+          font: {
+            family: 'Inter, sans-serif',
+            size: 11,
+          },
+          color: props.labelColor,
+          precision: 0,
+        },
         title: {
           display: true,
           text: 'Number of Registrations',
+          color: props.labelColor,
+          font: {
+            family: 'Inter, sans-serif',
+            size: 12,
+            weight: 'normal',
+          },
+        },
+      },
+      x: {
+        grid: {
+          display: false,
+          drawBorder: false,
+        },
+        ticks: {
+          font: {
+            family: 'Inter, sans-serif',
+            size: 12,
+            weight: 500,
+          },
+          color: props.labelColor,
         },
       },
     },
+    animation: {
+      duration: 1000,
+      easing: 'easeOutQuart',
+    },
   }
+})
+
+// Calculate percentages
+const approvedPercentage = computed(() => {
+  return totalRegistrations.value > 0
+    ? Math.round((props.approvedRegistrations / totalRegistrations.value) * 100)
+    : 0
+})
+
+const pendingPercentage = computed(() => {
+  return totalRegistrations.value > 0
+    ? Math.round((props.pendingRegistrations / totalRegistrations.value) * 100)
+    : 0
 })
 </script>
 
 <template>
-  <div class="h-64 flex items-center justify-center">
-    <Line :data="chartData" :options="chartOptions" />
-  </div>
-  <div class="mt-4 grid grid-cols-3 gap-2 text-center">
-    <div class="p-1 rounded">
-      <div class="text-sm font-semibold text-gray-700">Total</div>
-      <div class="text-lg font-bold">{{ totalRegistrations }}</div>
-      <div class="text-xs text-gray-500">100%</div>
+  <div class="w-full h-full flex flex-col">
+    <div class="flex-1">
+      <Bar :data="chartData" :options="chartOptions" />
     </div>
-    <div class="p-1 rounded">
-      <div class="text-sm font-semibold text-green-600">Approved</div>
-      <div class="text-lg font-bold">{{ approvedRegistrations }}</div>
-      <div class="text-xs text-gray-500">
-        {{ Math.round((approvedRegistrations / totalRegistrations) * 100) || 0 }}%
+
+    <div class="mt-6 grid grid-cols-3 gap-4">
+      <div class="p-4 rounded-lg bg-gray-50 shadow-sm">
+        <div class="text-sm font-medium text-gray">Total</div>
+        <div class="text-2xl font-bold text-dark-blue">{{ totalRegistrations }}</div>
+        <div class="text-xs text-gray mt-1">100%</div>
       </div>
-    </div>
-    <div class="p-1 rounded">
-      <div class="text-sm font-semibold text-yellow-600">Pending</div>
-      <div class="text-lg font-bold">{{ pendingRegistrations }}</div>
-      <div class="text-xs text-gray-500">
-        {{ Math.round((pendingRegistrations / totalRegistrations) * 100) || 0 }}%
+
+      <div class="p-4 rounded-lg shadow-sm" :style="`background-color: ${primaryColor}10`">
+        <div class="flex items-center">
+          <div class="w-3 h-3 rounded-sm mr-2" :style="`background-color: ${primaryColor}`"></div>
+          <div class="text-sm font-medium" :style="`color: ${primaryColor}`">Approved</div>
+        </div>
+        <div class="text-2xl font-bold text-dark-blue">{{ approvedRegistrations }}</div>
+        <div class="text-xs text-gray mt-1">{{ approvedPercentage }}%</div>
+      </div>
+
+      <div class="p-4 rounded-lg shadow-sm" :style="`background-color: ${secondaryColor}10`">
+        <div class="flex items-center">
+          <div class="w-3 h-3 rounded-sm mr-2" :style="`background-color: ${secondaryColor}`"></div>
+          <div class="text-sm font-medium" :style="`color: ${secondaryColor}`">Pending</div>
+        </div>
+        <div class="text-2xl font-bold text-dark-blue">{{ pendingRegistrations }}</div>
+        <div class="text-xs text-gray mt-1">{{ pendingPercentage }}%</div>
       </div>
     </div>
   </div>

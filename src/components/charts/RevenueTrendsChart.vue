@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Line } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -10,96 +10,183 @@ import {
   CategoryScale,
   LinearScale,
   PointElement,
+  Filler,
 } from 'chart.js'
 
-ChartJS.register(CategoryScale, LinearScale, LineElement, PointElement, Title, Tooltip, Legend)
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+)
 
 const props = defineProps({
-  registrationTrends: {
-    type: Array,
-    required: true,
+  chartTitle: {
+    type: String,
+    default: 'Revenue Trends (Last 6 Months)',
+  },
+  lineColor: {
+    type: String,
+    default: '#0a192f', // dark-blue from theme
+  },
+  fillColor: {
+    type: String,
+    default: 'rgba(23, 42, 69, 0.1)', // light-blue with transparency
+  },
+  labelColor: {
+    type: String,
+    default: '#8892b0', // gray from theme
+  },
+  gridLineColor: {
+    type: String,
+    default: '#f1f5f9', // light gray for grid lines
+  },
+  pointColor: {
+    type: String,
+    default: '#e63946', // red from theme
+  },
+  backgroundColor: {
+    type: String,
+    default: 'white',
   },
 })
 
-// Calculate revenue data from registration trends
-const revenueData = computed(() => {
-  return props.registrationTrends.map((item) => ({
-    month: item.month,
-    revenue: item.new * 5000 + item.renewal * 3000,
-  }))
-})
+// Mock revenue data
+const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
+const mockRevenue = [45000, 52000, 49000, 60000, 56000, 70000]
 
 // Chart data
 const chartData = computed(() => {
   return {
-    labels: revenueData.value.map((item) => item.month),
+    labels: months,
     datasets: [
       {
         label: 'Revenue',
-        backgroundColor: 'rgba(245, 158, 11, 0.2)',
-        borderColor: '#f59e0b',
+        backgroundColor: props.fillColor,
+        borderColor: props.lineColor,
         borderWidth: 2,
-        pointBackgroundColor: '#f59e0b',
-        tension: 0.4,
+        pointBackgroundColor: props.pointColor,
+        pointBorderColor: 'white',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 7,
+        tension: 0.3,
         fill: true,
-        data: revenueData.value.map((item) => item.revenue),
+        data: mockRevenue,
       },
     ],
   }
 })
 
 // Chart options
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: 'top',
+const chartOptions = computed(() => {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      title: {
+        display: false,
+      },
+      tooltip: {
+        backgroundColor: props.lineColor,
+        titleColor: 'white',
+        bodyColor: 'white',
+        bodyFont: {
+          family: 'Inter, sans-serif',
+          size: 13,
+        },
+        titleFont: {
+          family: 'Inter, sans-serif',
+          size: 14,
+          weight: 'bold',
+        },
+        padding: 12,
+        cornerRadius: 8,
+        displayColors: false,
+        callbacks: {
+          label: function (context) {
+            let label = context.dataset.label || ''
+            if (label) {
+              label += ': '
+            }
+            if (context.parsed.y !== null) {
+              label += new Intl.NumberFormat('en-PH', {
+                style: 'currency',
+                currency: 'PHP',
+              }).format(context.parsed.y)
+            }
+            return label
+          },
+        },
+      },
     },
-    title: {
-      display: true,
-      text: 'Revenue Trends (Last 6 Months)',
-    },
-    tooltip: {
-      callbacks: {
-        label: function (context) {
-          let label = context.dataset.label || ''
-          if (label) {
-            label += ': '
-          }
-          if (context.parsed.y !== null) {
-            label += new Intl.NumberFormat('en-PH', {
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: {
+          color: props.gridLineColor,
+          drawBorder: false,
+        },
+        ticks: {
+          callback: function (value) {
+            return new Intl.NumberFormat('en-PH', {
               style: 'currency',
               currency: 'PHP',
-            }).format(context.parsed.y)
-          }
-          return label
+              notation: 'compact',
+            }).format(value)
+          },
+          font: {
+            family: 'Inter, sans-serif',
+            size: 11,
+          },
+          color: props.labelColor,
+        },
+      },
+      x: {
+        grid: {
+          display: false,
+        },
+        ticks: {
+          font: {
+            family: 'Inter, sans-serif',
+            size: 11,
+          },
+          color: props.labelColor,
         },
       },
     },
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-      ticks: {
-        callback: function (value) {
-          return new Intl.NumberFormat('en-PH', {
-            style: 'currency',
-            currency: 'PHP',
-            notation: 'compact',
-          }).format(value)
-        },
-      },
+    animation: {
+      duration: 1000,
+      easing: 'easeOutQuart',
     },
-  },
-}
-// Calculate total and average revenue
+  }
+})
+
+// Calculate statistics
 const totalRevenue = computed(() => {
-  return revenueData.value.reduce((sum, item) => sum + item.revenue, 0)
+  return mockRevenue.reduce((sum, value) => sum + value, 0)
 })
 
 const averageMonthlyRevenue = computed(() => {
-  return totalRevenue.value / revenueData.value.length
+  return totalRevenue.value / mockRevenue.length
+})
+
+const highestMonthRevenue = computed(() => {
+  return Math.max(...mockRevenue)
+})
+
+const growthRate = computed(() => {
+  if (mockRevenue.length < 2) return 0
+  const first = mockRevenue[0]
+  const last = mockRevenue[mockRevenue.length - 1]
+  return Math.round(((last - first) / first) * 100)
 })
 
 // Format currency
@@ -112,20 +199,44 @@ const formatCurrency = (value) => {
 </script>
 
 <template>
-  <div class="h-64">
-    <Line :data="chartData" :options="chartOptions" />
-  </div>
-  <div class="mt-4 grid grid-cols-2 gap-4 text-center">
-    <div class="p-3 rounded bg-yellow-50 overflow-hidden">
-      <div class="text-sm font-semibold text-yellow-600">Total Revenue</div>
-      <div class="text-lg font-bold truncate">
-        {{ formatCurrency(totalRevenue) }}
-      </div>
+  <div class="w-full h-full flex flex-col">
+    <div class="flex-1">
+      <Line :data="chartData" :options="chartOptions" />
     </div>
-    <div class="p-3 rounded bg-yellow-50 overflow-hidden">
-      <div class="text-sm font-semibold text-yellow-600">Monthly Average</div>
-      <div class="text-lg font-bold truncate">
-        {{ formatCurrency(averageMonthlyRevenue) }}
+
+    <div class="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="p-4 rounded-lg shadow-sm" :style="`background-color: ${lineColor}08`">
+        <div class="text-sm font-medium text-gray">Total Revenue</div>
+        <div class="text-xl font-bold text-dark-blue mt-1">
+          {{ formatCurrency(totalRevenue) }}
+        </div>
+        <div class="text-xs text-gray mt-1">All time</div>
+      </div>
+
+      <div class="p-4 rounded-lg shadow-sm" :style="`background-color: ${lineColor}08`">
+        <div class="text-sm font-medium text-gray">Monthly Average</div>
+        <div class="text-xl font-bold text-dark-blue mt-1">
+          {{ formatCurrency(averageMonthlyRevenue) }}
+        </div>
+        <div class="text-xs text-gray mt-1">Per month</div>
+      </div>
+
+      <div class="p-4 rounded-lg shadow-sm" :style="`background-color: ${lineColor}08`">
+        <div class="text-sm font-medium text-gray">Highest Revenue</div>
+        <div class="text-xl font-bold text-dark-blue mt-1">
+          {{ formatCurrency(highestMonthRevenue) }}
+        </div>
+        <div class="text-xs text-gray mt-1">Best month</div>
+      </div>
+
+      <div class="p-4 rounded-lg shadow-sm" :style="`background-color: ${lineColor}08`">
+        <div class="text-sm font-medium text-gray">Growth Rate</div>
+        <div class="text-xl font-bold text-dark-blue mt-1">
+          <span :class="growthRate >= 0 ? 'text-green-600' : 'text-red'">
+            {{ growthRate >= 0 ? '+' : '' }}{{ growthRate }}%
+          </span>
+        </div>
+        <div class="text-xs text-gray mt-1">From first to last month</div>
       </div>
     </div>
   </div>

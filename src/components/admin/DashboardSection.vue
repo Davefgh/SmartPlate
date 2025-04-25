@@ -155,274 +155,308 @@ const revenueGrowth = computed(() =>
 </script>
 
 <template>
-  <div class="p-6">
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-semibold text-gray-800">Dashboard Overview</h2>
-      <div class="text-sm text-gray-500">Last updated: {{ new Date().toLocaleString() }}</div>
+  <div>
+    <!-- Dashboard Header -->
+    <div class="flex justify-between items-center mb-8">
+      <div>
+        <h2 class="text-2xl font-bold text-dark-blue">Dashboard Overview</h2>
+        <p class="text-gray mt-1">Monitor key metrics and performance indicators</p>
+      </div>
+      <div class="text-sm text-gray bg-light-gray bg-opacity-20 px-4 py-2 rounded-lg">
+        Last updated: {{ new Date().toLocaleString() }}
+      </div>
     </div>
 
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
       <!-- Total Users -->
-      <div class="bg-white rounded-xl shadow-md p-6 transition-all hover:shadow-lg">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-gray-500 text-sm">Total Users</p>
-            <h3 class="text-2xl font-bold text-gray-900">{{ totalUsers }}</h3>
-            <p class="text-sm mt-2" :class="userGrowth >= 0 ? 'text-green-600' : 'text-red-600'">
-              <font-awesome-icon :icon="['fas', userGrowth >= 0 ? 'arrow-up' : 'arrow-down']" />
-              {{ Math.abs(userGrowth) }}% from last period
-            </p>
-          </div>
-          <div class="bg-blue-100 p-3 rounded-full">
-            <font-awesome-icon :icon="['fas', 'users']" class="w-6 h-6 text-blue-600" />
+      <div
+        class="bg-white rounded-xl shadow-md overflow-hidden border border-light-gray border-opacity-20 transition-all duration-300 hover:shadow-lg hover:translate-y-[-2px]"
+      >
+        <div class="px-6 py-5">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray text-sm font-medium">Total Users</p>
+              <h3 class="text-2xl font-bold text-dark-blue mt-1">{{ totalUsers }}</h3>
+              <p class="text-sm mt-2" :class="userGrowth >= 0 ? 'text-green-600' : 'text-red'">
+                <font-awesome-icon
+                  :icon="['fas', userGrowth >= 0 ? 'arrow-up' : 'arrow-down']"
+                  class="mr-1"
+                />
+                {{ Math.abs(userGrowth) }}% from last period
+              </p>
+            </div>
+            <div class="bg-light-blue bg-opacity-10 p-3 rounded-full">
+              <font-awesome-icon :icon="['fas', 'users']" class="w-6 h-6 text-light-blue" />
+            </div>
           </div>
         </div>
+        <div class="h-1 w-full bg-gradient-to-r from-light-blue to-dark-blue"></div>
       </div>
 
       <!-- Total Vehicles -->
-      <div class="bg-white rounded-xl shadow-md p-6 transition-all hover:shadow-lg">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-gray-500 text-sm">Total Vehicles</p>
-            <h3 class="text-2xl font-bold text-gray-900">{{ totalVehicles }}</h3>
-            <p class="text-sm mt-2" :class="vehicleGrowth >= 0 ? 'text-green-600' : 'text-red-600'">
-              <font-awesome-icon :icon="['fas', vehicleGrowth >= 0 ? 'arrow-up' : 'arrow-down']" />
-              {{ Math.abs(vehicleGrowth) }}% from last period
-            </p>
-          </div>
-          <div class="bg-green-100 p-3 rounded-full">
-            <font-awesome-icon :icon="['fas', 'car']" class="w-6 h-6 text-green-600" />
+      <div
+        class="bg-white rounded-xl shadow-md overflow-hidden border border-light-gray border-opacity-20 transition-all duration-300 hover:shadow-lg hover:translate-y-[-2px]"
+      >
+        <div class="px-6 py-5">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray text-sm font-medium">Total Vehicles</p>
+              <h3 class="text-2xl font-bold text-dark-blue mt-1">{{ totalVehicles }}</h3>
+              <p class="text-sm mt-2" :class="vehicleGrowth >= 0 ? 'text-green-600' : 'text-red'">
+                <font-awesome-icon
+                  :icon="['fas', vehicleGrowth >= 0 ? 'arrow-up' : 'arrow-down']"
+                  class="mr-1"
+                />
+                {{ Math.abs(vehicleGrowth) }}% from last period
+              </p>
+            </div>
+            <div class="bg-light-blue bg-opacity-10 p-3 rounded-full">
+              <font-awesome-icon :icon="['fas', 'car']" class="w-6 h-6 text-light-blue" />
+            </div>
           </div>
         </div>
+        <div class="h-1 w-full bg-gradient-to-r from-light-blue to-dark-blue"></div>
       </div>
 
       <!-- Total Registrations -->
-      <div class="bg-white rounded-xl shadow-md p-6 transition-all hover:shadow-lg">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-gray-500 text-sm">Total Registrations</p>
-            <h3 class="text-2xl font-bold text-gray-900">{{ totalRegistrations }}</h3>
-            <p
-              class="text-sm mt-2"
-              :class="registrationGrowth >= 0 ? 'text-green-600' : 'text-red-600'"
-            >
+      <div
+        class="bg-white rounded-xl shadow-md overflow-hidden border border-light-gray border-opacity-20 transition-all duration-300 hover:shadow-lg hover:translate-y-[-2px]"
+      >
+        <div class="px-6 py-5">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray text-sm font-medium">Total Registrations</p>
+              <h3 class="text-2xl font-bold text-dark-blue mt-1">{{ totalRegistrations }}</h3>
+              <p
+                class="text-sm mt-2"
+                :class="registrationGrowth >= 0 ? 'text-green-600' : 'text-red'"
+              >
+                <font-awesome-icon
+                  :icon="['fas', registrationGrowth >= 0 ? 'arrow-up' : 'arrow-down']"
+                  class="mr-1"
+                />
+                {{ Math.abs(registrationGrowth) }}% from last period
+              </p>
+            </div>
+            <div class="bg-light-blue bg-opacity-10 p-3 rounded-full">
               <font-awesome-icon
-                :icon="['fas', registrationGrowth >= 0 ? 'arrow-up' : 'arrow-down']"
+                :icon="['fas', 'clipboard-list']"
+                class="w-6 h-6 text-light-blue"
               />
-              {{ Math.abs(registrationGrowth) }}% from last period
-            </p>
-          </div>
-          <div class="bg-purple-100 p-3 rounded-full">
-            <font-awesome-icon :icon="['fas', 'clipboard-list']" class="w-6 h-6 text-purple-600" />
+            </div>
           </div>
         </div>
+        <div class="h-1 w-full bg-gradient-to-r from-light-blue to-dark-blue"></div>
       </div>
 
       <!-- Total Revenue -->
-      <div class="bg-white rounded-xl shadow-md p-6 transition-all hover:shadow-lg">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-gray-500 text-sm">Total Revenue</p>
-            <h3 class="text-2xl font-bold text-gray-900">{{ formatCurrency(totalRevenue) }}</h3>
-            <p class="text-sm mt-2" :class="revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'">
-              <font-awesome-icon :icon="['fas', revenueGrowth >= 0 ? 'arrow-up' : 'arrow-down']" />
-              {{ Math.abs(revenueGrowth) }}% from last period
-            </p>
-          </div>
-          <div class="bg-yellow-100 p-3 rounded-full">
-            <font-awesome-icon :icon="['fas', 'money-bill-wave']" class="w-6 h-6 text-yellow-600" />
+      <div
+        class="bg-white rounded-xl shadow-md overflow-hidden border border-light-gray border-opacity-20 transition-all duration-300 hover:shadow-lg hover:translate-y-[-2px]"
+      >
+        <div class="px-6 py-5">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray text-sm font-medium">Total Revenue</p>
+              <h3 class="text-2xl font-bold text-dark-blue mt-1">
+                {{ formatCurrency(totalRevenue) }}
+              </h3>
+              <p class="text-sm mt-2" :class="revenueGrowth >= 0 ? 'text-green-600' : 'text-red'">
+                <font-awesome-icon
+                  :icon="['fas', revenueGrowth >= 0 ? 'arrow-up' : 'arrow-down']"
+                  class="mr-1"
+                />
+                {{ Math.abs(revenueGrowth) }}% from last period
+              </p>
+            </div>
+            <div class="bg-light-blue bg-opacity-10 p-3 rounded-full">
+              <font-awesome-icon
+                :icon="['fas', 'money-bill-wave']"
+                class="w-6 h-6 text-light-blue"
+              />
+            </div>
           </div>
         </div>
+        <div class="h-1 w-full bg-gradient-to-r from-light-blue to-dark-blue"></div>
       </div>
     </div>
 
-    <!-- Charts Overview - 1x1 Grid Layout -->
-    <div class="grid grid-cols-1 gap-8 mb-10">
+    <!-- Main Dashboard Content -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
       <!-- Registration Status Card -->
       <div
-        class="bg-white rounded-xl shadow-lg p-8 transform transition-all duration-300 hover:shadow-xl hover:scale-[1.01]"
+        class="lg:col-span-2 bg-white rounded-xl shadow-md border border-light-gray border-opacity-20 overflow-hidden transition-all duration-300 hover:shadow-lg"
       >
-        <h3 class="text-xl font-semibold text-gray-800 mb-6">Registration Status</h3>
-        <div class="h-96">
+        <div class="flex justify-between items-center p-6 border-b border-gray-100">
+          <h3 class="text-lg font-semibold text-dark-blue">Registration Status</h3>
+          <div
+            class="bg-light-blue bg-opacity-10 text-light-blue px-3 py-1 rounded-full text-xs font-medium"
+          >
+            Live Data
+          </div>
+        </div>
+        <div class="p-6 h-80">
           <RegistrationStatusChart
             :approvedRegistrations="approvedRegistrations"
             :pendingRegistrations="pendingRegistrations"
-            :totalRegistrations="totalRegistrations"
+            chartTitle="Registration Status Trends"
+            primaryColor="#172a45"
+            secondaryColor="#e63946"
+            labelColor="#8892b0"
+            backgroundColor="white"
           />
         </div>
       </div>
 
-      <!-- Vehicle Types Distribution -->
+      <!-- Vehicle Types Card -->
       <div
-        class="bg-white rounded-xl shadow-lg p-8 transform transition-all duration-300 hover:shadow-xl hover:scale-[1.01]"
+        class="bg-white rounded-xl shadow-md border border-light-gray border-opacity-20 overflow-hidden transition-all duration-300 hover:shadow-lg"
       >
-        <h3 class="text-xl font-semibold text-gray-800 mb-6">Vehicle Types</h3>
-        <div class="h-96">
-          <VehicleTypesChart :vehicleTypes="vehicleTypes" />
+        <div class="flex justify-between items-center p-6 border-b border-gray-100">
+          <h3 class="text-lg font-semibold text-dark-blue">Vehicle Types</h3>
+          <div
+            class="bg-light-blue bg-opacity-10 text-light-blue px-3 py-1 rounded-full text-xs font-medium"
+          >
+            Distribution
+          </div>
+        </div>
+        <div class="p-6 h-80">
+          <VehicleTypesChart
+            :vehicleTypes="vehicleTypes"
+            chartTitle="Vehicle Types Distribution"
+            :chartColors="['#4373e6', '#45cbba', '#9c5bff', '#ffa726']"
+            labelColor="#8892b0"
+            backgroundColor="white"
+          />
         </div>
       </div>
+    </div>
 
-      <!-- Registration Trends Chart -->
+    <!-- Second Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <!-- Registration Trends -->
       <div
-        class="bg-white rounded-xl shadow-lg p-8 transform transition-all duration-300 hover:shadow-xl hover:scale-[1.01]"
+        class="lg:col-span-2 bg-white rounded-xl shadow-md border border-light-gray border-opacity-20 overflow-hidden transition-all duration-300 hover:shadow-lg"
       >
-        <h3 class="text-xl font-semibold text-gray-800 mb-6">
-          Registration Trends (Last 6 Months)
-        </h3>
-        <div class="h-96">
-          <RegistrationTrendsChart :registrationTrends="registrationTrends" />
+        <div class="flex justify-between items-center p-6 border-b border-gray-100">
+          <h3 class="text-lg font-semibold text-dark-blue">Registration Trends</h3>
+          <div
+            class="bg-light-blue bg-opacity-10 text-light-blue px-3 py-1 rounded-full text-xs font-medium"
+          >
+            Last 6 Months
+          </div>
+        </div>
+        <div class="p-6 h-80">
+          <RegistrationTrendsChart
+            :registrationTrends="registrationTrends"
+            chartTitle="Registration Trends (Last 6 Months)"
+            primaryColor="#4373e6"
+            secondaryColor="#45cbba"
+            labelColor="#8892b0"
+            gridLineColor="#f1f5f9"
+            backgroundColor="white"
+          />
         </div>
       </div>
 
       <!-- Top Vehicle Makes -->
       <div
-        class="bg-white rounded-xl shadow-lg p-8 transform transition-all duration-300 hover:shadow-xl hover:scale-[1.01]"
+        class="bg-white rounded-xl shadow-md border border-light-gray border-opacity-20 overflow-hidden transition-all duration-300 hover:shadow-lg"
       >
-        <h3 class="text-xl font-semibold text-gray-800 mb-6">Top Vehicle Makes</h3>
-        <div class="h-96">
-          <VehicleMakesChart :vehicleMakes="vehicleMakes" />
+        <div class="flex justify-between items-center p-6 border-b border-gray-100">
+          <h3 class="text-lg font-semibold text-dark-blue">Top Vehicle Makes</h3>
+          <div
+            class="bg-light-blue bg-opacity-10 text-light-blue px-3 py-1 rounded-full text-xs font-medium"
+          >
+            Top 5
+          </div>
+        </div>
+        <div class="p-6 h-80">
+          <VehicleMakesChart
+            :vehicleMakes="vehicleMakes"
+            chartTitle="Top Vehicle Makes"
+            barColor="#4373e6"
+            labelColor="#8892b0"
+            gridLineColor="#f1f5f9"
+            backgroundColor="white"
+          />
         </div>
       </div>
     </div>
 
     <!-- Revenue Trends Chart -->
     <div
-      class="bg-white rounded-xl shadow-lg p-8 mb-10 transform transition-all duration-300 hover:shadow-xl hover:scale-[1.01]"
+      class="bg-white rounded-xl shadow-md border border-light-gray border-opacity-20 overflow-hidden transition-all duration-300 hover:shadow-lg mb-8"
     >
-      <h3 class="text-xl font-semibold text-gray-800 mb-6">Revenue Trends (Last 6 Months)</h3>
-      <div class="h-96">
-        <RevenueTrendsChart :registrationTrends="registrationTrends" />
+      <div class="flex justify-between items-center p-6 border-b border-gray-100">
+        <h3 class="text-lg font-semibold text-dark-blue">Revenue Trends</h3>
+        <div
+          class="bg-light-blue bg-opacity-10 text-light-blue px-3 py-1 rounded-full text-xs font-medium"
+        >
+          Financial Overview
+        </div>
+      </div>
+      <div class="p-6 h-96">
+        <RevenueTrendsChart
+          chartTitle="Revenue Trends (Last 6 Months)"
+          lineColor="#0a192f"
+          fillColor="rgba(23, 42, 69, 0.1)"
+          labelColor="#8892b0"
+          gridLineColor="#f1f5f9"
+          pointColor="#e63946"
+          backgroundColor="white"
+        />
       </div>
     </div>
 
-    <!-- Recent Activity and Quick Actions -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Recent Registrations -->
-      <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Recent Registrations</h3>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Vehicle
-                </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Type
-                </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Date
-                </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr
-                v-for="(reg, index) in vehicleStore.registrationsWithDetails.slice(0, 5)"
-                :key="index"
-                class="hover:bg-gray-50"
-              >
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                  {{ reg.vehicleInfo }}
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                  {{ reg.registrationType }}
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                  {{ reg.submissionDate }}
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm">
-                  <span
-                    :class="[
-                      'px-2 py-1 rounded-full text-xs font-medium',
-                      reg.status === 'Approved'
-                        ? 'bg-green-100 text-green-800'
-                        : reg.status === 'Pending'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-gray-100 text-gray-800',
-                    ]"
-                  >
-                    {{ reg.status }}
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+    <!-- Quick Stats & Information -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Pending Approvals Card -->
+      <div
+        class="bg-white rounded-xl shadow-md border border-light-gray border-opacity-20 overflow-hidden p-6 transition-all duration-300 hover:shadow-lg"
+      >
+        <div class="flex items-center space-x-4 mb-4">
+          <div class="bg-red-100 p-3 rounded-full">
+            <font-awesome-icon :icon="['fas', 'exclamation-circle']" class="w-6 h-6 text-red" />
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-dark-blue">Pending Approvals</h3>
+            <p class="text-gray">{{ pendingRegistrations }} registrations need your attention</p>
+          </div>
         </div>
+        <button
+          class="w-full mt-4 bg-dark-blue hover:bg-light-blue text-white py-2 px-4 rounded-lg transition-colors duration-300"
+        >
+          View Pending Registrations
+        </button>
       </div>
 
-      <!-- Quick Actions -->
-      <div class="bg-white rounded-xl shadow-md p-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Navigation</h3>
-        <div class="space-y-3">
-          <button
-            @click="$emit('change-section', 'users')"
-            class="w-full flex items-center justify-between p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-          >
-            <span class="flex items-center">
-              <font-awesome-icon :icon="['fas', 'users']" class="w-5 h-5 text-blue-600 mr-3" />
-              <span class="text-sm font-medium text-gray-700">Manage Users</span>
-            </span>
-            <font-awesome-icon :icon="['fas', 'chevron-right']" class="w-4 h-4 text-gray-400" />
-          </button>
-
-          <button
-            @click="$emit('change-section', 'vehicles')"
-            class="w-full flex items-center justify-between p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
-          >
-            <span class="flex items-center">
-              <font-awesome-icon :icon="['fas', 'car']" class="w-5 h-5 text-green-600 mr-3" />
-              <span class="text-sm font-medium text-gray-700">Manage Vehicles</span>
-            </span>
-            <font-awesome-icon :icon="['fas', 'chevron-right']" class="w-4 h-4 text-gray-400" />
-          </button>
-
-          <button
-            @click="$emit('change-section', 'plates')"
-            class="w-full flex items-center justify-between p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
-          >
-            <span class="flex items-center">
-              <font-awesome-icon :icon="['fas', 'id-card']" class="w-5 h-5 text-purple-600 mr-3" />
-              <span class="text-sm font-medium text-gray-700">Manage Plates</span>
-            </span>
-            <font-awesome-icon :icon="['fas', 'chevron-right']" class="w-4 h-4 text-gray-400" />
-          </button>
-
-          <button
-            @click="$emit('change-section', 'registrations')"
-            class="w-full flex items-center justify-between p-3 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
-          >
-            <span class="flex items-center">
-              <font-awesome-icon
-                :icon="['fas', 'clipboard-list']"
-                class="w-5 h-5 text-red-600 mr-3"
-              />
-              <span class="text-sm font-medium text-gray-700">Registrations</span>
-            </span>
-            <font-awesome-icon :icon="['fas', 'chevron-right']" class="w-4 h-4 text-gray-400" />
-          </button>
-
-          <button
-            @click="$emit('change-section', 'pending-registrations')"
-            class="w-full flex items-center justify-between p-3 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors"
-          >
-            <span class="flex items-center">
-              <font-awesome-icon :icon="['fas', 'clock']" class="w-5 h-5 text-yellow-600 mr-3" />
-              <span class="text-sm font-medium text-gray-700">Pending Registrations</span>
-            </span>
-            <font-awesome-icon :icon="['fas', 'chevron-right']" class="w-4 h-4 text-gray-400" />
-          </button>
+      <!-- System Status Card -->
+      <div
+        class="bg-white rounded-xl shadow-md border border-light-gray border-opacity-20 overflow-hidden p-6 transition-all duration-300 hover:shadow-lg"
+      >
+        <div class="flex items-center space-x-4 mb-4">
+          <div class="bg-green-100 p-3 rounded-full">
+            <font-awesome-icon :icon="['fas', 'check-circle']" class="w-6 h-6 text-green-600" />
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-dark-blue">System Status</h3>
+            <p class="text-gray">All systems operational</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2 mt-4">
+          <div class="text-center p-2 bg-light-blue bg-opacity-5 rounded-lg">
+            <p class="text-xs text-gray mb-1">Database</p>
+            <div class="text-green-600 font-medium text-sm">Online</div>
+          </div>
+          <div class="text-center p-2 bg-light-blue bg-opacity-5 rounded-lg">
+            <p class="text-xs text-gray mb-1">API</p>
+            <div class="text-green-600 font-medium text-sm">100%</div>
+          </div>
+          <div class="text-center p-2 bg-light-blue bg-opacity-5 rounded-lg">
+            <p class="text-xs text-gray mb-1">Storage</p>
+            <div class="text-green-600 font-medium text-sm">87%</div>
+          </div>
         </div>
       </div>
     </div>
