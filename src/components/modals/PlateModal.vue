@@ -80,7 +80,7 @@ const getExpiryStatusColor = (expiryDateStr) => {
           <div
             :class="[
               'md:w-1/3 h-auto relative overflow-hidden',
-              plate.status === 'Active'
+              props.plate.status === 'Active'
                 ? 'bg-gradient-to-r from-blue-50 to-green-50'
                 : 'bg-gradient-to-r from-amber-50 to-yellow-50',
             ]"
@@ -90,7 +90,7 @@ const getExpiryStatusColor = (expiryDateStr) => {
               <div
                 class="bg-white border-4 border-gray-800 rounded-lg p-4 mb-6 shadow-lg w-48 text-center"
               >
-                <div class="text-2xl font-bold tracking-wider">{{ props.plate.plateNumber }}</div>
+                <div class="text-2xl font-bold tracking-wider">{{ props.plate.plate_number }}</div>
                 <div class="text-xs text-gray-500 mt-1">Vehicle License Plate</div>
               </div>
 
@@ -101,7 +101,7 @@ const getExpiryStatusColor = (expiryDateStr) => {
               />
 
               <div class="mt-4 text-sm font-medium text-gray-700">
-                {{ props.plate.vehicleMake }} {{ props.plate.vehicleModel }}
+                {{ props.plate.vehicleMake }} {{ props.plate.vehicleSeries }}
               </div>
             </div>
 
@@ -124,7 +124,7 @@ const getExpiryStatusColor = (expiryDateStr) => {
           <div class="md:w-2/3 px-6 py-5 overflow-y-auto max-h-[70vh]">
             <div class="mb-6">
               <h2 class="text-2xl font-bold text-gray-900 mb-1">
-                Plate {{ props.plate.plateNumber }}
+                Plate {{ props.plate.plate_number }}
               </h2>
               <p class="text-sm text-gray-500">Owner: {{ props.plate.owner }}</p>
             </div>
@@ -137,7 +137,7 @@ const getExpiryStatusColor = (expiryDateStr) => {
                 <div class="flex items-center">
                   <font-awesome-icon :icon="['fas', 'car']" class="text-dark-blue mr-2" />
                   <span class="text-base font-medium"
-                    >{{ props.plate.vehicleMake }} {{ props.plate.vehicleModel }}</span
+                    >{{ props.plate.vehicleMake }} {{ props.plate.vehicleSeries }}</span
                   >
                 </div>
               </div>
@@ -159,12 +159,12 @@ const getExpiryStatusColor = (expiryDateStr) => {
                   <span
                     class="text-base font-medium px-2 py-0.5 rounded-full text-xs"
                     :class="{
-                      'bg-blue-100 text-blue-800': props.plate.plateType === 'Regular',
-                      'bg-purple-100 text-purple-800': props.plate.plateType === 'Temporary',
-                      'bg-orange-100 text-orange-800': props.plate.plateType === 'Improvised',
+                      'bg-blue-100 text-blue-800': props.plate.plate_type === 'Regular',
+                      'bg-purple-100 text-purple-800': props.plate.plate_type === 'Temporary',
+                      'bg-orange-100 text-orange-800': props.plate.plate_type === 'Improvised',
                     }"
                   >
-                    {{ props.plate.plateType }}
+                    {{ props.plate.plate_type }}
                   </span>
                 </div>
               </div>
@@ -186,7 +186,7 @@ const getExpiryStatusColor = (expiryDateStr) => {
                     :icon="['fas', 'calendar-check']"
                     class="text-dark-blue mr-2"
                   />
-                  <span class="text-base font-medium">{{ props.plate.registrationDate }}</span>
+                  <span class="text-base font-medium">{{ props.plate.plate_issue_date }}</span>
                 </div>
               </div>
 
@@ -198,30 +198,35 @@ const getExpiryStatusColor = (expiryDateStr) => {
                     :icon="['fas', 'calendar-times']"
                     class="text-dark-blue mr-2"
                   />
-                  <span class="text-base font-medium">{{ props.plate.expiryDate }}</span>
+                  <span class="text-base font-medium">{{ props.plate.plate_expiration_date }}</span>
                 </div>
               </div>
             </div>
 
             <!-- Expiry Status -->
             <div class="mb-6">
-              <div :class="['p-4 rounded-lg border', getExpiryStatusColor(plate.expiryDate)]">
+              <div
+                :class="[
+                  'p-4 rounded-lg border',
+                  getExpiryStatusColor(props.plate.plate_expiration_date),
+                ]"
+              >
                 <div class="flex items-start">
                   <div class="flex-shrink-0 mt-1">
                     <font-awesome-icon
                       :icon="[
                         'fas',
-                        getDaysRemaining(plate.expiryDate) < 0
+                        getDaysRemaining(props.plate.plate_expiration_date) < 0
                           ? 'exclamation-circle'
-                          : getDaysRemaining(plate.expiryDate) < 30
+                          : getDaysRemaining(props.plate.plate_expiration_date) < 30
                             ? 'exclamation-triangle'
                             : 'check-circle',
                       ]"
                       :class="[
                         'w-5 h-5',
-                        getDaysRemaining(plate.expiryDate) < 0
+                        getDaysRemaining(props.plate.plate_expiration_date) < 0
                           ? 'text-red-500'
-                          : getDaysRemaining(plate.expiryDate) < 30
+                          : getDaysRemaining(props.plate.plate_expiration_date) < 30
                             ? 'text-yellow-500'
                             : 'text-green-500',
                       ]"
@@ -231,29 +236,29 @@ const getExpiryStatusColor = (expiryDateStr) => {
                     <h4
                       :class="[
                         'text-sm font-medium',
-                        getDaysRemaining(plate.expiryDate) < 0
+                        getDaysRemaining(props.plate.plate_expiration_date) < 0
                           ? 'text-red-800'
-                          : getDaysRemaining(plate.expiryDate) < 30
+                          : getDaysRemaining(props.plate.plate_expiration_date) < 30
                             ? 'text-yellow-800'
                             : 'text-green-800',
                       ]"
                     >
-                      {{ getExpiryStatusText(plate.expiryDate) }}
+                      {{ getExpiryStatusText(props.plate.plate_expiration_date) }}
                     </h4>
                     <p
                       :class="[
                         'text-sm mt-1',
-                        getDaysRemaining(plate.expiryDate) < 0
+                        getDaysRemaining(props.plate.plate_expiration_date) < 0
                           ? 'text-red-700'
-                          : getDaysRemaining(plate.expiryDate) < 30
+                          : getDaysRemaining(props.plate.plate_expiration_date) < 30
                             ? 'text-yellow-700'
                             : 'text-green-700',
                       ]"
                     >
                       {{
-                        getDaysRemaining(plate.expiryDate) < 0
+                        getDaysRemaining(props.plate.plate_expiration_date) < 0
                           ? 'Your plate registration has expired. Please renew as soon as possible.'
-                          : getDaysRemaining(plate.expiryDate) < 30
+                          : getDaysRemaining(props.plate.plate_expiration_date) < 30
                             ? 'Your plate registration will expire soon. Please plan to renew.'
                             : 'Your plate registration is valid and up to date.'
                       }}
