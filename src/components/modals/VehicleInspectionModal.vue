@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { VehicleRegistrationForm, AdditionalVehicleData } from '@/types/vehicleRegistration'
 import { ref, defineProps, defineEmits, computed, watch } from 'vue'
-import { useNotificationStore } from '@/stores/notification'
+import { useInspectionStore } from '@/stores/inspection'
 
-const notificationStore = useNotificationStore()
+const inspectionStore = useInspectionStore()
 const props = defineProps<{
   isOpen: boolean
   registration: VehicleRegistrationForm | null
@@ -58,47 +58,9 @@ const lastMVFileRegion = ref('')
 const hasGeneratedConductionSticker = ref(false)
 
 // List of regions for region selection
-const regions = [
-  { code: 'NCR', name: 'National Capital Region' },
-  { code: 'CALABARZON', name: 'CALABARZON (Region 4A)' },
-  { code: 'CENTRAL_LUZON', name: 'Central Luzon (Region 3)' },
-  { code: 'WESTERN_VISAYAS', name: 'Western Visayas (Region 6)' },
-  { code: 'CENTRAL_VISAYAS', name: 'Central Visayas (Region 7)' },
-  { code: 'EASTERN_VISAYAS', name: 'Eastern Visayas (Region 8)' },
-  { code: 'NORTHERN_MINDANAO', name: 'Northern Mindanao (Region 10)' },
-  { code: 'SOUTHERN_MINDANAO', name: 'Davao Region (Region 11)' },
-  { code: 'CAR', name: 'Cordillera Administrative Region' },
-  { code: 'CARAGA', name: 'CARAGA (Region 13)' },
-  { code: 'BICOL', name: 'Bicol Region (Region 5)' },
-  { code: 'ILOCOS', name: 'Ilocos Region (Region 1)' },
-  { code: 'MIMAROPA', name: 'MIMAROPA (Region 4B)' },
-  { code: 'SOCCSKSARGEN', name: 'SOCCSKSARGEN (Region 12)' },
-  { code: 'ZAMBOANGA', name: 'Zamboanga Peninsula (Region 9)' },
-  { code: 'BARMM', name: 'Bangsamoro Autonomous Region in Muslim Mindanao' },
-]
+const regions = computed(() => inspectionStore.getRegions)
 
-// Region codes mapping for MV File Number generation
-const regionCodes = {
-  NCR: '01',
-  CALABARZON: '02',
-  CENTRAL_LUZON: '03',
-  WESTERN_VISAYAS: '04',
-  CENTRAL_VISAYAS: '05',
-  EASTERN_VISAYAS: '06',
-  NORTHERN_MINDANAO: '07',
-  SOUTHERN_MINDANAO: '08',
-  CAR: '09',
-  CARAGA: '10',
-  BICOL: '11',
-  ILOCOS: '12',
-  MIMAROPA: '13',
-  SOCCSKSARGEN: '14',
-  ZAMBOANGA: '15',
-  BARMM: '16',
-}
-
-// Generate MV File Number
-// Format: RR YY XXXXXX (RR: 2-digit region code, YY: last two digits of year, XXXXXX: 6-digit sequence)
+// MV File Number generation
 const generateMVFileNumber = () => {
   if (!props.registration) return ''
 
@@ -107,39 +69,7 @@ const generateMVFileNumber = () => {
     return additionalData.value.mvFileNumber
   }
 
-  // Get region code from selected region
-  const regionCode = regionCodes[selectedRegion.value as keyof typeof regionCodes] || '01'
-
-  // Get the last two digits of the current year
-  const currentYear = new Date().getFullYear().toString().slice(-2)
-
-  // Generate a random 6-digit sequence (in a real app, this would increment based on stored values)
-  const existingMVNumbers = JSON.parse(localStorage.getItem('mv_file_numbers') || '[]')
-  const regionYearKey = `${regionCode}${currentYear}`
-
-  // Find the highest sequence number for this region and year
-  let highestSequence = 0
-  existingMVNumbers.forEach((mvNumber: string) => {
-    if (mvNumber.startsWith(regionYearKey)) {
-      const sequence = parseInt(mvNumber.slice(4), 10)
-      if (sequence > highestSequence) {
-        highestSequence = sequence
-      }
-    }
-  })
-
-  // Increment the sequence
-  const newSequence = highestSequence + 1
-
-  // Zero-pad to 6 digits
-  const sequencePadded = newSequence.toString().padStart(6, '0')
-
-  // Construct the MV File Number
-  const mvFileNumber = `${regionCode} ${currentYear} ${sequencePadded}`
-
-  // Store the new MV File Number
-  existingMVNumbers.push(mvFileNumber)
-  localStorage.setItem('mv_file_numbers', JSON.stringify(existingMVNumbers))
+  const mvFileNumber = inspectionStore.generateMVFileNumber(selectedRegion.value)
 
   // Record the region that was used
   lastMVFileRegion.value = selectedRegion.value
@@ -148,42 +78,13 @@ const generateMVFileNumber = () => {
 }
 
 // Generate Conduction Sticker
-// Format: CS YY NNNN (CS: fixed prefix, YY: last two digits of year, NNNN: 4-digit sequence)
 const generateConductionSticker = () => {
   // Only allow generation once
   if (hasGeneratedConductionSticker.value && additionalData.value.conductionSticker) {
     return additionalData.value.conductionSticker
   }
 
-  // Get the last two digits of the current year
-  const currentYear = new Date().getFullYear().toString().slice(-2)
-
-  // Load existing conduction stickers from localStorage
-  const existingStickers = JSON.parse(localStorage.getItem('conduction_stickers') || '[]')
-
-  // Find the highest sequence number for this year
-  let highestSequence = 0
-  existingStickers.forEach((sticker: string) => {
-    if (sticker.startsWith(`CS ${currentYear}`)) {
-      const sequence = parseInt(sticker.slice(5), 10)
-      if (sequence > highestSequence) {
-        highestSequence = sequence
-      }
-    }
-  })
-
-  // Increment the sequence
-  const newSequence = highestSequence + 1
-
-  // Zero-pad to 4 digits
-  const sequencePadded = newSequence.toString().padStart(4, '0')
-
-  // Construct the Conduction Sticker
-  const conductionSticker = `CS ${currentYear} ${sequencePadded}`
-
-  // Store the new Conduction Sticker
-  existingStickers.push(conductionSticker)
-  localStorage.setItem('conduction_stickers', JSON.stringify(existingStickers))
+  const conductionSticker = inspectionStore.generateConductionSticker()
 
   // Mark as generated
   hasGeneratedConductionSticker.value = true
@@ -221,8 +122,11 @@ const resetForm = () => {
 
 // Function to auto-generate and fill the MV File Number and Conduction Sticker
 const generateIdentifiers = () => {
-  additionalData.value.mvFileNumber = generateMVFileNumber()
-  additionalData.value.conductionSticker = generateConductionSticker()
+  const identifiers = inspectionStore.generateIdentifiers(selectedRegion.value)
+  additionalData.value.mvFileNumber = identifiers.mvFileNumber
+  additionalData.value.conductionSticker = identifiers.conductionSticker
+  lastMVFileRegion.value = selectedRegion.value
+  hasGeneratedConductionSticker.value = true
 }
 
 // Watch for region changes to enable regeneration of MV File Number
@@ -331,11 +235,13 @@ const submitForm = () => {
       additionalVehicleData: { ...additionalData.value },
     }
 
-    // Show toast notification
-    notificationStore.showVehicleInspectionNotification(inspectionStatus.value, {
-      make: props.registration.make,
-      model: props.registration.model,
-    })
+    // Submit the inspection using the store
+    inspectionStore.submitInspection(
+      props.registration.id,
+      inspectionStatus.value,
+      inspectionNotes.value,
+      { ...additionalData.value },
+    )
 
     emit('submit', result)
     emit('close')

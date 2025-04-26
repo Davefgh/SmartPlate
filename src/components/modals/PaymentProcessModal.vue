@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { VehicleRegistrationForm } from '@/types/vehicleRegistration'
 import { ref, defineProps, defineEmits, computed, watch } from 'vue'
-import { useNotificationStore } from '@/stores/notification'
+import { usePaymentStore } from '@/stores/payment'
+import type { ExtendedPaymentDetails } from '@/stores/payment'
 
-const notificationStore = useNotificationStore()
+const paymentStore = usePaymentStore()
 const props = defineProps<{
   isOpen: boolean
   registration: VehicleRegistrationForm | null
@@ -34,27 +35,18 @@ const paymentStatus = ref<'approved' | 'rejected'>('approved')
 const paymentDetails = ref({
   amountPaid: 0,
   paymentDate: new Date().toISOString().split('T')[0],
-  paymentMethod: '',
+  paymentMethod: 'Cash', // Default to Cash
   receiptNumber: '',
   referenceNumber: '',
 })
 
-// Generate a unique payment reference number
+// Generate payment reference and receipt numbers using the store
 const generateReferenceNumber = (): string => {
-  const timestamp = new Date().getTime().toString().slice(-6)
-  const random = Math.floor(Math.random() * 10000)
-    .toString()
-    .padStart(4, '0')
-  return `PAY-${timestamp}-${random}`
+  return paymentStore.generateReferenceNumber()
 }
 
-// Generate a unique receipt number
 const generateReceiptNumber = (): string => {
-  const timestamp = new Date().getTime().toString().slice(-6)
-  const random = Math.floor(Math.random() * 10000)
-    .toString()
-    .padStart(4, '0')
-  return `RCT-${timestamp}-${random}`
+  return paymentStore.generateReceiptNumber()
 }
 
 // Validation errors
@@ -62,30 +54,40 @@ const validationErrors = ref<Record<string, string>>({})
 
 // Get registration fee based on vehicle type
 const registrationFee = computed(() => {
-  if (props.registration?.vehicleType === '4-Wheel') {
-    return 1620.0 // Example fee for 4-wheel vehicles
-  } else if (props.registration?.vehicleType === '2-Wheel') {
-    return 820.0 // Example fee for 2-wheel vehicles
+  if (!props.registration) return 0
+
+  if (props.registration.vehicleType === '4-Wheel') {
+    return 1620.0
+  } else if (props.registration.vehicleType === '2-Wheel') {
+    return 820.0
   }
   return 1000.0 // Default fee
 })
 
 // Calculate computer fee
-const computerFee = computed(() => 169.0) // Example fixed computer fee
+const computerFee = computed(() => 169.0) // Fixed fee
 
 // Calculate total fee
 const totalFee = computed(() => {
-  let total = registrationFee.value + computerFee.value
+  if (!props.registration) return '0.00'
 
-  // Add plate issuance fee for new registrations
-  if (props.registration?.isNewVehicle) {
-    total += 450.0
-  }
-
-  return total.toFixed(2)
+  return paymentStore
+    .getTotalFee(props.registration.vehicleType, props.registration.isNewVehicle)
+    .toFixed(2)
 })
 
-// Define resetForm before it's used in the watch
+// Reset form when registration changes
+watch(
+  () => props.registration,
+  () => {
+    if (props.registration) {
+      resetForm()
+    }
+  },
+  { immediate: true },
+)
+
+// Define resetForm
 const resetForm = () => {
   paymentNotes.value = ''
   paymentStatus.value = 'approved'
@@ -101,17 +103,6 @@ const resetForm = () => {
 
   validationErrors.value = {}
 }
-
-// Reset form when registration changes
-watch(
-  () => props.registration,
-  () => {
-    if (props.registration) {
-      resetForm()
-    }
-  },
-  { immediate: true },
-)
 
 // Validate form
 const validateForm = (): boolean => {
@@ -159,14 +150,10 @@ const submitPayment = () => {
       paymentDetails: { ...paymentDetails.value },
     }
 
-    // Show toast notification
-    notificationStore.showPaymentNotification(
-      paymentStatus.value === 'approved' ? 'success' : 'failed',
-      {
-        amount: paymentDetails.value.amountPaid,
-        reference: paymentDetails.value.referenceNumber,
-      },
-    )
+    // Process payment using the store
+    paymentStore.processPayment(props.registration.id, paymentStatus.value, paymentNotes.value, {
+      ...paymentDetails.value,
+    } as ExtendedPaymentDetails)
 
     emit('submit', result)
     emit('close')
