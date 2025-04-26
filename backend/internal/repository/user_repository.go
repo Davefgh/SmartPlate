@@ -421,7 +421,6 @@ func (r *UserRepository) DeleteByLTOClientID(ltoID string) error {
     if err != nil {
         return err
     }
-
     // Delete all dependents
     for _, tbl := range []string{
         "personal_information",

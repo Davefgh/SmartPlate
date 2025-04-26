@@ -5,6 +5,7 @@ import (
     "context"
     "fmt"
 	"strings"
+    "database/sql"
     "smartplate-api/internal/models"
 
     "github.com/jmoiron/sqlx"
@@ -12,11 +13,14 @@ import (
 
 type PlateRepository interface {
     CreatePlate(ctx context.Context, p *models.Plate) (*models.Plate, error)
-    GetPlatesByVehicleID(ctx context.Context, vehicleID string) ([]models.Plate, error)
     GetPlateByID(ctx context.Context, vehicleID, plateID string) (*models.Plate, error)
     UpdatePlate(ctx context.Context, vehicleID, plateID string, fields map[string]interface{}) error
     DeletePlateByID(ctx context.Context, vehicleID, plateID string) error
-}
+  
+    GetByPlateNumber(ctx context.Context, plateNumber string) (*models.Plate, error)
+    GetPlatesByVehicleID(ctx context.Context, vehicleID string) ([]models.Plate, error)
+  }
+  
 
 type plateRepo struct {
     db *sqlx.DB
@@ -25,6 +29,25 @@ type plateRepo struct {
 func NewPlateRepository(db *sqlx.DB) PlateRepository {
     return &plateRepo{db}
 }
+//for the checker
+func (r *plateRepo) GetByPlateNumber(ctx context.Context, plateNumber string) (*models.Plate, error) {
+    var p models.Plate
+    const q = `
+        SELECT plate_id, vehicle_id, plate_number, plate_type,
+               plate_issue_date, plate_expiration_date, status
+          FROM plates
+         WHERE plate_number = $1
+    `
+    err := r.db.GetContext(ctx, &p, q, plateNumber)
+    if err == sql.ErrNoRows {
+        return nil, nil
+    }
+    if err != nil {
+        return nil, err
+    }
+    return &p, nil
+}
+
 
 func (r *plateRepo) CreatePlate(ctx context.Context, p *models.Plate) (*models.Plate, error) {
     const q = `

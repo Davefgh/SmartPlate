@@ -8,6 +8,7 @@ import (
 	"smartplate-api/internal/database"
 	"smartplate-api/internal/handlers"
 	"smartplate-api/internal/repository"
+	"smartplate-api/internal/ws"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -83,7 +84,8 @@ func main() {
 	e.DELETE ("/api/vehicles/lto/:lto_client_id", vh.DeleteByClientID)//working
 
 	//for plates routes
-	plateRepo    := repository.NewPlateRepository(db)
+	// plateRepo    := repository.NewPlateRepository(db)
+	plateRepo := repository.NewPlateRepository(db)
 	plateHandler := handlers.NewPlateHandler(plateRepo)
 	
 	p := e.Group("/api/vehicles/:vehicle_id/plates")
@@ -129,6 +131,9 @@ func main() {
 	g.GET("/:id/document/:docId", rh.GetDocument)//working
 	g.PUT("/:id/document/:docId", rh.UpdateDocument)//working
 	g.DELETE("/:id/document/:docId", rh.DeleteDocument)//working
+
+	//websocket
+	e.GET("/ws/scan", ws.ScannerWS(plateRepo, rfRepo, userRepo))
 
 	// Start server
 	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()

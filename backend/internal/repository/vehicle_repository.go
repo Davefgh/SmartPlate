@@ -145,3 +145,4 @@ func (r *vehicleRepo) DeleteVehicleByClientID(ctx context.Context, clientID stri
     )
     return err
 }
+

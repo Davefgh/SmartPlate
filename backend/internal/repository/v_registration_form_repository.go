@@ -2,7 +2,7 @@ package repository
 
 import (
     "context"
-
+    "database/sql"             // for sql.ErrNoRows
     "github.com/jmoiron/sqlx"
     "smartplate-api/internal/models"
 )
@@ -13,6 +13,9 @@ type RegistrationFormRepository interface {
     GetByID(ctx context.Context, id string) (*models.RegistrationForm, error)
     Update(ctx context.Context, f *models.RegistrationForm) error
     Delete(ctx context.Context, id string) error
+
+    // ← the key lookup for your WS handler
+    GetByVehicleID(ctx context.Context, vehicleID string) (*models.RegistrationForm, error)
 }
 
 type registrationFormRepo struct {
@@ -34,12 +37,13 @@ func (r *registrationFormRepo) Create(
         (lto_client_id, vehicle_id, status, registration_type)
       VALUES
         ($1, $2, $3, $4)
-      RETURNING registration_form_id,
-                lto_client_id,
-                vehicle_id,
-                submitted_date,
-                status,
-                registration_type
+      RETURNING
+        registration_form_id,
+        lto_client_id,
+        vehicle_id,
+        submitted_date,
+        status,
+        registration_type
     `, p.LTOClientID, p.VehicleID, p.Status, p.RegistrationType).
         StructScan(&full)
     if err != nil {
@@ -51,14 +55,15 @@ func (r *registrationFormRepo) Create(
 func (r *registrationFormRepo) GetAll(ctx context.Context) ([]models.RegistrationForm, error) {
     var out []models.RegistrationForm
     err := r.db.SelectContext(ctx, &out, `
-        SELECT registration_form_id,
-               lto_client_id,
-               vehicle_id,
-               submitted_date,
-               status,
-               registration_type
-          FROM registration_form
-         ORDER BY submitted_date DESC
+        SELECT
+          registration_form_id,
+          lto_client_id,
+          vehicle_id,
+          submitted_date,
+          status,
+          registration_type
+        FROM registration_form
+        ORDER BY submitted_date DESC
     `)
     return out, err
 }
@@ -66,14 +71,15 @@ func (r *registrationFormRepo) GetAll(ctx context.Context) ([]models.Registratio
 func (r *registrationFormRepo) GetByID(ctx context.Context, id string) (*models.RegistrationForm, error) {
     var f models.RegistrationForm
     err := r.db.GetContext(ctx, &f, `
-        SELECT registration_form_id,
-               lto_client_id,
-               vehicle_id,
-               submitted_date,
-               status,
-               registration_type
-          FROM registration_form
-         WHERE registration_form_id = $1
+        SELECT
+          registration_form_id,
+          lto_client_id,
+          vehicle_id,
+          submitted_date,
+          status,
+          registration_type
+        FROM registration_form
+        WHERE registration_form_id = $1
     `, id)
     if err != nil {
         return nil, err
@@ -84,10 +90,10 @@ func (r *registrationFormRepo) GetByID(ctx context.Context, id string) (*models.
 func (r *registrationFormRepo) Update(ctx context.Context, f *models.RegistrationForm) error {
     _, err := r.db.NamedExecContext(ctx, `
         UPDATE registration_form SET
-          lto_client_id      = :lto_client_id,
-          vehicle_id         = :vehicle_id,
-          status             = :status,
-          registration_type  = :registration_type
+          lto_client_id     = :lto_client_id,
+          vehicle_id        = :vehicle_id,
+          status            = :status,
+          registration_type = :registration_type
         WHERE registration_form_id = :registration_form_id
     `, f)
     return err
@@ -96,7 +102,33 @@ func (r *registrationFormRepo) Update(ctx context.Context, f *models.Registratio
 func (r *registrationFormRepo) Delete(ctx context.Context, id string) error {
     _, err := r.db.ExecContext(ctx, `
         DELETE FROM registration_form
-         WHERE registration_form_id = $1
+        WHERE registration_form_id = $1
     `, id)
     return err
+}
+
+func (r *registrationFormRepo) GetByVehicleID(
+    ctx context.Context,
+    vehicleID string,
+) (*models.RegistrationForm, error) {
+    var f models.RegistrationForm
+    const q = `
+      SELECT
+        registration_form_id,
+        lto_client_id,
+        vehicle_id,
+        submitted_date,
+        status,
+        registration_type
+      FROM registration_form
+      WHERE vehicle_id = $1
+    `
+    err := r.db.GetContext(ctx, &f, q, vehicleID)
+    if err == sql.ErrNoRows {
+        return nil, nil
+    }
+    if err != nil {
+        return nil, err
+    }
+    return &f, nil
 }
