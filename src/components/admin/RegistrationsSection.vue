@@ -1,30 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue'
-import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
-
-interface Registration {
-  id: string
-  vehicleInfo: string
-  plateNumber: string
-  registrationType: string
-  submissionDate: string
-  expiryDate: string
-  status: string
-  applicantName?: string
-  applicantEmail?: string
-  applicantPhone?: string
-  make?: string
-  model?: string
-  year?: string
-  color?: string
-  engineNumber?: string
-  chassisNumber?: string
-  vehicleType?: string
-  referenceCode?: string
-  inspectionStatus?: string
-  paymentStatus?: string
-  verificationStatus?: string
-}
+import { useRegistrationStore } from '../../stores/registration'
+import type { Registration } from '../../types/registration'
 
 interface StatusFilter {
   value: string
@@ -47,81 +24,56 @@ interface TableHeader {
 const RegistrationDetailsModal = defineAsyncComponent(
   () => import('@/components/modals/RegistrationDetailsModal.vue'),
 )
+const RegistrationEditModal = defineAsyncComponent(
+  () => import('@/components/modals/RegistrationEditModal.vue'),
+)
 
-const vehicleStore = useVehicleRegistrationStore()
+const registrationStore = useRegistrationStore()
 
-// Modal state
-const selectedRegistration = ref<Registration | null>(null)
-const showDetailsModal = ref<boolean>(false)
+// Search and filter state
+const searchQuery = ref<string>('')
+const sortBy = ref<keyof Registration | 'actions'>('submissionDate')
+const sortDesc = ref<boolean>(true)
+const currentPage = ref<number>(1)
+const itemsPerPage = ref<number>(10)
 
-const openDetailsModal = (registration: Registration): void => {
-  selectedRegistration.value = {
-    ...registration,
-    applicantName: registration.applicantName || 'Unknown',
-    applicantEmail: registration.applicantEmail || 'No email',
-    applicantPhone: registration.applicantPhone || 'Not provided',
-    make: registration.make || registration.vehicleInfo?.split(' ')[0] || 'Unknown',
-    model: registration.model || registration.vehicleInfo?.split(' ')[1] || 'Unknown',
-    year: registration.year || registration.vehicleInfo?.split(' ')[2] || 'Unknown',
-    color: registration.color || 'Unknown',
-    engineNumber: registration.engineNumber || 'Unknown',
-    chassisNumber: registration.chassisNumber || 'Unknown',
-    plateNumber: registration.plateNumber || 'Pending',
-    vehicleType: registration.vehicleType || 'Unknown',
-    registrationType: registration.registrationType || 'Unknown',
-    referenceCode: registration.referenceCode || 'Unknown',
-    submissionDate: registration.submissionDate || 'Not specified',
-    expiryDate: registration.expiryDate || 'Not applicable',
-    inspectionStatus: registration.inspectionStatus || registration.status || 'pending',
-    paymentStatus: registration.paymentStatus || 'pending',
-    verificationStatus: registration.verificationStatus || 'pending',
-    status: registration.status || 'pending',
-  }
-  showDetailsModal.value = true
-}
+// Get all registrations from the store
+const registrations = computed((): Registration[] => registrationStore.registrations || [])
 
-const closeDetailsModal = (): void => {
-  showDetailsModal.value = false
-  selectedRegistration.value = null
-}
-
-// Get all registrations with details
-const registrations = computed<Registration[]>(() => {
-  return vehicleStore.registrationsWithDetails.map((registration) => ({
-    ...registration,
-    id: String(registration.id),
-  }))
-})
+// Table headers with sorting capability
+const headers: TableHeader[] = [
+  { text: 'Reference Code', value: 'referenceCode', sortable: true },
+  { text: 'Vehicle Info', value: 'vehicleInfo', sortable: true },
+  { text: 'Type', value: 'registrationType', sortable: true },
+  { text: 'Submission Date', value: 'submissionDate', sortable: true },
+  { text: 'Status', value: 'status', sortable: true },
+  { text: 'Actions', value: 'actions', sortable: false },
+]
 
 // Status filters
 const statusFilters = ref<StatusFilter[]>([
-  { value: 'all', label: 'All Registrations', active: true },
-  { value: 'Approved', label: 'Approved', active: false },
-  { value: 'Pending', label: 'Pending', active: false },
+  { value: 'all', label: 'All Status', active: true },
+  { value: 'pending', label: 'Pending', active: false },
+  { value: 'approved', label: 'Approved', active: false },
+  { value: 'rejected', label: 'Rejected', active: false },
   { value: 'expired', label: 'Expired', active: false },
 ])
 
 // Type filters
 const typeFilters = ref<TypeFilter[]>([
   { value: 'all', label: 'All Types', active: true },
-  { value: 'New Registration', label: 'New Registration', active: false },
-  { value: 'Renewal', label: 'Renewal', active: false },
+  { value: 'new', label: 'New Registration', active: false },
+  { value: 'renewal', label: 'Renewal', active: false },
+  { value: 'transfer', label: 'Transfer', active: false },
 ])
 
-// Search and filter state
-const searchQuery = ref<string>('')
-const sortBy = ref<keyof Registration>('submissionDate')
-const sortDesc = ref<boolean>(false)
-const currentPage = ref<number>(1)
-const itemsPerPage = ref<number>(10)
-
 // Active filters
-const activeStatusFilter = computed<string>(() => {
+const activeStatusFilter = computed((): string => {
   const filter = statusFilters.value.find((f) => f.active === true)
   return filter ? filter.value : 'all'
 })
 
-const activeTypeFilter = computed<string>(() => {
+const activeTypeFilter = computed((): string => {
   const filter = typeFilters.value.find((f) => f.active === true)
   return filter ? filter.value : 'all'
 })
@@ -142,90 +94,57 @@ const setTypeFilter = (value: string): void => {
   }))
 }
 
-// Filtered registrations based on active filters and search query
-const filteredRegistrations = computed(() => {
-  let result = registrations.value
+// Format and filter registrations
+const filteredRegistrations = computed((): Registration[] => {
+  return registrations.value
+    .filter((registration) => {
+      const matchesSearch =
+        searchQuery.value === '' ||
+        registration.referenceCode.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        registration.vehicleInfo.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        registration.plateNumber.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        registration.applicantName.toLowerCase().includes(searchQuery.value.toLowerCase())
 
-  // Apply status filter
-  if (activeStatusFilter.value !== 'all') {
-    if (activeStatusFilter.value === 'expired') {
-      result = result.filter((reg) => {
-        if (!reg.expiryDate) return false
-        try {
-          const expiryDate = new Date(reg.expiryDate)
-          return !isNaN(expiryDate.getTime()) && expiryDate < new Date()
-        } catch {
-          return false
-        }
-      })
-    } else {
-      result = result.filter(
-        (reg) => reg.status?.toLowerCase() === activeStatusFilter.value.toLowerCase(),
-      )
-    }
-  }
+      const matchesStatus =
+        activeStatusFilter.value === 'all' ||
+        registration.status.toLowerCase() === activeStatusFilter.value.toLowerCase()
+      const matchesType =
+        activeTypeFilter.value === 'all' ||
+        registration.registrationType.toLowerCase() === activeTypeFilter.value.toLowerCase()
 
-  // Apply type filter
-  if (activeTypeFilter.value !== 'all') {
-    result = result.filter(
-      (reg) => reg.registrationType?.toLowerCase() === activeTypeFilter.value.toLowerCase(),
-    )
-  }
+      return matchesSearch && matchesStatus && matchesType
+    })
+    .sort((a, b) => {
+      const modifier = sortDesc.value ? -1 : 1
 
-  // Apply search query
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    result = result.filter(
-      (reg) =>
-        (reg.vehicleInfo?.toLowerCase() || '').includes(query) ||
-        (reg.plateNumber?.toLowerCase() || '').includes(query),
-    )
-  }
+      if (sortBy.value === 'actions') {
+        return 0 // No sorting for actions column
+      }
 
-  // Apply sorting with proper type handling
-  return result.sort((a, b) => {
-    const modifier = sortDesc.value ? -1 : 1
-    const aValue = a[sortBy.value]
-    const bValue = b[sortBy.value]
+      const aValue = a[sortBy.value]
+      const bValue = b[sortBy.value]
 
-    // Handle null/undefined values
-    if (!aValue && !bValue) return 0
-    if (!aValue) return 1 * modifier
-    if (!bValue) return -1 * modifier
+      if (sortBy.value === 'submissionDate') {
+        return (
+          modifier * (new Date(a.submissionDate).getTime() - new Date(b.submissionDate).getTime())
+        )
+      }
 
-    // Handle date fields
-    if (sortBy.value === 'submissionDate' || sortBy.value === 'expiryDate') {
-      const aDate = new Date(aValue).getTime()
-      const bDate = new Date(bValue).getTime()
-      return isNaN(aDate) || isNaN(bDate) ? 0 : (aDate - bDate) * modifier
-    }
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return modifier * aValue.localeCompare(bValue)
+      }
 
-    // Handle string fields
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return aValue.localeCompare(bValue) * modifier
-    }
-
-    // Handle numeric fields
-    return String(aValue).localeCompare(String(bValue)) * modifier
-  })
+      if (aValue !== undefined && bValue !== undefined && aValue < bValue) return -1 * modifier
+      if (bValue !== undefined && aValue !== undefined && aValue > bValue) return 1 * modifier
+      return 0
+    })
 })
 
-// Table headers
-const headers: TableHeader[] = [
-  { text: 'Vehicle', value: 'vehicleInfo', sortable: true },
-  { text: 'Plate Number', value: 'plateNumber', sortable: true },
-  { text: 'Registration Type', value: 'registrationType', sortable: true },
-  { text: 'Submission Date', value: 'submissionDate', sortable: true },
-  { text: 'Expiry Date', value: 'expiryDate', sortable: true },
-  { text: 'Status', value: 'status', sortable: true },
-  { text: 'Actions', value: 'actions', sortable: false },
-]
-
 // Pagination
-const totalPages = computed(() =>
+const totalPages = computed((): number =>
   Math.ceil(filteredRegistrations.value.length / itemsPerPage.value),
 )
-const paginatedRegistrations = computed(() => {
+const paginatedRegistrations = computed((): Registration[] => {
   const start = (currentPage.value - 1) * itemsPerPage.value
   const end = start + itemsPerPage.value
   return filteredRegistrations.value.slice(start, end)
@@ -238,6 +157,7 @@ const getStatusColor = (status: string): string => {
       return 'bg-green-100 text-green-800'
     case 'pending':
       return 'bg-yellow-100 text-yellow-800'
+    case 'rejected':
     case 'expired':
       return 'bg-red-100 text-red-800'
     default:
@@ -245,62 +165,188 @@ const getStatusColor = (status: string): string => {
   }
 }
 
-// Sort handler
+const getTypeColor = (type: string): string => {
+  switch (type.toLowerCase()) {
+    case 'new':
+      return 'bg-blue-100 text-blue-800'
+    case 'renewal':
+      return 'bg-purple-100 text-purple-800'
+    case 'transfer':
+      return 'bg-cyan-100 text-cyan-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
+}
+
+// Modal state
+const showDetailsModal = ref<boolean>(false)
+const showEditModal = ref<boolean>(false)
+const selectedRegistration = ref<Registration | null>(null)
+
+// Notification state
+const showNotification = ref<boolean>(false)
+const notificationMessage = ref<string>('')
+const notificationType = ref<'success' | 'error'>('success')
+const notificationProgress = ref<number>(0)
+
+// Modal handlers
+const openDetailsModal = (registration: Registration): void => {
+  selectedRegistration.value = registration
+  showDetailsModal.value = true
+}
+
+const closeDetailsModal = (): void => {
+  showDetailsModal.value = false
+  selectedRegistration.value = null
+}
+
+const openEditModal = (registration: Registration): void => {
+  selectedRegistration.value = registration
+  showEditModal.value = true
+}
+
+const closeEditModal = (): void => {
+  showEditModal.value = false
+  selectedRegistration.value = null
+}
+
+const handleRegistrationUpdate = (updatedRegistration: Registration): void => {
+  // Reset and show notification
+  notificationProgress.value = 100
+  notificationMessage.value = `Registration ${updatedRegistration.referenceCode} updated successfully`
+  notificationType.value = 'success'
+  showNotification.value = true
+
+  // Animate progress bar
+  let timeLeft = 100
+  const interval = setInterval(() => {
+    timeLeft -= 2
+    notificationProgress.value = timeLeft
+
+    if (timeLeft <= 0) {
+      clearInterval(interval)
+      showNotification.value = false
+    }
+  }, 100)
+}
+
+// Sorting handlers
 const sort = (header: TableHeader): void => {
   if (!header.sortable) return
-
-  // Update sort direction if clicking the same column
   if (sortBy.value === header.value) {
     sortDesc.value = !sortDesc.value
   } else {
-    // Set new sort column and reset direction to ascending
-    if (header.value !== 'actions') {
-      sortBy.value = header.value as keyof Registration
-      sortDesc.value = false
-    }
+    sortBy.value = header.value
+    sortDesc.value = false
   }
+}
 
-  // Reset to first page when sorting changes
-  currentPage.value = 1
+// Format date for display
+const formatDate = (dateString: string): string => {
+  if (!dateString) return 'Not specified'
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  } catch (e) {
+    return dateString
+  }
 }
 </script>
 
 <template>
-  <div class="p-6">
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-semibold text-gray-800">Registrations Management</h2>
+  <div>
+    <!-- Success/Error Notification -->
+    <transition name="slide-notification">
+      <div
+        v-if="showNotification"
+        class="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 shadow-lg rounded-md overflow-hidden max-w-md"
+      >
+        <div class="flex items-center bg-white">
+          <div
+            :class="[
+              'w-2 h-full mr-3',
+              notificationType === 'success' ? 'bg-green-500' : 'bg-red-500',
+            ]"
+          ></div>
+          <div class="flex items-center p-3 pr-4">
+            <div
+              :class="[
+                'flex items-center justify-center w-8 h-8 rounded-full mr-3',
+                notificationType === 'success' ? 'bg-green-100' : 'bg-red-100',
+              ]"
+            >
+              <font-awesome-icon
+                :icon="['fas', notificationType === 'success' ? 'check' : 'exclamation']"
+                :class="notificationType === 'success' ? 'text-green-500' : 'text-red-500'"
+                class="text-sm"
+              />
+            </div>
+            <div>
+              <p class="font-medium text-gray-800">{{ notificationMessage }}</p>
+            </div>
+            <button
+              @click="showNotification = false"
+              class="ml-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <font-awesome-icon :icon="['fas', 'times']" />
+            </button>
+          </div>
+        </div>
+        <!-- Progress bar -->
+        <div class="bg-gray-100 h-1 w-full">
+          <div
+            :class="[
+              'h-full transition-all duration-300 ease-linear',
+              notificationType === 'success' ? 'bg-green-500' : 'bg-red-500',
+            ]"
+            :style="{ width: notificationProgress + '%' }"
+          ></div>
+        </div>
+      </div>
+    </transition>
+
+    <div class="flex justify-between items-center mb-8">
+      <div>
+        <h2 class="text-2xl font-bold text-dark-blue">Registration Management</h2>
+        <p class="text-gray mt-1">Manage vehicle registrations and applications</p>
+      </div>
     </div>
 
     <!-- Filters and Search -->
-    <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-      <div class="space-y-4">
+    <div class="bg-white rounded-xl shadow-md border border-light-gray border-opacity-20 p-6 mb-8">
+      <div class="space-y-5">
         <!-- Search Bar -->
         <div class="relative">
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Search by vehicle or plate number..."
-            class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-dark-blue/20 transition-all"
+            placeholder="Search by reference code, vehicle info, plate number, or applicant name..."
+            class="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-light-blue focus:border-transparent transition-all"
           />
-          <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-            <i class="fas fa-search w-4 h-4"></i>
-          </div>
+          <font-awesome-icon
+            :icon="['fas', 'search']"
+            class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray"
+          />
         </div>
 
-        <!-- Filter Options -->
-        <div class="flex flex-wrap gap-2">
-          <div class="mr-4">
-            <span class="text-sm font-medium text-gray-700 mr-2">Status:</span>
-            <div class="inline-flex rounded-md shadow-sm mt-1">
+        <div class="flex flex-col md:flex-row md:justify-between gap-4">
+          <!-- Status Filters -->
+          <div>
+            <h3 class="text-sm font-medium text-gray mb-2">Filter by Status</h3>
+            <div class="flex flex-wrap gap-2">
               <button
                 v-for="filter in statusFilters"
                 :key="filter.value"
                 @click="setStatusFilter(filter.value)"
                 :class="[
-                  'px-3 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-dark-blue',
+                  'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
                   filter.active
-                    ? 'bg-dark-blue text-white rounded-md'
-                    : 'text-gray-700 hover:bg-gray-100 rounded-md',
+                    ? 'bg-dark-blue text-white shadow-sm'
+                    : 'bg-gray-50 text-gray hover:bg-light-blue hover:bg-opacity-10',
                 ]"
               >
                 {{ filter.label }}
@@ -308,18 +354,19 @@ const sort = (header: TableHeader): void => {
             </div>
           </div>
 
+          <!-- Type Filters -->
           <div>
-            <span class="text-sm font-medium text-gray-700 mr-2">Type:</span>
-            <div class="inline-flex rounded-md shadow-sm mt-1">
+            <h3 class="text-sm font-medium text-gray mb-2">Filter by Type</h3>
+            <div class="flex flex-wrap gap-2">
               <button
                 v-for="filter in typeFilters"
                 :key="filter.value"
                 @click="setTypeFilter(filter.value)"
                 :class="[
-                  'px-3 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-dark-blue',
+                  'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
                   filter.active
-                    ? 'bg-dark-blue text-white rounded-md'
-                    : 'text-gray-700 hover:bg-gray-100 rounded-md',
+                    ? 'bg-dark-blue text-white shadow-sm'
+                    : 'bg-gray-50 text-gray hover:bg-light-blue hover:bg-opacity-10',
                 ]"
               >
                 {{ filter.label }}
@@ -331,7 +378,9 @@ const sort = (header: TableHeader): void => {
     </div>
 
     <!-- Registrations Table -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div
+      class="bg-white rounded-xl shadow-md border border-light-gray border-opacity-20 overflow-hidden mb-6"
+    >
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
@@ -340,7 +389,7 @@ const sort = (header: TableHeader): void => {
                 v-for="header in headers"
                 :key="header.value"
                 @click="sort(header)"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                class="px-6 py-4 text-left text-xs font-medium text-gray uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                 :class="{ 'cursor-default': !header.sortable }"
               >
                 <div class="flex items-center gap-2">
@@ -357,58 +406,108 @@ const sort = (header: TableHeader): void => {
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-if="paginatedRegistrations.length === 0" class="hover:bg-gray-50">
+              <td colspan="6" class="px-6 py-10 text-center text-gray">
+                <div class="flex flex-col items-center justify-center space-y-3">
+                  <div class="bg-light-blue bg-opacity-10 p-4 rounded-full">
+                    <font-awesome-icon
+                      :icon="['fas', 'file-alt']"
+                      class="text-3xl text-light-blue"
+                    />
+                  </div>
+                  <p class="text-lg font-medium text-dark-blue">No registrations found</p>
+                  <p class="text-sm text-gray">Try adjusting your search or filter criteria</p>
+                </div>
+              </td>
+            </tr>
             <tr
+              v-else
               v-for="registration in paginatedRegistrations"
-              :key="registration.id"
+              :key="registration.referenceCode"
               class="hover:bg-gray-50 transition-colors"
             >
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ registration.vehicleInfo }}
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm font-medium text-dark-blue">{{
+                  registration.referenceCode
+                }}</span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ registration.plateNumber }}
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <div
+                    class="flex-shrink-0 h-10 w-10 bg-light-blue bg-opacity-10 rounded-full flex items-center justify-center"
+                  >
+                    <font-awesome-icon :icon="['fas', 'car']" class="text-light-blue" />
+                  </div>
+                  <div class="ml-4">
+                    <div class="text-sm font-medium text-dark-blue">
+                      {{ registration.vehicleInfo }}
+                    </div>
+                    <div class="text-xs text-gray">
+                      {{ registration.make }} {{ registration.model }}
+                    </div>
+                  </div>
+                </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ registration.registrationType }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ registration.submissionDate }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ registration.expiryDate }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td class="px-6 py-4 whitespace-nowrap">
                 <span
                   :class="[
-                    'px-2 py-1 rounded-full text-xs font-medium',
+                    'px-3 py-1 rounded-full text-xs font-medium inline-flex items-center',
+                    getTypeColor(registration.registrationType),
+                  ]"
+                >
+                  <span
+                    class="h-1.5 w-1.5 rounded-full mr-1.5"
+                    :class="[
+                      registration.registrationType.toLowerCase() === 'new'
+                        ? 'bg-blue-700'
+                        : registration.registrationType.toLowerCase() === 'renewal'
+                          ? 'bg-purple-700'
+                          : 'bg-cyan-700',
+                    ]"
+                  ></span>
+                  {{ registration.registrationType }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-700">
+                  {{ formatDate(registration.submissionDate) }}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span
+                  :class="[
+                    'px-3 py-1 rounded-full text-xs font-medium inline-flex items-center',
                     getStatusColor(registration.status),
                   ]"
                 >
+                  <span
+                    class="h-1.5 w-1.5 rounded-full mr-1.5"
+                    :class="[
+                      registration.status.toLowerCase() === 'approved'
+                        ? 'bg-green-700'
+                        : registration.status.toLowerCase() === 'pending'
+                          ? 'bg-yellow-700'
+                          : 'bg-red-700',
+                    ]"
+                  ></span>
                   {{ registration.status }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center gap-3">
                   <button
-                    class="text-blue-600 hover:text-blue-900 flex items-center gap-1"
+                    class="text-light-blue hover:text-dark-blue transition-colors flex items-center gap-1 text-sm"
                     @click="openDetailsModal(registration)"
                   >
                     <font-awesome-icon :icon="['fas', 'eye']" />
-                    View
+                    <span>View</span>
                   </button>
                   <button
-                    class="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
-                    @click="() => {}"
+                    class="text-light-blue hover:text-dark-blue transition-colors flex items-center gap-1 text-sm"
+                    @click="openEditModal(registration)"
                   >
                     <font-awesome-icon :icon="['fas', 'edit']" />
-                    Edit
-                  </button>
-                  <button
-                    class="text-red-600 hover:text-red-900 flex items-center gap-1"
-                    @click="() => {}"
-                  >
-                    <font-awesome-icon :icon="['fas', 'trash']" />
-                    Delete
+                    <span>Edit</span>
                   </button>
                 </div>
               </td>
@@ -419,25 +518,28 @@ const sort = (header: TableHeader): void => {
 
       <!-- Pagination -->
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
-        <div class="flex items-center justify-between">
-          <div class="text-sm text-gray-700">
-            Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="text-sm text-gray">
+            Showing
+            {{ filteredRegistrations.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0 }} to
             {{ Math.min(currentPage * itemsPerPage, filteredRegistrations.length) }} of
-            {{ filteredRegistrations.length }} entries
+            {{ filteredRegistrations.length }} registrations
           </div>
           <div class="flex items-center gap-2">
             <button
               @click="currentPage--"
-              :disabled="currentPage === 1"
-              class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+              :disabled="currentPage === 1 || filteredRegistrations.length === 0"
+              class="p-2 rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
             >
               <font-awesome-icon :icon="['fas', 'chevron-left']" />
             </button>
-            <span class="text-sm text-gray-700">Page {{ currentPage }} of {{ totalPages }}</span>
+            <span class="text-sm text-gray font-medium px-4">
+              Page {{ filteredRegistrations.length > 0 ? currentPage : 0 }} of {{ totalPages }}
+            </span>
             <button
               @click="currentPage++"
-              :disabled="currentPage === totalPages"
-              class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+              :disabled="currentPage === totalPages || filteredRegistrations.length === 0"
+              class="p-2 rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
             >
               <font-awesome-icon :icon="['fas', 'chevron-right']" />
             </button>
@@ -448,9 +550,34 @@ const sort = (header: TableHeader): void => {
 
     <!-- Registration Details Modal -->
     <RegistrationDetailsModal
+      v-if="selectedRegistration && showDetailsModal"
       :show="showDetailsModal"
       :registration="selectedRegistration"
       @close="closeDetailsModal"
     />
+
+    <!-- Registration Edit Modal -->
+    <RegistrationEditModal
+      v-if="selectedRegistration && showEditModal"
+      :show="showEditModal"
+      :registration="selectedRegistration"
+      @close="closeEditModal"
+      @update="handleRegistrationUpdate"
+    />
   </div>
 </template>
+
+<style scoped>
+.slide-notification-enter-active,
+.slide-notification-leave-active {
+  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+.slide-notification-enter-from {
+  transform: translate(-50%, -100px);
+  opacity: 0;
+}
+.slide-notification-leave-to {
+  transform: translate(-50%, -100px);
+  opacity: 0;
+}
+</style>
