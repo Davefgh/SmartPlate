@@ -21,7 +21,7 @@ interface PlateWithVehicle extends Plate {
   plate_expiration_date: string
   plate_number: string
   plate_type: string
-  [key: string]: string | number
+  [key: string]: string | number | undefined
 }
 
 interface Filter {
@@ -39,6 +39,8 @@ interface TableHeader {
 const PlateDetailsModal = defineAsyncComponent(
   () => import('@/components/modals/PlateDetailsModal.vue'),
 )
+
+const PlateEditModal = defineAsyncComponent(() => import('@/components/modals/PlateEditModal.vue'))
 
 const vehicleStore = useVehicleRegistrationStore()
 
@@ -60,9 +62,9 @@ const statusFilters = ref<Filter[]>([
 // Type filters
 const typeFilters = ref<Filter[]>([
   { value: 'all', label: 'All Types', active: true },
+  { value: 'Private', label: 'Private', active: false },
   { value: 'Regular', label: 'Regular', active: false },
-  { value: 'Special', label: 'Special', active: false },
-  { value: 'Vanity', label: 'Vanity', active: false },
+  { value: 'Temporary', label: 'Temporary', active: false },
 ])
 
 // Active filters
@@ -194,6 +196,46 @@ const getStatusColor = (status: string) => {
   }
 }
 
+const getStatusDot = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'active':
+      return 'bg-green-700'
+    case 'pending':
+      return 'bg-yellow-700'
+    case 'expired':
+      return 'bg-red-700'
+    default:
+      return 'bg-gray-700'
+  }
+}
+
+// Add a function to get plate type color
+const getPlateTypeColor = (type: string) => {
+  switch (type.toLowerCase()) {
+    case 'private':
+      return 'bg-indigo-100 text-indigo-800'
+    case 'regular':
+      return 'bg-blue-100 text-blue-800'
+    case 'temporary':
+      return 'bg-purple-100 text-purple-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
+}
+
+const getPlateTypeDot = (type: string) => {
+  switch (type.toLowerCase()) {
+    case 'private':
+      return 'bg-indigo-700'
+    case 'regular':
+      return 'bg-blue-700'
+    case 'temporary':
+      return 'bg-purple-700'
+    default:
+      return 'bg-gray-700'
+  }
+}
+
 // Sort handler
 const sort = (header: TableHeader) => {
   if (!header.sortable) return
@@ -208,6 +250,13 @@ const sort = (header: TableHeader) => {
 // Modal state
 const selectedPlate = ref<PlateWithVehicle | null>(null)
 const showPlateModal = ref<boolean>(false)
+const showEditModal = ref<boolean>(false)
+
+// Notification state
+const showNotification = ref<boolean>(false)
+const notificationMessage = ref<string>('')
+const notificationType = ref<'success' | 'error'>('success')
+const notificationProgress = ref<number>(0)
 
 // Modal handlers
 const openPlateModal = (plate: PlateWithVehicle & { id: number }) => {
@@ -218,6 +267,36 @@ const openPlateModal = (plate: PlateWithVehicle & { id: number }) => {
 const closePlateModal = () => {
   selectedPlate.value = null
   showPlateModal.value = false
+}
+
+const openEditModal = (plate: PlateWithVehicle & { id: number }) => {
+  selectedPlate.value = plate
+  showEditModal.value = true
+}
+
+const closeEditModal = () => {
+  showEditModal.value = false
+  selectedPlate.value = null
+}
+
+const handlePlateUpdate = (updatedPlate: Plate) => {
+  // Reset and show notification
+  notificationProgress.value = 100
+  notificationMessage.value = `Plate ${updatedPlate.plate_number} updated successfully`
+  notificationType.value = 'success'
+  showNotification.value = true
+
+  // Animate progress bar
+  let timeLeft = 100
+  const interval = setInterval(() => {
+    timeLeft -= 2
+    notificationProgress.value = timeLeft
+
+    if (timeLeft <= 0) {
+      clearInterval(interval)
+      showNotification.value = false
+    }
+  }, 100)
 }
 
 const headers: TableHeader[] = [
@@ -232,64 +311,129 @@ const headers: TableHeader[] = [
 </script>
 
 <template>
-  <div class="p-6">
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-semibold text-gray-800">Plates Management</h2>
+  <div>
+    <!-- Success/Error Notification -->
+    <transition name="slide-notification">
+      <div
+        v-if="showNotification"
+        class="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 shadow-lg rounded-md overflow-hidden max-w-md"
+      >
+        <div class="flex items-center bg-white">
+          <div
+            :class="[
+              'w-2 h-full mr-3',
+              notificationType === 'success' ? 'bg-green-500' : 'bg-red-500',
+            ]"
+          ></div>
+          <div class="flex items-center p-3 pr-4">
+            <div
+              :class="[
+                'flex items-center justify-center w-8 h-8 rounded-full mr-3',
+                notificationType === 'success' ? 'bg-green-100' : 'bg-red-100',
+              ]"
+            >
+              <font-awesome-icon
+                :icon="['fas', notificationType === 'success' ? 'check' : 'exclamation']"
+                :class="notificationType === 'success' ? 'text-green-500' : 'text-red-500'"
+                class="text-sm"
+              />
+            </div>
+            <div>
+              <p class="font-medium text-gray-800">{{ notificationMessage }}</p>
+            </div>
+            <button
+              @click="showNotification = false"
+              class="ml-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <font-awesome-icon :icon="['fas', 'times']" />
+            </button>
+          </div>
+        </div>
+        <!-- Progress bar -->
+        <div class="bg-gray-100 h-1 w-full">
+          <div
+            :class="[
+              'h-full transition-all duration-300 ease-linear',
+              notificationType === 'success' ? 'bg-green-500' : 'bg-red-500',
+            ]"
+            :style="{ width: notificationProgress + '%' }"
+          ></div>
+        </div>
+      </div>
+    </transition>
+
+    <div class="flex justify-between items-center mb-8">
+      <div>
+        <h2 class="text-2xl font-bold text-dark-blue">Plates Management</h2>
+        <p class="text-gray mt-1">Manage vehicle plates and registration</p>
+      </div>
     </div>
 
     <!-- Filters and Search -->
-    <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-      <div class="space-y-4">
+    <div class="bg-white rounded-xl shadow-md border border-light-gray border-opacity-20 p-6 mb-8">
+      <div class="space-y-5">
         <!-- Search Bar -->
         <div class="relative">
           <input
             v-model="searchQuery"
             type="text"
             placeholder="Search by plate number or vehicle..."
-            class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-dark-blue/20 transition-all"
+            class="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-light-blue focus:border-transparent transition-all"
           />
-          <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-            <i class="fas fa-search w-4 h-4"></i>
-          </div>
+          <font-awesome-icon
+            :icon="['fas', 'search']"
+            class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray"
+          />
         </div>
 
-        <!-- Status and Type Filters -->
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-col md:flex-row md:justify-between gap-4">
           <!-- Status Filters -->
-          <button
-            v-for="filter in statusFilters"
-            :key="filter.value"
-            @click="setStatusFilter(filter.value)"
-            :class="[
-              'px-3 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-dark-blue',
-              filter.active
-                ? 'bg-dark-blue text-white rounded-md'
-                : 'text-gray-700 hover:bg-gray-100 rounded-md',
-            ]"
-          >
-            {{ filter.label }}
-          </button>
+          <div>
+            <h3 class="text-sm font-medium text-gray mb-2">Filter by Status</h3>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="filter in statusFilters"
+                :key="filter.value"
+                @click="setStatusFilter(filter.value)"
+                :class="[
+                  'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
+                  filter.active
+                    ? 'bg-dark-blue text-white shadow-sm'
+                    : 'bg-gray-50 text-gray hover:bg-light-blue hover:bg-opacity-10',
+                ]"
+              >
+                {{ filter.label }}
+              </button>
+            </div>
+          </div>
 
           <!-- Type Filters -->
-          <button
-            v-for="filter in typeFilters"
-            :key="filter.value"
-            @click="setTypeFilter(filter.value)"
-            :class="[
-              'px-3 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-dark-blue',
-              filter.active
-                ? 'bg-dark-blue text-white rounded-md'
-                : 'text-gray-700 hover:bg-gray-100 rounded-md',
-            ]"
-          >
-            {{ filter.label }}
-          </button>
+          <div>
+            <h3 class="text-sm font-medium text-gray mb-2">Filter by Type</h3>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="filter in typeFilters"
+                :key="filter.value"
+                @click="setTypeFilter(filter.value)"
+                :class="[
+                  'px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200',
+                  filter.active
+                    ? 'bg-dark-blue text-white shadow-sm'
+                    : 'bg-gray-50 text-gray hover:bg-light-blue hover:bg-opacity-10',
+                ]"
+              >
+                {{ filter.label }}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Plates Table -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div
+      class="bg-white rounded-xl shadow-md border border-light-gray border-opacity-20 overflow-hidden mb-6"
+    >
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
@@ -298,7 +442,7 @@ const headers: TableHeader[] = [
                 v-for="header in headers"
                 :key="header.value"
                 @click="sort(header)"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                class="px-6 py-4 text-left text-xs font-medium text-gray uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                 :class="{ 'cursor-default': !header.sortable }"
               >
                 <div class="flex items-center gap-2">
@@ -316,11 +460,13 @@ const headers: TableHeader[] = [
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-if="paginatedPlates.length === 0" class="hover:bg-gray-50">
-              <td colspan="7" class="px-6 py-8 text-center text-gray-500">
-                <div class="flex flex-col items-center justify-center space-y-2">
-                  <font-awesome-icon :icon="['fas', 'inbox']" class="text-4xl text-gray-400" />
-                  <p class="text-lg font-medium">No plates found</p>
-                  <p class="text-sm">Try adjusting your search or filter criteria</p>
+              <td colspan="7" class="px-6 py-10 text-center text-gray">
+                <div class="flex flex-col items-center justify-center space-y-3">
+                  <div class="bg-light-blue bg-opacity-10 p-4 rounded-full">
+                    <font-awesome-icon :icon="['fas', 'car']" class="text-3xl text-light-blue" />
+                  </div>
+                  <p class="text-lg font-medium text-dark-blue">No plates found</p>
+                  <p class="text-sm text-gray">Try adjusting your search or filter criteria</p>
                 </div>
               </td>
             </tr>
@@ -330,53 +476,61 @@ const headers: TableHeader[] = [
               :key="plate.id"
               class="hover:bg-gray-50 transition-colors"
             >
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ plate.plateNumber }}
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm font-medium text-dark-blue">{{ plate.plateNumber }}</span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ plate.vehicle }}
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-700">{{ plate.vehicle }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ plate.registrationDate }}
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-700">{{ plate.registrationDate }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ plate.expiryDate }}
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-700">{{ plate.expiryDate }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td class="px-6 py-4 whitespace-nowrap">
                 <span
                   :class="[
-                    'px-2 py-1 rounded-full text-xs font-medium',
+                    'px-3 py-1 rounded-full text-xs font-medium inline-flex items-center',
                     getStatusColor(plate.status),
                   ]"
                 >
+                  <span
+                    class="h-1.5 w-1.5 rounded-full mr-1.5"
+                    :class="[getStatusDot(plate.status)]"
+                  ></span>
                   {{ plate.status }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ plate.type }}
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span
+                  :class="[
+                    'px-3 py-1 rounded-full text-xs font-medium inline-flex items-center',
+                    getPlateTypeColor(plate.type),
+                  ]"
+                >
+                  <span
+                    class="h-1.5 w-1.5 rounded-full mr-1.5"
+                    :class="[getPlateTypeDot(plate.type)]"
+                  ></span>
+                  {{ plate.type }}
+                </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center gap-3">
                   <button
-                    class="text-blue-600 hover:text-blue-900 flex items-center gap-1"
+                    class="text-light-blue hover:text-dark-blue transition-colors flex items-center gap-1 text-sm"
                     @click="openPlateModal(plate)"
                   >
                     <font-awesome-icon :icon="['fas', 'eye']" />
-                    View
+                    <span>View</span>
                   </button>
                   <button
-                    class="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
-                    @click="() => {}"
+                    class="text-light-blue hover:text-dark-blue transition-colors flex items-center gap-1 text-sm"
+                    @click="openEditModal(plate)"
                   >
                     <font-awesome-icon :icon="['fas', 'edit']" />
-                    Edit
-                  </button>
-                  <button
-                    class="text-red-600 hover:text-red-900 flex items-center gap-1"
-                    @click="() => {}"
-                  >
-                    <font-awesome-icon :icon="['fas', 'trash']" />
-                    Delete
+                    <span>Edit</span>
                   </button>
                 </div>
               </td>
@@ -387,27 +541,27 @@ const headers: TableHeader[] = [
 
       <!-- Pagination -->
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
-        <div class="flex items-center justify-between">
-          <div class="text-sm text-gray-700">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="text-sm text-gray">
             Showing {{ filteredPlates.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0 }} to
             {{ Math.min(currentPage * itemsPerPage, filteredPlates.length) }} of
-            {{ filteredPlates.length }} entries
+            {{ filteredPlates.length }} plates
           </div>
           <div class="flex items-center gap-2">
             <button
               @click="currentPage--"
               :disabled="currentPage === 1 || filteredPlates.length === 0"
-              class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+              class="p-2 rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
             >
               <font-awesome-icon :icon="['fas', 'chevron-left']" />
             </button>
-            <span class="text-sm text-gray-700"
-              >Page {{ filteredPlates.length > 0 ? currentPage : 0 }} of {{ totalPages || 0 }}</span
-            >
+            <span class="text-sm text-gray font-medium px-4">
+              Page {{ filteredPlates.length > 0 ? currentPage : 0 }} of {{ totalPages }}
+            </span>
             <button
               @click="currentPage++"
               :disabled="currentPage === totalPages || filteredPlates.length === 0"
-              class="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+              class="p-2 rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
             >
               <font-awesome-icon :icon="['fas', 'chevron-right']" />
             </button>
@@ -418,10 +572,34 @@ const headers: TableHeader[] = [
 
     <!-- Plate Details Modal -->
     <PlateDetailsModal
-      v-if="selectedPlate"
+      v-if="selectedPlate && showPlateModal"
       :show="showPlateModal"
       :plate="selectedPlate"
       @close="closePlateModal"
     />
+
+    <!-- Plate Edit Modal -->
+    <PlateEditModal
+      v-if="selectedPlate && showEditModal"
+      :show="showEditModal"
+      :plate="selectedPlate"
+      @close="closeEditModal"
+      @update="handlePlateUpdate"
+    />
   </div>
 </template>
+
+<style scoped>
+.slide-notification-enter-active,
+.slide-notification-leave-active {
+  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+.slide-notification-enter-from {
+  transform: translate(-50%, -100px);
+  opacity: 0;
+}
+.slide-notification-leave-to {
+  transform: translate(-50%, -100px);
+  opacity: 0;
+}
+</style>
