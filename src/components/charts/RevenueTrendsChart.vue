@@ -53,16 +53,20 @@ const props = defineProps({
     type: String,
     default: 'white',
   },
+  monthsData: {
+    type: Array,
+    default: () => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+  },
+  revenueData: {
+    type: Array,
+    default: () => [45000, 52000, 49000, 60000, 56000, 70000],
+  },
 })
-
-// Mock revenue data
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
-const mockRevenue = [45000, 52000, 49000, 60000, 56000, 70000]
 
 // Chart data
 const chartData = computed(() => {
   return {
-    labels: months,
+    labels: props.monthsData,
     datasets: [
       {
         label: 'Revenue',
@@ -76,7 +80,7 @@ const chartData = computed(() => {
         pointHoverRadius: 7,
         tension: 0.3,
         fill: true,
-        data: mockRevenue,
+        data: props.revenueData,
       },
     ],
   }
@@ -171,21 +175,27 @@ const chartOptions = computed(() => {
 
 // Calculate statistics
 const totalRevenue = computed(() => {
-  return mockRevenue.reduce((sum, value) => sum + value, 0)
+  return props.revenueData.reduce((sum, value) => sum + value, 0)
 })
 
 const averageMonthlyRevenue = computed(() => {
-  return totalRevenue.value / mockRevenue.length
+  return totalRevenue.value / props.revenueData.length
 })
 
 const highestMonthRevenue = computed(() => {
-  return Math.max(...mockRevenue)
+  return Math.max(...props.revenueData)
 })
 
 const growthRate = computed(() => {
-  if (mockRevenue.length < 2) return 0
-  const first = mockRevenue[0]
-  const last = mockRevenue[mockRevenue.length - 1]
+  if (props.revenueData.length < 2) return 0
+  const first = props.revenueData[0]
+  const last = props.revenueData[props.revenueData.length - 1]
+
+  // Handle division by zero when first month is 0
+  if (first === 0) {
+    return last > 0 ? 100 : 0 // If there was no revenue in first month but there is now, show 100% growth
+  }
+
   return Math.round(((last - first) / first) * 100)
 })
 

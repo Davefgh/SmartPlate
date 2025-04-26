@@ -2,7 +2,19 @@
 import { computed, defineAsyncComponent } from 'vue'
 import { useVehicleRegistrationStore } from '@/stores/vehicleRegistration'
 import { useUserStore } from '@/stores/user'
+import { useInspectionStore } from '@/stores/inspection'
+import { usePaymentStore } from '@/stores/payment'
 import type { Vehicle, Registration } from '@/types/vehicle'
+
+// Define emits for navigation
+const emit = defineEmits<{
+  (e: 'switchTab', tab: string): void
+}>()
+
+// Function to switch to pending registrations tab
+const navigateToPendingItems = () => {
+  emit('switchTab', 'pending')
+}
 
 interface VehicleTypeData {
   label: string
@@ -25,6 +37,7 @@ interface PreviodPeriodStats {
   vehicles: number
   registrations: number
   revenue: number
+  inspections: number
 }
 
 const RevenueTrendsChart = defineAsyncComponent(
@@ -42,9 +55,18 @@ const VehicleMakesChart = defineAsyncComponent(
 const RegistrationTrendsChart = defineAsyncComponent(
   () => import('@/components/charts/RegistrationTrendsChart.vue'),
 )
+const InspectionStatusChart = defineAsyncComponent(
+  () => import('@/components/charts/InspectionStatusChart.vue'),
+)
 
 const vehicleStore = useVehicleRegistrationStore()
 const userStore = useUserStore()
+const inspectionStore = useInspectionStore()
+const paymentStore = usePaymentStore()
+
+// Initialize stores
+inspectionStore.initializeStore()
+paymentStore.initializeStore()
 
 // Get data for statistics
 const totalUsers = computed(() => userStore.users.filter((user) => user.role !== 'admin').length)
@@ -54,6 +76,19 @@ const pendingRegistrations = computed(() => vehicleStore.pendingRegistrations.le
 const approvedRegistrations = computed(
   () => vehicleStore.registrations.filter((reg) => reg.status === 'Approved').length,
 )
+
+// Inspection statistics
+const pendingInspections = computed(() => inspectionStore.getPendingInspections.length)
+const approvedInspections = computed(() => inspectionStore.getCompletedInspections.length)
+const rejectedInspections = computed(() => inspectionStore.getRejectedInspections.length)
+const totalInspections = computed(
+  () => pendingInspections.value + approvedInspections.value + rejectedInspections.value,
+)
+
+// Payment statistics
+const pendingPayments = computed(() => paymentStore.getPendingPayments.length)
+const completedPayments = computed(() => paymentStore.getCompletedPayments.length)
+const rejectedPayments = computed(() => paymentStore.getRejectedPayments.length)
 
 // Vehicle types distribution for pie chart
 const vehicleTypes = computed<VehicleTypeData[]>(() => {
@@ -112,11 +147,51 @@ const registrationTrends = computed<RegistrationTrendData[]>(() => {
   }))
 })
 
-// Calculate revenue from registrations
+// Calculate revenue from payments
 const totalRevenue = computed(() => {
-  return vehicleStore.registrations.reduce((total, reg) => {
-    return total + (reg.fees?.total || 0)
+  // Get completed payments and calculate total revenue
+  const completedPaymentForms = paymentStore.getCompletedPayments
+
+  return completedPaymentForms.reduce((total, form) => {
+    if (form.paymentDetails?.amountPaid) {
+      return total + form.paymentDetails.amountPaid
+    }
+    return total
   }, 0)
+})
+
+// Revenue trends by month (last 6 months)
+const revenueTrends = computed(() => {
+  const trends: Record<string, number> = {}
+  const now = new Date()
+
+  // Initialize last 6 months
+  for (let i = 5; i >= 0; i--) {
+    const month = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const monthLabel = month.toLocaleString('default', { month: 'short' })
+    trends[monthLabel] = 0
+  }
+
+  // Fill with data from completed payments
+  const completedPaymentForms = paymentStore.getCompletedPayments
+
+  completedPaymentForms.forEach((form) => {
+    if (form.paymentDetails?.paymentDate && form.paymentDetails.amountPaid) {
+      const date = new Date(form.paymentDetails.paymentDate)
+      const monthLabel = date.toLocaleString('default', { month: 'short' })
+
+      // Only count if it's within the last 6 months
+      if (trends[monthLabel] !== undefined) {
+        trends[monthLabel] += form.paymentDetails.amountPaid
+      }
+    }
+  })
+
+  // Convert to array format for chart
+  return {
+    months: Object.keys(trends),
+    revenue: Object.values(trends),
+  }
 })
 
 // Format currency
@@ -139,6 +214,7 @@ const previousPeriodStats: PreviodPeriodStats = {
   vehicles: totalVehicles.value - 5,
   registrations: totalRegistrations.value - 8,
   revenue: totalRevenue.value - 10000,
+  inspections: totalInspections.value - 3,
 }
 
 // Calculate growth percentages
@@ -151,6 +227,9 @@ const registrationGrowth = computed(() =>
 )
 const revenueGrowth = computed(() =>
   getPercentageChange(totalRevenue.value, previousPeriodStats.revenue),
+)
+const inspectionGrowth = computed(() =>
+  getPercentageChange(totalInspections.value, previousPeriodStats.inspections),
 )
 </script>
 
@@ -332,6 +411,36 @@ const revenueGrowth = computed(() =>
       </div>
     </div>
 
+    <!-- Inspection Status Card -->
+    <div class="mb-8">
+      <div
+        class="bg-white rounded-xl shadow-md border border-light-gray border-opacity-20 overflow-hidden transition-all duration-300 hover:shadow-lg"
+      >
+        <div class="flex justify-between items-center p-6 border-b border-gray-100">
+          <h3 class="text-lg font-semibold text-dark-blue">Inspection Status</h3>
+          <div
+            class="bg-light-blue bg-opacity-10 text-light-blue px-3 py-1 rounded-full text-xs font-medium"
+          >
+            <span class="mr-1">{{ totalInspections }}</span>
+            Total Inspections
+          </div>
+        </div>
+        <div class="p-6 h-80">
+          <InspectionStatusChart
+            :pendingInspections="pendingInspections"
+            :approvedInspections="approvedInspections"
+            :rejectedInspections="rejectedInspections"
+            chartTitle="Vehicle Inspection Status"
+            primaryColor="#4373e6"
+            secondaryColor="#45cbba"
+            tertiaryColor="#e63946"
+            labelColor="#8892b0"
+            backgroundColor="white"
+          />
+        </div>
+      </div>
+    </div>
+
     <!-- Second Row -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
       <!-- Registration Trends -->
@@ -398,6 +507,8 @@ const revenueGrowth = computed(() =>
       </div>
       <div class="p-6 h-96">
         <RevenueTrendsChart
+          :monthsData="revenueTrends.months"
+          :revenueData="revenueTrends.revenue"
           chartTitle="Revenue Trends (Last 6 Months)"
           lineColor="#0a192f"
           fillColor="rgba(23, 42, 69, 0.1)"
@@ -421,41 +532,47 @@ const revenueGrowth = computed(() =>
           </div>
           <div>
             <h3 class="text-lg font-semibold text-dark-blue">Pending Approvals</h3>
-            <p class="text-gray">{{ pendingRegistrations }} registrations need your attention</p>
+            <p class="text-gray">
+              {{ pendingRegistrations }} registrations and {{ pendingInspections }} inspections need
+              your attention
+            </p>
           </div>
         </div>
         <button
           class="w-full mt-4 bg-dark-blue hover:bg-light-blue text-white py-2 px-4 rounded-lg transition-colors duration-300"
+          @click="navigateToPendingItems"
         >
-          View Pending Registrations
+          View Pending Items
         </button>
       </div>
 
-      <!-- System Status Card -->
+      <!-- Payment Status Card -->
       <div
         class="bg-white rounded-xl shadow-md border border-light-gray border-opacity-20 overflow-hidden p-6 transition-all duration-300 hover:shadow-lg"
       >
         <div class="flex items-center space-x-4 mb-4">
           <div class="bg-green-100 p-3 rounded-full">
-            <font-awesome-icon :icon="['fas', 'check-circle']" class="w-6 h-6 text-green-600" />
+            <font-awesome-icon :icon="['fas', 'credit-card']" class="w-6 h-6 text-green-600" />
           </div>
           <div>
-            <h3 class="text-lg font-semibold text-dark-blue">System Status</h3>
-            <p class="text-gray">All systems operational</p>
+            <h3 class="text-lg font-semibold text-dark-blue">Payment Status</h3>
+            <p class="text-gray">
+              {{ completedPayments }} completed and {{ pendingPayments }} pending payments
+            </p>
           </div>
         </div>
         <div class="grid grid-cols-3 gap-2 mt-4">
           <div class="text-center p-2 bg-light-blue bg-opacity-5 rounded-lg">
-            <p class="text-xs text-gray mb-1">Database</p>
-            <div class="text-green-600 font-medium text-sm">Online</div>
+            <p class="text-xs text-gray mb-1">Approved</p>
+            <div class="text-green-600 font-medium text-sm">{{ completedPayments }}</div>
           </div>
           <div class="text-center p-2 bg-light-blue bg-opacity-5 rounded-lg">
-            <p class="text-xs text-gray mb-1">API</p>
-            <div class="text-green-600 font-medium text-sm">100%</div>
+            <p class="text-xs text-gray mb-1">Pending</p>
+            <div class="text-yellow-600 font-medium text-sm">{{ pendingPayments }}</div>
           </div>
           <div class="text-center p-2 bg-light-blue bg-opacity-5 rounded-lg">
-            <p class="text-xs text-gray mb-1">Storage</p>
-            <div class="text-green-600 font-medium text-sm">87%</div>
+            <p class="text-xs text-gray mb-1">Rejected</p>
+            <div class="text-red font-medium text-sm">{{ rejectedPayments }}</div>
           </div>
         </div>
       </div>

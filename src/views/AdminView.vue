@@ -51,6 +51,14 @@ const toggleSidebar = () => {
 
 // Active section management
 const activeSection = ref('dashboard')
+
+// Function to handle tab switching from DashboardSection
+const handleSwitchTab = (tab) => {
+  if (tab === 'pending') {
+    activeSection.value = 'pending-registrations'
+  }
+}
+
 // Mock user list
 const users = ref([
   {
@@ -290,22 +298,18 @@ watch(searchQuery, () => {
 
       <!-- Dashboard Content -->
       <main class="flex-1 overflow-y-auto bg-gray-50 p-6">
-        <!-- Dynamic Section Content -->
         <component
-          :is="
-            activeSection === 'dashboard'
-              ? DashboardSection
-              : activeSection === 'users'
-                ? UsersSection
-                : activeSection === 'vehicles'
-                  ? VehiclesSection
-                  : activeSection === 'plates'
-                    ? PlatesSection
-                    : activeSection === 'registrations'
-                      ? RegistrationsSection
-                      : PendingRegistrationsSection
-          "
-          :users="filteredUsers"
+          v-if="activeSection === 'dashboard'"
+          :is="DashboardSection"
+          @switch-tab="handleSwitchTab"
+        />
+        <component v-else-if="activeSection === 'users'" :is="UsersSection" />
+        <component v-else-if="activeSection === 'vehicles'" :is="VehiclesSection" />
+        <component v-else-if="activeSection === 'plates'" :is="PlatesSection" />
+        <component v-else-if="activeSection === 'registrations'" :is="RegistrationsSection" />
+        <component
+          v-else-if="activeSection === 'pending-registrations'"
+          :is="PendingRegistrationsSection"
         />
       </main>
 
